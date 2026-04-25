@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:palenggo_shared/palenggo_shared.dart';
 
 import 'firebase_options.dart';
+import 'screens/customer_home_screen.dart';
 
 Future<void> main() async {
   await bootstrapFirebase(options: DefaultFirebaseOptions.currentPlatform);
@@ -36,37 +37,7 @@ class _AuthGate extends ConsumerWidget {
       error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
       data: (user) => user == null
           ? const PhoneOtpScreen(appLabel: 'Customer')
-          : const _CustomerHomePlaceholder(),
-    );
-  }
-}
-
-class _CustomerHomePlaceholder extends ConsumerWidget {
-  const _CustomerHomePlaceholder();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('PalengGo'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => ref.read(authRepositoryProvider).signOut(),
-          ),
-        ],
-      ),
-      // Phase 1 next step: replace with markets map + browse + cart + pin/landmark
-      // checkout. See spec §12 Phase 1, step 4.
-      body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Signed in. Market browse + landmark checkout comes next.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      ),
+          : const CustomerHomeScreen(),
     );
   }
 }

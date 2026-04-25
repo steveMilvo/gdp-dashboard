@@ -111,7 +111,18 @@ configured test code → land on the placeholder home with the brand bar.
 ```sh
 cd palenggo               # workspace root
 pnpm install
-pnpm api:dev              # http://localhost:8080/health
+pnpm api:dev              # http://localhost:8085/health
+```
+
+API runs on **8085** to leave the Firestore emulator default (8080) free.
+
+### Cloud Functions (build only — deploy in Phase 2)
+
+```sh
+cd palenggo/backend/functions
+pnpm install
+pnpm build                # emits lib/index.js
+pnpm serve                # firebase emulator (functions only)
 ```
 
 ## 7. Phase-2+ APIs (defer until needed)

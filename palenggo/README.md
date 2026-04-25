@@ -39,9 +39,28 @@ cd apps/rider    && flutter run
 
 ## Phase Status
 
-- [x] Phase 1 scaffold — three Flutter apps, shared package, phone-OTP auth
-- [ ] Phase 1 magic moment — camera → Vision AI → product post → order → deliver → GCash split
-- [ ] Phase 2 — food safety, Viber, real-time tracking
+- [x] Phase 1 step 1–2 — three Flutter apps, shared package, phone-OTP auth
+- [x] Phase 1 step 3 — merchant camera-stub → Vision-AI-stub → product post (mock repo)
+- [x] Phase 1 step 4 — customer browse → cart → landmark → GCash QR placeholder (mock repo)
+- [x] Phase 1 step 5 — rider available toggle → accept → scan QR → confirm delivered
+- [x] Phase 1 step 6 — backend API: `POST /orders`, `POST /payments/gcash/qr`, GCash webhook, delivery split queue (in-memory)
+- [x] Cloud Functions skeleton — `onOrderCreated`, `onOrderDelivered` (TS, deploy-ready)
+- [ ] Phase 1 step 7 — swap mock repo for Firestore; real camera + Cloud Vision; real GCash sandbox
+- [ ] Phase 2 — food safety photo proof, Viber, real-time rider tracking
 - [ ] Phase 3 — BigQuery price intelligence, admin dashboard
 - [ ] Phase 4 — PalengGo Grow (farmer)
 - [ ] Phase 5 — MilvoTech cluster (AppAgeni, GhostAudit, LegalDocAI, SynReasoning, ChillGuard)
+
+## Demo loop on mocks (no Firebase yet)
+
+Each app runs against an in-process `MockPalengGoRepository` exposed via Riverpod.
+The flow inside a single app:
+
+1. **Merchant**: tap *Detect Produce* → form pre-fills "Bangus, ₱190/kg, raw fish" →
+   food-safety checklist appears with cold-chain rules → *Post Product Live*.
+2. **Customer**: see today's stall product → *Add* → enter landmark note → *Checkout with GCash QR*.
+3. **Rider**: toggle *Available* → *Accept Job* → *Scan Pickup QR* → *Confirm Delivery* →
+   GCash split message.
+
+> Cross-app state sharing (one app posts → another app sees) needs Phase 1 step 7
+> (Firestore) or wiring each app's repo to the local backend over HTTP.

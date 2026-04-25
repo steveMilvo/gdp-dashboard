@@ -10,7 +10,9 @@
     {
       "source": "backend/functions",
       "codebase": "default",
-      "ignore": ["node_modules", ".git", "*.log"]
+      "runtime": "nodejs22",
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"],
+      "ignore": ["node_modules", ".git", "*.log", "src"]
     }
   ],
   "emulators": {
