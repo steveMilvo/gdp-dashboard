@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PalengGo — Phase 1 walkthrough</title>
+  <meta name="description" content="Click-through demo of the PalengGo Phase 1 order flow: stall posts a product, customer orders, rider delivers." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232E8B57'/%3E%3Ctext x='50' y='62' font-size='52' text-anchor='middle' fill='%23FFD700' font-family='system-ui'%3EP%3C/text%3E%3C/svg%3E" />
+
+  <style>
+    :root {
+      --green: #2E8B57;
+      --green-dark: #1f6a3f;
+      --yellow: #FFD700;
+      --bg: #f5f5f3;
+      --card: #ffffff;
+      --ink: #1a1a1a;
+      --muted: #6b6b6b;
+      --border: #e3e3e3;
+      --ok: #16a34a;
+      --warn: #b45309;
+      --danger: #dc2626;
+      --radius: 14px;
+      --shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    header {
+      background: var(--green);
+      color: #fff;
+      padding: 22px 24px;
+      box-shadow: var(--shadow);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header .logo {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--yellow); color: var(--green);
+      display: grid; place-items: center;
+      font-weight: 800; font-size: 18px;
+    }
+    header p { margin: 6px 0 0 44px; font-size: 13px; opacity: 0.9; }
+
+    /* Walkthrough banner */
+    .hint {
+      background: var(--yellow);
+      color: var(--ink);
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+    .hint::before {
+      content: "→";
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 24px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--muted);
+      flex-wrap: wrap;
+    }
+    .toolbar button {
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--ink);
+    }
+    .toolbar button:hover { border-color: var(--green); color: var(--green); }
+    .toolbar .step {
+      background: var(--green);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    /* Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      padding: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    @media (max-width: 1000px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    /* App pane = phone frame */
+    .pane {
+      background: #2a2a2a;
+      border-radius: 28px;
+      padding: 10px;
+      box-shadow: var(--shadow);
+    }
+    .screen {
+      background: var(--card);
+      border-radius: 20px;
+      overflow: hidden;
+      min-height: 600px;
+      display: flex;
+      flex-direction: column;
+    }
+    .app-bar {
+      background: var(--green);
+      color: white;
+      padding: 14px 18px;
+      font-weight: 600;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .app-bar .role {
+      font-size: 11px;
+      background: rgba(255,255,255,0.18);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .body {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    /* Cards & inputs */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .card h3 {
+      margin: 0 0 6px 0;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .card .meta {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .field {
+      margin-bottom: 10px;
+    }
+    .field label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      outline: 2px solid var(--green);
+      outline-offset: -1px;
+      border-color: var(--green);
+    }
+
+    /* Buttons */
+    .btn {
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 10px;
+      background: var(--green);
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.15s;
+    }
+    .btn:hover:not(:disabled) { background: var(--green-dark); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn.secondary {
+      background: white;
+      color: var(--green);
+      border: 1.5px solid var(--green);
+    }
+    .btn.secondary:hover:not(:disabled) { background: rgba(46,139,87,0.06); }
+    .btn + .btn { margin-top: 8px; }
+
+    /* Lists */
+    .product {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 8px;
+    }
+    .product-icon {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: rgba(46,139,87,0.12);
+      display: grid; place-items: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .product-name { font-weight: 600; font-size: 14px; }
+    .product-meta { font-size: 12px; color: var(--muted); }
+    .product .add-btn {
+      width: auto;
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+
+    /* Status pill */
+    .pill {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .pill.ok { background: rgba(22,163,74,0.12); color: var(--ok); }
+    .pill.warn { background: rgba(180,83,9,0.12); color: var(--warn); }
+    .pill.muted { background: var(--bg); color: var(--muted); }
+
+    /* Checklist */
+    .checklist {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .checklist li {
+      padding: 6px 0;
+      font-size: 13px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .checklist li::before {
+      content: "✓";
+      color: var(--ok);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      background: var(--ink);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      box-shadow: var(--shadow);
+      transition: transform 0.25s ease;
+      z-index: 100;
+      max-width: 90%;
+      text-align: center;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 32px 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .empty-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+      opacity: 0.4;
+    }
+
+    /* QR placeholder */
+    .qr {
+      width: 140px; height: 140px;
+      margin: 12px auto;
+      background:
+        repeating-conic-gradient(var(--ink) 0 25%, white 0 50%) 50% / 14px 14px,
+        var(--ink);
+      border: 8px solid white;
+      box-shadow: 0 0 0 2px var(--ink);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      background: var(--card);
+    }
+    footer a { color: var(--green); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    .price-band {
+      background: rgba(46,139,87,0.08);
+      border: 1px solid rgba(46,139,87,0.25);
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+    .price-band strong { color: var(--green); }
+
+    .split-row {
+      display: flex; justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px dashed var(--border);
+      font-size: 14px;
+    }
+    .split-row:last-child { border-bottom: none; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1><span class="logo">P</span> PalengGo — Phase 1 walkthrough</h1>
+  <p>Click through the full order flow: stall posts → customer orders → rider delivers.</p>
+</header>
+
+<div class="hint" id="hint">
+  Tap <strong>Detect Produce</strong> in the Merchant pane (left) to start.
+</div>
+
+<div class="toolbar">
+  <span class="step" id="stepLabel">Step 1 of 7</span>
+  <button onclick="resetDemo()">Reset</button>
+  <span style="margin-left:auto">Brand: PalengGo · Country: Philippines · Market: Carbon Market, Cebu</span>
+</div>
+
+<div class="grid">
+  <!-- MERCHANT -->
+  <div class="pane">
+    <div class="screen">
+      <div class="app-bar">
+        PalengGo Merchant <span class="role">Stall 47</span>
+      </div>
+      <div class="body" id="merchantBody"></div>
+    </div>
+  </div>
+
+  <!-- CUSTOMER -->
+  <div class="pane">
+    <div class="screen">
+      <div class="app-bar">
+        PalengGo <span class="role">Customer · Maria</span>
+      </div>
+      <div class="body" id="customerBody"></div>
+    </div>
+  </div>
+
+  <!-- RIDER -->
+  <div class="pane">
+    <div class="screen">
+      <div class="app-bar">
+        PalengGo Rider <span class="role">Juan · Trike ABC 123</span>
+      </div>
+      <div class="body" id="riderBody"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Phase 1 demo on mock data. No backend, no Firebase, no real money.<br>
+  Spec: <a href="../../019dc200-PalengGo_Opus_Build_Spec.md">Build spec</a> ·
+  Source: <a href="https://github.com/steveMilvo/gdp-dashboard/tree/claude/review-palengo-spec-uhReG/palenggo">repo</a>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+  // ===== State machine =====
+  const STEPS = [
+    { id: 'detect', hint: 'Tap <strong>Detect Produce</strong> in the Merchant pane to start.' },
+    { id: 'post',   hint: 'Cloud Vision says "Bangus". Tap <strong>Post Product Live</strong>.' },
+    { id: 'add',    hint: 'In Customer pane, tap <strong>Add</strong> next to Bangus.' },
+    { id: 'order',  hint: 'Tap <strong>Checkout with GCash</strong> to place the order.' },
+    { id: 'avail',  hint: 'Tap <strong>Simulate payment</strong>, then go online in the Rider pane and Accept.' },
+    { id: 'pickup', hint: 'Tap <strong>Scan Pickup QR</strong> to confirm cold-chain pickup.' },
+    { id: 'deliver',hint: 'Tap <strong>Confirm Delivery</strong> to trigger the GCash split.' },
+    { id: 'done',   hint: 'Done! Reset to run through it again, or hand the repo to a developer (see HANDOFF.md).' },
+  ];
+
+  const state = {
+    step: 0,
+    aiDetected: false,
+    products: [],         // posted by merchant
+    cart: [],             // customer cart
+    landmark: 'Blue gate beside sari-sari store',
+    order: null,          // active order
+    riderAvailable: false,
+    activeStatus: null,
+    paid: false,
+    pickedUp: false,
+    delivered: false,
+  };
+
+  function setStep(i) {
+    state.step = i;
+    document.getElementById('stepLabel').textContent =
+      `Step ${Math.min(i+1, STEPS.length)} of ${STEPS.length}`;
+    document.getElementById('hint').innerHTML = STEPS[i].hint;
+  }
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => t.classList.remove('show'), 2400);
+  }
+
+  // ===== Renderers =====
+  function renderMerchant() {
+    const body = document.getElementById('merchantBody');
+    const aiMsg = state.aiDetected
+      ? '<span class="pill ok">AI detected</span> Bangus — Milkfish. Market avg today: <strong>₱185/kg</strong>.'
+      : 'Camera ready. Tap below to simulate Cloud Vision.';
+
+    const safetyChecklist = `
+      <ul class="checklist">
+        <li>Wrap in banana leaf or food-grade plastic</li>
+        <li>Place in sealed bag</li>
+        <li>Add ice or ice pack</li>
+        <li>Photo proof before handover</li>
+        <li>Foam box mandatory for rider</li>
+      </ul>
+      <div class="meta" style="margin-top:8px">Max delivery: 45 min · Raw fish cold chain</div>
+    `;
+
+    const posted = state.products.length > 0;
+
+    body.innerHTML = `
+      <div class="card">
+        <h3>Today's stall post</h3>
+        <div class="meta" id="aiMsg">${aiMsg}</div>
+        <button class="btn" style="margin-top:10px" onclick="detectProduce()" ${state.aiDetected ? 'disabled' : ''}>
+          📷 Detect Produce
+        </button>
+      </div>
+
+      <div class="card">
+        <div class="field">
+          <label>Product name</label>
+          <input id="m_name" value="${state.aiDetected ? 'Bangus' : ''}" ${posted ? 'disabled' : ''}/>
+        </div>
+        <div class="field">
+          <label>Price (₱ per kg)</label>
+          <input id="m_price" value="${state.aiDetected ? '190' : ''}" ${posted ? 'disabled' : ''}/>
+        </div>
+        <div class="field">
+          <label>Quantity available (kg)</label>
+          <input id="m_qty" value="${state.aiDetected ? '20' : ''}" ${posted ? 'disabled' : ''}/>
+        </div>
+        ${state.aiDetected ? `
+          <div class="price-band">
+            <strong>Within market range ✓</strong> · Market avg ₱185/kg · You priced ₱190/kg (+3%)
+          </div>` : ''}
+      </div>
+
+      ${state.aiDetected ? `
+        <div class="card">
+          <h3>Food safety checklist (raw fish)</h3>
+          ${safetyChecklist}
+        </div>` : ''}
+
+      <button class="btn" onclick="postProduct()" ${!state.aiDetected || posted ? 'disabled' : ''}>
+        ${posted ? '✓ Posted live' : 'Post Product Live'}
+      </button>
+
+      ${posted ? `
+        <div class="card" style="margin-top:12px">
+          <h3>Live products <span class="pill ok">${state.products.length}</span></h3>
+          ${state.products.map(p => `
+            <div class="product">
+              <div class="product-icon">🐟</div>
+              <div style="flex:1">
+                <div class="product-name">${p.name}</div>
+                <div class="product-meta">₱${p.price}/${p.unit} · ${p.qty}${p.unit} avail</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>` : ''}
+
+      ${state.order && state.paid ? `
+        <div class="card">
+          <h3>📥 New order received</h3>
+          <div class="meta">${state.order.id} · ${state.order.items.length} item(s)</div>
+          <div class="meta">Customer: Maria · Landmark: ${state.order.landmark}</div>
+          <div style="margin-top:8px"><span class="pill ok">Paid via GCash</span></div>
+        </div>` : ''}
+
+      ${state.delivered ? `
+        <div class="card">
+          <h3>💸 Payout settled</h3>
+          <div class="split-row"><span>Order subtotal</span><span>₱380</span></div>
+          <div class="split-row"><span>Your payout (90%)</span><span><strong>₱342</strong></span></div>
+          <div class="meta" style="margin-top:8px">Sent to GCash 09xx-xxx-1234</div>
+        </div>` : ''}
+    `;
+  }
+
+  function renderCustomer() {
+    const body = document.getElementById('customerBody');
+
+    if (state.products.length === 0 && !state.order) {
+      body.innerHTML = `
+        <div class="card">
+          <h3>Carbon Market, Cebu</h3>
+          <div class="meta">Browse today's fresh stall photos and prices.</div>
+        </div>
+        <div class="empty">
+          <div class="empty-icon">🛒</div>
+          No products posted yet.<br>
+          <span style="font-size:11px">Stalls post their daily catch in the morning.</span>
+        </div>
+      `;
+      return;
+    }
+
+    if (state.order) {
+      let trackText = 'Order confirmed by stall owner.';
+      if (state.paid && !state.order.riderId) trackText = 'Payment received. Looking for available rider…';
+      if (state.order.riderId) trackText = `Rider Juan (Trike ABC 123) assigned. ETA 15-20 min.`;
+      if (state.pickedUp) trackText = 'Rider picked up your order. Cold chain timer running (45 min).';
+      if (state.delivered) trackText = 'Delivered ✓';
+
+      body.innerHTML = `
+        <div class="card">
+          <h3>Order ${state.order.id}</h3>
+          <div class="meta">${state.order.items.length} item(s) · ${state.landmark}</div>
+          <div style="margin-top:8px">
+            <span class="pill ${state.delivered ? 'ok' : (state.paid ? 'warn' : 'muted')}">
+              ${state.delivered ? 'Delivered' : (state.paid ? 'In progress' : 'Awaiting payment')}
+            </span>
+          </div>
+        </div>
+
+        ${!state.paid ? `
+          <div class="card">
+            <h3>Pay with GCash</h3>
+            <div class="meta">Scan with your GCash app</div>
+            <div class="qr"></div>
+            <div class="meta" style="text-align:center">Amount: ₱${state.order.total}</div>
+            <button class="btn secondary" style="margin-top:10px" onclick="simulatePayment()">Simulate payment received</button>
+          </div>
+        ` : `
+          <div class="card">
+            <h3>Tracking</h3>
+            <div class="meta">${trackText}</div>
+          </div>
+        `}
+
+        ${state.delivered ? `
+          <div class="card">
+            <h3>Rate your experience</h3>
+            <div class="meta">⭐⭐⭐⭐⭐ Stall 47 · ⭐⭐⭐⭐⭐ Rider Juan</div>
+          </div>` : ''}
+      `;
+      return;
+    }
+
+    body.innerHTML = `
+      <div class="card">
+        <h3>Carbon Market, Cebu</h3>
+        <div class="meta">${state.products.length} stall(s) posting today.</div>
+      </div>
+
+      <div class="card">
+        <h3>Today's fresh</h3>
+        ${state.products.map((p, i) => `
+          <div class="product">
+            <div class="product-icon">🐟</div>
+            <div style="flex:1">
+              <div class="product-name">${p.name} — ₱${p.price}/${p.unit}</div>
+              <div class="product-meta">Stall 47 · ${p.qty}${p.unit} available</div>
+            </div>
+            <button class="btn add-btn" onclick="addToCart(${i})">Add</button>
+          </div>
+        `).join('')}
+      </div>
+
+      ${state.cart.length > 0 ? `
+        <div class="card">
+          <h3>Cart</h3>
+          ${state.cart.map(item => `
+            <div class="split-row"><span>${item.qty}${item.unit} ${item.name}</span><span>₱${item.price * item.qty}</span></div>
+          `).join('')}
+          <div class="split-row"><span>Delivery</span><span>₱50</span></div>
+          <div class="split-row"><span>Total</span><span>₱${cartTotal() + 50}</span></div>
+
+          <div class="field" style="margin-top:12px">
+            <label>Landmark note (required)</label>
+            <textarea id="c_landmark" rows="2">${state.landmark}</textarea>
+          </div>
+
+          <button class="btn" onclick="checkout()">📱 Checkout with GCash</button>
+        </div>` : ''}
+    `;
+  }
+
+  function renderRider() {
+    const body = document.getElementById('riderBody');
+
+    body.innerHTML = `
+      <div class="card">
+        <h3>Available for orders</h3>
+        <div class="meta">First rider to accept wins.</div>
+        <button class="btn ${state.riderAvailable ? '' : 'secondary'}" style="margin-top:10px"
+                onclick="toggleAvailable()">
+          ${state.riderAvailable ? '✓ Available' : 'Go online'}
+        </button>
+      </div>
+
+      ${state.order && state.paid && !state.order.riderId && state.riderAvailable ? `
+        <div class="card">
+          <h3>🛺 New job — Carbon Market, Stall 47</h3>
+          <div class="meta">Delivery: 1.2 km · Earning: <strong>₱42.50</strong> (85% of ₱50)</div>
+          <div class="meta">Items: ${state.order.items.map(i => `${i.qty}kg ${i.name}`).join(', ')}</div>
+          <div class="meta">Landmark: ${state.order.landmark}</div>
+          <button class="btn" style="margin-top:10px" onclick="acceptJob()">Accept Job</button>
+        </div>` : ''}
+
+      ${state.order && state.order.riderId && !state.delivered ? `
+        <div class="card">
+          <h3>Active delivery</h3>
+          <div class="meta">${state.activeStatus || 'Navigating to Stall 47…'}</div>
+
+          ${!state.pickedUp ? `
+            <button class="btn" style="margin-top:10px" onclick="scanPickup()">📷 Scan Pickup QR</button>
+          ` : `
+            <button class="btn" style="margin-top:10px" onclick="confirmDelivery()">✓ Confirm Delivery</button>
+          `}
+        </div>
+      ` : ''}
+
+      ${state.delivered ? `
+        <div class="card">
+          <h3>💸 Earnings settled</h3>
+          <div class="split-row"><span>Delivery fee</span><span>₱50</span></div>
+          <div class="split-row"><span>Your payout (85%)</span><span><strong>₱42.50</strong></span></div>
+          <div class="meta" style="margin-top:8px">Sent to GCash 09xx-xxx-5678</div>
+        </div>
+        <button class="btn secondary" onclick="resetDemo()">Wait for next order</button>
+      ` : ''}
+
+      ${!state.order ? `
+        <div class="empty">
+          <div class="empty-icon">🛺</div>
+          ${state.riderAvailable ? 'Waiting for jobs nearby…' : 'Go online to receive orders.'}
+        </div>` : ''}
+    `;
+  }
+
+  function render() {
+    renderMerchant();
+    renderCustomer();
+    renderRider();
+  }
+
+  // ===== Actions =====
+  function detectProduce() {
+    state.aiDetected = true;
+    setStep(1);
+    toast('Cloud Vision detected: Bangus (Milkfish) at 91% confidence');
+    render();
+  }
+
+  function postProduct() {
+    state.products.push({ name: 'Bangus', price: 190, qty: 20, unit: 'kg' });
+    setStep(2);
+    toast('Bangus posted live. Customer can now see it.');
+    render();
+  }
+
+  function addToCart(i) {
+    const p = state.products[i];
+    state.cart.push({ name: p.name, price: p.price, qty: 2, unit: p.unit });
+    setStep(3);
+    toast(`Added 2kg ${p.name} to cart`);
+    render();
+  }
+
+  function cartTotal() {
+    return state.cart.reduce((s, i) => s + i.price * i.qty, 0);
+  }
+
+  function checkout() {
+    const lm = document.getElementById('c_landmark');
+    if (lm) state.landmark = lm.value;
+    state.order = {
+      id: 'PAL-' + Math.floor(Math.random() * 90000 + 10000),
+      items: state.cart.map(i => ({ name: i.name, qty: i.qty, unit: i.unit, price: i.price })),
+      total: cartTotal() + 50,
+      landmark: state.landmark,
+    };
+    state.cart = [];
+    setStep(4);
+    toast('Order placed. Pay with GCash to confirm.');
+    render();
+  }
+
+  function simulatePayment() {
+    state.paid = true;
+    toast('GCash payment received. Looking for rider…');
+    render();
+  }
+
+  function toggleAvailable() {
+    state.riderAvailable = !state.riderAvailable;
+    if (state.riderAvailable && state.order && state.paid) setStep(4);
+    render();
+  }
+
+  function acceptJob() {
+    state.order.riderId = 'rider_juan';
+    state.activeStatus = 'Accepted. Navigate to Stall 47 and scan QR at pickup.';
+    setStep(5);
+    toast('Job accepted. Navigate to Stall 47.');
+    render();
+  }
+
+  function scanPickup() {
+    state.pickedUp = true;
+    state.activeStatus = 'Pickup confirmed. Cold-chain timer started (45 min). Heading to customer.';
+    setStep(6);
+    toast('Cold-chain timer started');
+    render();
+  }
+
+  function confirmDelivery() {
+    state.delivered = true;
+    state.activeStatus = 'Delivered. GCash split queued.';
+    setStep(7);
+    toast('Delivered! Splits: stall ₱342, rider ₱42.50, PalengGo ₱45.50');
+    render();
+  }
+
+  function resetDemo() {
+    Object.assign(state, {
+      step: 0, aiDetected: false, products: [], cart: [],
+      landmark: 'Blue gate beside sari-sari store',
+      order: null, riderAvailable: false, activeStatus: null,
+      paid: false, pickedUp: false, delivered: false,
+    });
+    setStep(0);
+    render();
+  }
+
+  // ===== Auto-progression assists =====
+  // When customer pays, if rider is online, the job appears (already handled by render).
+  // After payment, gently hint the rider step.
+  const _origSimPay = simulatePayment;
+  simulatePayment = function () {
+    _origSimPay();
+    setTimeout(() => {
+      if (!state.riderAvailable) {
+        setStep(4);
+      }
+    }, 600);
+  };
+
+  // ===== Init =====
+  setStep(0);
+  render();
+</script>
+
+</body>
+</html>

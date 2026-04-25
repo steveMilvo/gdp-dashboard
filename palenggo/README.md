@@ -5,6 +5,17 @@ Hyperlocal fresh market delivery platform for Southeast Asia.
 This directory contains the PalengGo monorepo. The build follows the Phase 1–5
 plan in the spec at `019dc200-PalengGo_Opus_Build_Spec.md`.
 
+## 👉 Try the demo now (no install)
+
+Open **[`demo/index.html`](demo/index.html)** in any browser — full Phase 1
+walkthrough (stall posts → customer orders → rider delivers → GCash split).
+Also auto-deploys to GitHub Pages if you enable it in repo Settings.
+
+## 👉 Handing this to a developer?
+
+Read **[`HANDOFF.md`](HANDOFF.md)** — one-page summary of what's built, what's
+next, cost estimates, and what they'll need from you.
+
 ## Layout
 
 ```
