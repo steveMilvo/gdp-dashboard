@@ -1,0 +1,50 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function underMaxSize() {
+      return request.resource.size < 8 * 1024 * 1024; // 8 MB
+    }
+
+    // Product photos posted by merchants
+    match /products/{stallId}/{file=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && isImage() && underMaxSize();
+    }
+
+    // Packaging proof photos
+    match /orders/{orderId}/packaging/{file=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isImage() && underMaxSize();
+    }
+
+    // Delivery proof photos (rider + customer)
+    match /orders/{orderId}/delivery/{file=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isImage() && underMaxSize();
+    }
+
+    // User profile photos
+    match /users/{userId}/profile/{file=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == userId
+        && isImage() && underMaxSize();
+    }
+
+    // Rider equipment verification
+    match /riders/{userId}/equipment/{file=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId
+        && isImage() && underMaxSize();
+    }
+  }
+}

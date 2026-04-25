@@ -1,0 +1,13 @@
+name: palenggo_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+# Flutter pub workspace (Flutter >= 3.27).
+# Each app and package declares `resolution: workspace` in its own pubspec.yaml.
+workspace:
+  - apps/merchant
+  - apps/customer
+  - apps/rider
+  - packages/palenggo_shared

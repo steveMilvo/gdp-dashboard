@@ -1,0 +1,47 @@
+# Override the repo-root .gitignore: PalengGo is Flutter/Dart, so `lib/`
+# directories are source code and must be tracked.
+!lib/
+!**/lib/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+.fvm/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Pods/
+**/ios/.symlinks/
+**/android/.gradle/
+**/android/app/debug
+**/android/app/release
+**/android/local.properties
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Node
+node_modules/
+dist/
+*.log
+.env
+.env.local
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+google-services.json
+GoogleService-Info.plist
+serviceAccountKey*.json
+
+# OS
+.DS_Store
+Thumbs.db
