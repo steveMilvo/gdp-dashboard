@@ -43,15 +43,14 @@ a:hover { color: var(--orange-deep); }
   border-bottom: 8px solid var(--green);
 }
 
-/* Drop a real image at /assets/doron-orchard.jpg and the gradient becomes the
+/* Drop a real image at /assets/hero-orchard.jpg and the gradient becomes the
    fallback. Until then this gradient approximates the sepia-orchard feel. */
 .hero-photo {
   position: absolute; inset: 0;
   background:
-    linear-gradient(180deg, rgba(42,26,8,0.55) 0%, rgba(42,26,8,0.25) 40%, rgba(217,119,6,0.55) 100%),
-    radial-gradient(ellipse at 50% 30%, #c98a3d 0%, #6b4a1f 60%, #2a1a08 100%),
-    url('assets/doron-orchard.jpg') center/cover no-repeat;
-  background-blend-mode: multiply, normal, normal;
+    radial-gradient(ellipse 60% 55% at 50% 50%, rgba(15,25,10,0.55) 0%, rgba(15,25,10,0.15) 70%, rgba(15,25,10,0) 100%),
+    linear-gradient(180deg, rgba(15,25,10,0.35) 0%, rgba(15,25,10,0.05) 40%, rgba(217,119,6,0.25) 100%),
+    url('assets/hero-orchard.jpg') center/cover no-repeat;
 }
 
 .hero-overlay {
@@ -88,8 +87,9 @@ a:hover { color: var(--orange-deep); }
   font-style: italic;
   font-weight: 500;
   font-size: clamp(1.3rem, 3.2vw, 1.7rem);
-  color: var(--orange);
+  color: var(--orange-soft);
   margin: 0.25rem 0 1.25rem;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6), 0 2px 12px rgba(0,0,0,0.5);
 }
 
 .hero-line {
@@ -274,6 +274,55 @@ h2 {
   font-size: 0.9rem;
   color: var(--orange-soft);
   letter-spacing: 0.05em;
+}
+
+.miho-photo {
+  margin: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  background: var(--green-deep);
+}
+.miho-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+}
+.miho-photo figcaption {
+  padding: 1.1rem 1.3rem;
+  background: var(--green-deep);
+  color: #fff;
+}
+.miho-photo .callout-quote {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.1rem;
+  line-height: 1.45;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  color: #fff;
+}
+.miho-photo .byline {
+  font-size: 0.85rem;
+  color: var(--orange-soft);
+  margin: 0;
+}
+
+.farm-banner {
+  margin: 0 auto 2rem;
+  max-width: 56rem;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+.farm-banner img {
+  display: block;
+  width: 100%;
+  height: clamp(200px, 32vw, 360px);
+  object-fit: cover;
+  object-position: center 38%;
 }
 
 /* SIGNUP ==================================================================== */
