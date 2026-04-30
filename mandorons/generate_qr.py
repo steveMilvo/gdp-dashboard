@@ -11,7 +11,7 @@ which Doron updates each week. The QR itself never needs reprinting.
 import qrcode
 from qrcode.constants import ERROR_CORRECT_H
 
-URL = "https://mandoron.com.au"
+URL = "https://mandorons.com.au"
 OUT = "mandorons_qr.png"
 
 qr = qrcode.QRCode(

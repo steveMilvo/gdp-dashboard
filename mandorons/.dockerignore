@@ -1,0 +1,7 @@
+previews/
+email_weekly.html
+generate_qr.py
+fly.toml
+Dockerfile
+.dockerignore
+*.md
