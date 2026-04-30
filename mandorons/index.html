@@ -1,54 +1,170 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-AU">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ManDorons — Heirloom Japanese Mandarines, Murray-River Grown</title>
-  <meta name="description" content="Picked yesterday in Colignan, eaten today in Melbourne. Organic, pesticide-free, heirloom Japanese mandarines from Doron's farm." />
+
+  <!-- SEO ===================================================================== -->
+  <title>ManDorons — Organic Miho Mandarins in Melbourne | Mildura Family Farm</title>
+  <meta name="description" content="ManDorons grows heirloom Miho mandarins on our organic family farm in Colignan, Mildura. Picked yesterday, sold in Melbourne today. Find our weekly stalls and farmers market stops — sweet, seedless, pesticide-free mandarins direct from the grower." />
+  <meta name="keywords" content="mandarins Melbourne, organic mandarins Melbourne, Miho mandarins, heirloom mandarins, mandarines Melbourne, Mildura mandarins, fresh mandarins, farmers market mandarins, ManDorons" />
+  <link rel="canonical" href="https://mandorons.com.au/" />
+
+  <!-- Open Graph (Facebook, LinkedIn, iMessage previews) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="ManDorons — Organic Miho Mandarins, Picked in Mildura, Eaten in Melbourne" />
+  <meta property="og:description" content="Heirloom Japanese Miho mandarins from Doron's organic family farm on the Murray River. Find this week's Melbourne stalls." />
+  <meta property="og:url" content="https://mandorons.com.au/" />
+  <meta property="og:image" content="https://mandorons.com.au/assets/og-image.jpg" />
+  <meta property="og:locale" content="en_AU" />
+  <meta property="og:site_name" content="ManDorons" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="ManDorons — Organic Miho Mandarins in Melbourne" />
+  <meta name="twitter:description" content="Heirloom Miho mandarins, picked in Mildura, sold in Melbourne the next day." />
+  <meta name="twitter:image" content="https://mandorons.com.au/assets/og-image.jpg" />
+
+  <!-- Structured data: helps Google show rich results & local pack -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "ManDorons",
+    "image": "https://mandorons.com.au/assets/og-image.jpg",
+    "description": "Organic Miho mandarins from Doron's family farm in Colignan, Mildura. Sold weekly at Melbourne shopping centres and farmers markets.",
+    "url": "https://mandorons.com.au/",
+    "telephone": "",
+    "priceRange": "$$",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Colignan",
+      "addressRegion": "VIC",
+      "postalCode": "3494",
+      "addressCountry": "AU"
+    },
+    "areaServed": [
+      { "@type": "City", "name": "Melbourne" },
+      { "@type": "AdministrativeArea", "name": "Victoria" }
+    ],
+    "founder": "Doron",
+    "foundingDate": "1990",
+    "makesOffer": {
+      "@type": "Offer",
+      "itemOffered": {
+        "@type": "Product",
+        "name": "Miho Mandarins",
+        "description": "Heirloom Japanese Miho mandarins, certified organic, low acid, high sugar, seedless.",
+        "category": "Fruit"
+      }
+    }
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,700;0,900;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
+  <!-- HERO ==================================================================== -->
   <header class="hero">
-    <div class="hero-inner">
+    <div class="hero-photo" role="img" aria-label="Doron in his Mildura mandarin orchard, since 1990"></div>
+    <div class="hero-overlay">
+      <p class="eyebrow">Since 1990 &middot; Colignan, Mildura</p>
       <h1 class="brand">ManDorons</h1>
       <p class="tagline">tasting is believing</p>
       <p class="hero-line" id="hero-tagline">Picked yesterday in Colignan. Eaten today in Melbourne.</p>
+      <a href="#signup" class="cta-primary">Get the Monday email &rarr;</a>
     </div>
   </header>
 
-  <section class="this-week">
-    <h2>Find us this week</h2>
-    <p class="week-of" id="week-of"></p>
-    <div class="locations" id="locations"></div>
-    <p class="next-week" id="next-week"></p>
+  <!-- THIS WEEK =============================================================== -->
+  <section class="section this-week" aria-labelledby="this-week-heading">
+    <div class="section-inner">
+      <p class="eyebrow">This week in Melbourne</p>
+      <h2 id="this-week-heading">Where to buy our mandarins this week</h2>
+      <p class="week-of" id="week-of"></p>
+      <div class="locations" id="locations"></div>
+      <p class="next-week" id="next-week"></p>
+    </div>
   </section>
 
-  <section class="signup">
-    <h2>Never miss us</h2>
-    <p>Get one email every Monday morning — where we'll be, what's ripe, what's coming.</p>
-
-    <!-- TODO: paste MailerLite embed form here. Free plan, AU-compliant unsubscribe handled automatically.
-         Sign up at mailerlite.com → Forms → Embedded form → copy HTML into this section. -->
-    <form class="signup-form" onsubmit="event.preventDefault(); alert('Connect this form to MailerLite — see comment in index.html');">
-      <input type="email" name="email" placeholder="your@email.com" required />
-      <button type="submit">Send me the weekly stops</button>
-    </form>
-    <p class="fineprint">One email a week. Unsubscribe anytime. We never share your email.</p>
+  <!-- VARIETY / STORY ========================================================= -->
+  <section class="section variety" aria-labelledby="miho-heading">
+    <div class="section-inner two-col">
+      <div>
+        <p class="eyebrow">The variety</p>
+        <h2 id="miho-heading">Miho — the heirloom Japanese mandarin</h2>
+        <p>
+          Miho is an heirloom satsuma mandarin from Japan, prized for its
+          <strong>low acid, high sugar</strong> balance. It is properly juicy,
+          easy to peel, and seedless &mdash; the kind of mandarin that converts
+          people who think they don't like mandarins.
+        </p>
+        <ul class="ticks">
+          <li>Heirloom Japanese satsuma variety</li>
+          <li>Certified organic, pesticide free</li>
+          <li>Murray-River irrigated, sun-grown</li>
+          <li>Picked one day, in Melbourne the next</li>
+        </ul>
+      </div>
+      <aside class="story-card">
+        <p class="callout-quote">&ldquo;Sweetest, seedless, pesticide free &mdash; tasting is believing.&rdquo;</p>
+        <p class="byline">&mdash; Doron, ManDorons farm</p>
+      </aside>
+    </div>
   </section>
 
-  <section class="story">
-    <h2>Doron's farm, since 1990</h2>
-    <p>
-      Our mandarines are an old heirloom Japanese variety — low acid, high sugar, properly juicy.
-      Grown on our family farm in Colignan, just outside Mildura, irrigated from the Murray River.
-      Certified organic. Pesticide free. Picked one day, sold in Melbourne the next.
-    </p>
-    <p class="callout">Sweetest, seedless, pesticide free — tasting is believing.</p>
+  <!-- EMAIL SIGNUP (primary CTA) =============================================== -->
+  <section class="section signup" id="signup" aria-labelledby="signup-heading">
+    <div class="section-inner narrow">
+      <h2 id="signup-heading">Where will we be next week?</h2>
+      <p class="signup-sub">
+        Pop your email in. Every Monday morning we send one short note with
+        all our Melbourne stops &mdash; shopping centres, farmers markets,
+        and what's ripe at the farm.
+      </p>
+
+      <!-- TODO: replace this form with the MailerLite embed.
+           1. mailerlite.com -> sign up free (under 1,000 subs)
+           2. Forms -> Embedded form -> Build -> copy the HTML
+           3. Paste it here, replacing the <form> below.
+           MailerLite handles the AU Spam Act unsubscribe link automatically. -->
+      <form class="signup-form" onsubmit="event.preventDefault(); this.querySelector('button').textContent='Connect MailerLite first — see HTML comment';">
+        <input type="email" name="email" placeholder="your@email.com" autocomplete="email" required />
+        <button type="submit">Send me the weekly stops</button>
+      </form>
+      <p class="fineprint">One email a week. Unsubscribe anytime. We never share your email.</p>
+    </div>
+  </section>
+
+  <!-- FARM STORY ============================================================== -->
+  <section class="section farm" aria-labelledby="farm-heading">
+    <div class="section-inner narrow">
+      <p class="eyebrow">The farm</p>
+      <h2 id="farm-heading">Doron's farm, since 1990</h2>
+      <p>
+        We grow our mandarins on a small organic family farm in Colignan, just
+        outside Mildura in north-west Victoria. The trees are irrigated from
+        the Murray River and ripen under proper outback sun.
+      </p>
+      <p>
+        Everything is picked by hand the day before we drive to Melbourne, so
+        what you buy at the stall today was on the tree yesterday. No cold
+        storage, no waxing, no in-between.
+      </p>
+    </div>
   </section>
 
   <footer>
-    <p>ManDorons &middot; Colignan, Victoria &middot; <a href="mailto:hello@mandorons.com.au">hello@mandorons.com.au</a></p>
+    <p class="foot-brand">ManDorons</p>
+    <p>
+      Colignan, Victoria &middot;
+      <a href="mailto:hello@mandorons.com.au">hello@mandorons.com.au</a>
+    </p>
+    <p class="foot-fine">Organic Miho mandarins. Family-grown since 1990.</p>
   </footer>
 
   <script src="script.js"></script>
