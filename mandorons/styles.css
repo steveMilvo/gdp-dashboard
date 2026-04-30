@@ -330,6 +330,55 @@ h2 {
   margin: 0.5rem 0 0;
 }
 
+.signup-or {
+  margin: 1.75rem 0 0.6rem;
+  font-size: 0.95rem;
+  opacity: 0.9;
+  letter-spacing: 0.05em;
+}
+
+.socials {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.socials a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+.socials a:hover {
+  background: var(--orange);
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+.socials svg { display: block; }
+
+.foot-socials {
+  margin: 0.9rem 0;
+}
+.foot-socials a {
+  background: var(--cream-deep);
+  color: var(--green-deep);
+  padding: 0.55rem;
+}
+.foot-socials a:hover {
+  background: var(--orange);
+  color: var(--ink);
+}
+
 /* FARM ====================================================================== */
 .farm { background: var(--cream); }
 .farm p { font-size: 1.05rem; }
