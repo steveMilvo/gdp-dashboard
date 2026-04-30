@@ -1,0 +1,44 @@
+<!-- Paste this into MailerLite as a campaign template.
+     Replace {{...}} fields each Monday before sending. -->
+<table width="100%" cellpadding="0" cellspacing="0" style="font-family: Arial, sans-serif; background:#fff8ec; padding:24px;">
+  <tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="background:#fff; border:2px solid #f29a1f; border-radius:12px;">
+
+      <tr><td style="background:#1e7a3a; padding:24px; text-align:center; border-radius:10px 10px 0 0;">
+        <h1 style="color:#fff; margin:0; font-size:32px;">ManDorons</h1>
+        <p style="color:#f29a1f; font-style:italic; margin:4px 0 0;">tasting is believing</p>
+      </td></tr>
+
+      <tr><td style="padding:24px;">
+        <h2 style="color:#1e7a3a; margin:0 0 8px;">This week in Melbourne</h2>
+        <p style="color:#6b5a47; margin:0 0 16px;">Picked {{pick_day}} in Colignan. Driven down overnight.</p>
+
+        <!-- Repeat this block per stop -->
+        <div style="border-left:4px solid #f29a1f; padding:8px 14px; margin:12px 0;">
+          <strong style="color:#d97706;">{{location_name}}</strong><br>
+          {{day}} {{date}} &middot; {{hours}}<br>
+          <span style="color:#6b5a47; font-size:14px;">{{address}}</span><br>
+          <a href="{{maps_url}}" style="color:#1e7a3a;">Open in Maps &rarr;</a>
+        </div>
+        <!-- end stop block -->
+
+        <p style="background:#fff8ec; padding:12px; border-radius:8px; margin-top:20px;">
+          <strong>What's ripe:</strong> {{variety}} mandarines &middot; sweetest of the season right now.
+        </p>
+
+        <p style="color:#6b5a47; font-style:italic; margin-top:20px;">
+          Next week: {{next_week_preview}}
+        </p>
+      </td></tr>
+
+      <tr><td style="background:#1e7a3a; padding:16px; text-align:center; border-radius:0 0 10px 10px;">
+        <p style="color:#fff; margin:0; font-size:14px;">See you at the stall &mdash; Doron</p>
+      </td></tr>
+
+    </table>
+    <p style="color:#6b5a47; font-size:12px; margin-top:16px;">
+      You're getting this because you signed up at our stall.
+      <a href="{{unsubscribe}}" style="color:#6b5a47;">Unsubscribe</a>
+    </p>
+  </td></tr>
+</table>

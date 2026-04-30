@@ -1,0 +1,31 @@
+{
+  "week_of": "2026-05-04",
+  "tagline": "Picked yesterday in Colignan. Eaten today in Melbourne.",
+  "this_week": [
+    {
+      "name": "Chadstone Shopping Centre",
+      "address": "1341 Dandenong Rd, Chadstone VIC 3148",
+      "day": "Saturday",
+      "date": "2026-05-09",
+      "hours": "9:00 AM – 4:00 PM",
+      "map": "https://maps.google.com/?q=Chadstone+Shopping+Centre"
+    },
+    {
+      "name": "Westfield Doncaster",
+      "address": "619 Doncaster Rd, Doncaster VIC 3108",
+      "day": "Sunday",
+      "date": "2026-05-10",
+      "hours": "10:00 AM – 4:00 PM",
+      "map": "https://maps.google.com/?q=Westfield+Doncaster"
+    },
+    {
+      "name": "Coburg Farmers Market",
+      "address": "Bridges Reserve, Murray Rd, Coburg VIC 3058",
+      "day": "Saturday",
+      "date": "2026-05-09",
+      "hours": "8:00 AM – 1:00 PM",
+      "map": "https://maps.google.com/?q=Coburg+Farmers+Market"
+    }
+  ],
+  "next_week_preview": "Next week: South Melbourne Market + Chadstone + Eltham Farmers Market"
+}

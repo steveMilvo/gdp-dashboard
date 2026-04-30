@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ManDorons — Heirloom Japanese Mandarines, Murray-River Grown</title>
+  <meta name="description" content="Picked yesterday in Colignan, eaten today in Melbourne. Organic, pesticide-free, heirloom Japanese mandarines from Doron's farm." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <h1 class="brand">ManDorons</h1>
+      <p class="tagline">tasting is believing</p>
+      <p class="hero-line" id="hero-tagline">Picked yesterday in Colignan. Eaten today in Melbourne.</p>
+    </div>
+  </header>
+
+  <section class="this-week">
+    <h2>Find us this week</h2>
+    <p class="week-of" id="week-of"></p>
+    <div class="locations" id="locations"></div>
+    <p class="next-week" id="next-week"></p>
+  </section>
+
+  <section class="signup">
+    <h2>Never miss us</h2>
+    <p>Get one email every Monday morning — where we'll be, what's ripe, what's coming.</p>
+
+    <!-- TODO: paste MailerLite embed form here. Free plan, AU-compliant unsubscribe handled automatically.
+         Sign up at mailerlite.com → Forms → Embedded form → copy HTML into this section. -->
+    <form class="signup-form" onsubmit="event.preventDefault(); alert('Connect this form to MailerLite — see comment in index.html');">
+      <input type="email" name="email" placeholder="your@email.com" required />
+      <button type="submit">Send me the weekly stops</button>
+    </form>
+    <p class="fineprint">One email a week. Unsubscribe anytime. We never share your email.</p>
+  </section>
+
+  <section class="story">
+    <h2>Doron's farm, since 1990</h2>
+    <p>
+      Our mandarines are an old heirloom Japanese variety — low acid, high sugar, properly juicy.
+      Grown on our family farm in Colignan, just outside Mildura, irrigated from the Murray River.
+      Certified organic. Pesticide free. Picked one day, sold in Melbourne the next.
+    </p>
+    <p class="callout">Sweetest, seedless, pesticide free — tasting is believing.</p>
+  </section>
+
+  <footer>
+    <p>ManDorons &middot; Colignan, Victoria &middot; <a href="mailto:hello@mandorons.com.au">hello@mandorons.com.au</a></p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
