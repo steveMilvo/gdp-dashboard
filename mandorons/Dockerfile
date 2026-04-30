@@ -2,11 +2,12 @@ FROM nginx:alpine
 
 COPY . /usr/share/nginx/html
 
-# Cache busting + correct mime for the weekly-updated JSON.
-# Everything else (HTML, CSS, JS, images) uses nginx defaults.
+# Write the nginx config as a template. nginx:alpine's entrypoint runs
+# envsubst on /etc/nginx/templates/*.template at container start, so
+# ${PORT} gets filled in from Railway's env (defaults to 80 elsewhere).
 RUN printf '%s\n' \
   'server {' \
-  '  listen 80 default_server;' \
+  '  listen ${PORT} default_server;' \
   '  root /usr/share/nginx/html;' \
   '  index index.html;' \
   '  gzip on;' \
@@ -19,6 +20,8 @@ RUN printf '%s\n' \
   '    expires 30d;' \
   '    add_header Cache-Control "public, max-age=2592000";' \
   '  }' \
-  '}' > /etc/nginx/conf.d/default.conf
+  '}' > /etc/nginx/templates/default.conf.template \
+  && rm -f /etc/nginx/conf.d/default.conf
 
+ENV PORT=80
 EXPOSE 80

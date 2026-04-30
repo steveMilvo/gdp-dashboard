@@ -1,7 +1,7 @@
 previews/
 email_weekly.html
 generate_qr.py
-fly.toml
+railway.json
 Dockerfile
 .dockerignore
 *.md
