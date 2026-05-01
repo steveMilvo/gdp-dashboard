@@ -4,29 +4,29 @@
   "variety_now": "Miho",
   "this_week": [
     {
-      "name": "Chadstone Shopping Centre",
-      "address": "1341 Dandenong Rd, Chadstone VIC 3148",
+      "name": "St Kilda Market",
+      "address": "StKilda",
       "day": "Saturday",
       "date": "2026-05-09",
-      "hours": "9:00 AM – 4:00 PM",
-      "map": "https://maps.google.com/?q=Chadstone+Shopping+Centre"
+      "hours": "7.00 AM – 2.00 PM",
+      "map": ""
     },
     {
-      "name": "Westfield Doncaster",
-      "address": "619 Doncaster Rd, Doncaster VIC 3108",
-      "day": "Sunday",
-      "date": "2026-05-10",
-      "hours": "10:00 AM – 4:00 PM",
-      "map": "https://maps.google.com/?q=Westfield+Doncaster"
+      "name": "Box Hill Central",
+      "address": "1 Main St, Box Hill VIC 3128",
+      "day": "Tuesday to Friday",
+      "date": "2026-05-11",
+      "hours": "8:00 AM – 4:00 PM",
+      "map": ","
     },
     {
-      "name": "Coburg Farmers Market",
-      "address": "Bridges Reserve, Murray Rd, Coburg VIC 3058",
-      "day": "Saturday",
-      "date": "2026-05-09",
-      "hours": "8:00 AM – 1:00 PM",
-      "map": "https://maps.google.com/?q=Coburg+Farmers+Market"
+      "name": "Victoria Gardens Shopping Crntre",
+      "address": "620 Victoria St, Richmond VIC 3121",
+      "day": "Monday to Friday",
+      "date": "2026-05-11",
+      "hours": "8:00 AM – 4:00 PM",
+      "map": ""
     }
   ],
-  "next_week_preview": "Next week: South Melbourne Market + Chadstone + Eltham Farmers Market"
+  "next_week_preview": ""
 }
