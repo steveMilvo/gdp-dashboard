@@ -14,7 +14,6 @@ async function loadLocations() {
       <h3>${esc(loc.name)}</h3>
       <p class="when">${esc(loc.day)} ${formatDate(loc.date)} &middot; ${esc(loc.hours)}</p>
       <p class="addr">${esc(loc.address)}</p>
-      <a class="maplink" href="${esc(loc.map)}" target="_blank" rel="noopener">Open in Maps &rarr;</a>
     </article>
   `).join('');
 }
