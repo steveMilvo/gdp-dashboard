@@ -5,27 +5,24 @@
   "this_week": [
     {
       "name": "St Kilda Market",
-      "address": "StKilda",
+      "address": "St Kilda VIC 3182",
       "day": "Saturday",
       "date": "2026-05-09",
-      "hours": "7.00 AM – 2.00 PM",
-      "map": ""
+      "hours": "7:00 AM – 2:00 PM"
     },
     {
       "name": "Box Hill Central",
       "address": "1 Main St, Box Hill VIC 3128",
       "day": "Tuesday to Friday",
       "date": "2026-05-11",
-      "hours": "8:00 AM – 4:00 PM",
-      "map": ","
+      "hours": "8:00 AM – 4:00 PM"
     },
     {
-      "name": "Victoria Gardens Shopping Crntre",
+      "name": "Victoria Gardens Shopping Centre",
       "address": "620 Victoria St, Richmond VIC 3121",
       "day": "Monday to Friday",
       "date": "2026-05-11",
-      "hours": "8:00 AM – 4:00 PM",
-      "map": ""
+      "hours": "8:00 AM – 4:00 PM"
     }
   ],
   "next_week_preview": ""
