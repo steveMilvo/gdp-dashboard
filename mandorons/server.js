@@ -13,10 +13,20 @@ const ROOT = __dirname;
 const DATA_DIR = path.join(ROOT, 'data');
 const LOCATIONS_FILE = path.join(ROOT, 'locations.json');
 const SUBSCRIBERS_FILE = path.join(DATA_DIR, 'subscribers.json');
+const SOCIALS_FILE = path.join(DATA_DIR, 'socials.json');
+const SOCIALS_DEFAULT = path.join(DATA_DIR, 'socials.default.json');
+
+const SOCIAL_PLATFORMS = ['instagram', 'facebook', 'tiktok', 'youtube', 'twitter'];
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(SUBSCRIBERS_FILE)) {
   fs.writeFileSync(SUBSCRIBERS_FILE, JSON.stringify({ subscribers: [] }, null, 2));
+}
+if (!fs.existsSync(SOCIALS_FILE)) {
+  const seed = fs.existsSync(SOCIALS_DEFAULT)
+    ? fs.readFileSync(SOCIALS_DEFAULT, 'utf8')
+    : JSON.stringify(Object.fromEntries(SOCIAL_PLATFORMS.map(p => [p, ''])), null, 2);
+  fs.writeFileSync(SOCIALS_FILE, seed);
 }
 
 function readJson(file, fallback) {
@@ -90,9 +100,12 @@ app.get('/admin/logout', (req, res) => {
 app.get('/admin', requireAdmin, (req, res) => {
   const locations = readJson(LOCATIONS_FILE, { this_week: [] });
   const subs = readJson(SUBSCRIBERS_FILE, { subscribers: [] });
+  const socials = readJson(SOCIALS_FILE, {});
   res.render('admin', {
     locations,
     subscribers: subs.subscribers || [],
+    socials,
+    platforms: SOCIAL_PLATFORMS,
     flash: req.query,
     smtpConfigured: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER)
   });
@@ -128,6 +141,23 @@ app.post('/admin/subscribers/delete', requireAdmin, (req, res) => {
   data.subscribers = data.subscribers.filter(s => s.email !== email);
   writeJson(SUBSCRIBERS_FILE, data);
   res.redirect('/admin?removed=1');
+});
+
+app.post('/admin/socials', requireAdmin, (req, res) => {
+  const out = {};
+  for (const p of SOCIAL_PLATFORMS) {
+    let v = String(req.body[p] || '').trim();
+    if (v && !/^https?:\/\//i.test(v)) v = 'https://' + v;
+    out[p] = v;
+  }
+  writeJson(SOCIALS_FILE, out);
+  res.redirect('/admin?saved=socials');
+});
+
+app.get('/socials.json', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.type('application/json');
+  res.sendFile(SOCIALS_FILE);
 });
 
 app.post('/admin/send-email', requireAdmin, async (req, res) => {

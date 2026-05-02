@@ -17,7 +17,8 @@
     <a class="admin-logout" href="/admin/logout">Sign out</a>
   </header>
 
-  <% if (flash.saved) { %><p class="admin-flash success">Locations saved &mdash; live in a few seconds.</p><% } %>
+  <% if (flash.saved === '1') { %><p class="admin-flash success">Locations saved &mdash; live in a few seconds.</p><% } %>
+  <% if (flash.saved === 'socials') { %><p class="admin-flash success">Social links saved &mdash; live immediately.</p><% } %>
   <% if (flash.removed) { %><p class="admin-flash success">Subscriber removed.</p><% } %>
   <% if (flash.sent) { %><p class="admin-flash success">Email sent to <%= flash.sent %> subscriber<%= flash.sent === '1' ? '' : 's' %><% if (parseInt(flash.failed,10) > 0) { %>, <%= flash.failed %> failed (check server logs)<% } %>.</p><% } %>
   <% if (flash.error === 'smtp') { %><p class="admin-flash error">SMTP env vars not set. Configure SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM in Railway and redeploy.</p><% } %>
@@ -61,6 +62,22 @@
       </label>
 
       <button type="submit" class="admin-submit">Save locations</button>
+    </form>
+  </section>
+
+  <section class="admin-section">
+    <h2>Social media links</h2>
+    <p class="admin-help">Paste each profile URL. Leave blank to hide that icon on the site. Saves immediately, no redeploy needed.</p>
+    <form method="POST" action="/admin/socials" class="admin-form">
+      <% const labels = { instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', youtube: 'YouTube', twitter: 'X (Twitter)' }; %>
+      <% const placeholders = { instagram: 'https://instagram.com/mandorons', facebook: 'https://facebook.com/mandorons', tiktok: 'https://tiktok.com/@mandorons', youtube: 'https://youtube.com/@mandorons', twitter: 'https://x.com/mandorons' }; %>
+      <% platforms.forEach(p => { %>
+        <label>
+          <%= labels[p] %>
+          <input type="url" name="<%= p %>" value="<%= socials[p] || '' %>" placeholder="<%= placeholders[p] %>">
+        </label>
+      <% }) %>
+      <button type="submit" class="admin-submit">Save social links</button>
     </form>
   </section>
 
