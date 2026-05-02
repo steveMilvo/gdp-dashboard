@@ -125,11 +125,19 @@
     <div class="section-inner narrow">
       <h2 id="signup-heading">Where will we be next week?</h2>
       <p class="signup-sub">
-        Our Monday email is launching soon &mdash; one short note with all our
-        Melbourne stops, shopping centres, farmers markets, and what's ripe at
-        the farm. Until then, follow along here for the weekly schedule:
+        Pop your email in. Every Monday morning we send one short note with
+        all our Melbourne stops &mdash; shopping centres, farmers markets,
+        and what's ripe at the farm.
       </p>
 
+      <form id="subscribe-form" class="signup-form" novalidate>
+        <input type="email" name="email" placeholder="your@email.com" autocomplete="email" required />
+        <button type="submit">Send me the weekly stops</button>
+      </form>
+      <p class="signup-message" id="subscribe-message" role="status" aria-live="polite"></p>
+      <p class="fineprint">One email a week. Unsubscribe anytime. We never share your email.</p>
+
+      <p class="signup-or">Or follow along:</p>
       <ul class="socials" aria-label="Social media">
         <li>
           <a href="https://instagram.com/mandorons" target="_blank" rel="noopener" aria-label="ManDorons on Instagram">
@@ -144,8 +152,6 @@
           </a>
         </li>
       </ul>
-
-      <p class="fineprint">Email signup coming soon. Scan the QR at any of our stalls to come back to this page.</p>
     </div>
   </section>
 

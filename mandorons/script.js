@@ -31,3 +31,41 @@ function esc(s) {
 }
 
 loadLocations();
+
+const subscribeForm = document.getElementById('subscribe-form');
+const subscribeMessage = document.getElementById('subscribe-message');
+if (subscribeForm) {
+  subscribeForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = subscribeForm.querySelector('input[name="email"]');
+    const button = subscribeForm.querySelector('button');
+    const email = input.value.trim();
+    button.disabled = true;
+    const original = button.textContent;
+    button.textContent = 'Subscribing…';
+    subscribeMessage.textContent = '';
+    subscribeMessage.className = 'signup-message';
+    try {
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        subscribeMessage.textContent = data.message || 'Thanks!';
+        subscribeMessage.className = 'signup-message success';
+        subscribeForm.reset();
+      } else {
+        subscribeMessage.textContent = data.error || 'Something went wrong. Try again.';
+        subscribeMessage.className = 'signup-message error';
+      }
+    } catch (err) {
+      subscribeMessage.textContent = 'Could not connect. Try again later.';
+      subscribeMessage.className = 'signup-message error';
+    } finally {
+      button.disabled = false;
+      button.textContent = original;
+    }
+  });
+}

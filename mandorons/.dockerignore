@@ -5,3 +5,5 @@ railway.json
 Dockerfile
 .dockerignore
 *.md
+node_modules
+data/subscribers.json

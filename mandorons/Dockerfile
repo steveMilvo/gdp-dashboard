@@ -1,27 +1,17 @@
-FROM nginx:alpine
+FROM node:20-alpine
 
-COPY . /usr/share/nginx/html
+WORKDIR /app
 
-# Write the nginx config as a template. nginx:alpine's entrypoint runs
-# envsubst on /etc/nginx/templates/*.template at container start, so
-# ${PORT} gets filled in from Railway's env (defaults to 80 elsewhere).
-RUN printf '%s\n' \
-  'server {' \
-  '  listen ${PORT} default_server;' \
-  '  root /usr/share/nginx/html;' \
-  '  index index.html;' \
-  '  gzip on;' \
-  '  gzip_types text/plain text/css application/javascript application/json image/svg+xml;' \
-  '  location = /locations.json {' \
-  '    add_header Cache-Control "no-store";' \
-  '    types { } default_type application/json;' \
-  '  }' \
-  '  location ~* \\.(jpg|jpeg|png|gif|webp|svg|woff2)$ {' \
-  '    expires 30d;' \
-  '    add_header Cache-Control "public, max-age=2592000";' \
-  '  }' \
-  '}' > /etc/nginx/templates/default.conf.template \
-  && rm -f /etc/nginx/conf.d/default.conf
+# Install only production deps. package-lock.json is committed so this is reproducible.
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund
 
+# Copy the rest of the site (Dockerfile/.dockerignore/previews etc are excluded
+# via .dockerignore so they don't ship to the container).
+COPY . ./
+
+ENV NODE_ENV=production
 ENV PORT=80
 EXPOSE 80
+
+CMD ["node", "server.js"]

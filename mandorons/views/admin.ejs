@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>ManDorons admin</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="admin-body">
+
+  <header class="admin-header">
+    <div>
+      <p class="admin-eyebrow">ManDorons admin</p>
+      <h1>Dashboard</h1>
+    </div>
+    <a class="admin-logout" href="/admin/logout">Sign out</a>
+  </header>
+
+  <% if (flash.saved) { %><p class="admin-flash success">Locations saved &mdash; live in a few seconds.</p><% } %>
+  <% if (flash.removed) { %><p class="admin-flash success">Subscriber removed.</p><% } %>
+  <% if (flash.sent) { %><p class="admin-flash success">Email sent to <%= flash.sent %> subscriber<%= flash.sent === '1' ? '' : 's' %><% if (parseInt(flash.failed,10) > 0) { %>, <%= flash.failed %> failed (check server logs)<% } %>.</p><% } %>
+  <% if (flash.error === 'smtp') { %><p class="admin-flash error">SMTP env vars not set. Configure SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM in Railway and redeploy.</p><% } %>
+  <% if (flash.error === 'missing') { %><p class="admin-flash error">Subject and body are required.</p><% } %>
+
+  <section class="admin-section">
+    <h2>This week's locations</h2>
+    <p class="admin-help">Edit and save &mdash; the public site updates immediately. Leave a row's name blank to remove that stop.</p>
+
+    <form method="POST" action="/admin/locations" class="admin-form">
+      <div class="admin-row">
+        <label>Week of
+          <input type="date" name="week_of" value="<%= locations.week_of || '' %>">
+        </label>
+        <label>Variety on the trees now
+          <input type="text" name="variety_now" value="<%= locations.variety_now || '' %>" placeholder="Miho">
+        </label>
+      </div>
+
+      <label>Tagline (shown in hero)
+        <input type="text" name="tagline" value="<%= locations.tagline || '' %>">
+      </label>
+
+      <fieldset class="admin-fieldset">
+        <legend>Stops this week</legend>
+        <% const rows = Math.max(locations.this_week.length, 5); %>
+        <% for (let i = 0; i < rows; i++) {
+             const loc = locations.this_week[i] || {}; %>
+          <div class="loc-row">
+            <input type="text" name="name_<%= i %>" placeholder="Name (e.g. Chadstone)" value="<%= loc.name || '' %>">
+            <input type="text" name="address_<%= i %>" placeholder="Address" value="<%= loc.address || '' %>">
+            <input type="text" name="day_<%= i %>" placeholder="Day (e.g. Saturday)" value="<%= loc.day || '' %>">
+            <input type="date" name="date_<%= i %>" value="<%= loc.date || '' %>">
+            <input type="text" name="hours_<%= i %>" placeholder="Hours (9:00 AM – 4:00 PM)" value="<%= loc.hours || '' %>">
+          </div>
+        <% } %>
+      </fieldset>
+
+      <label>Next week preview
+        <input type="text" name="next_week_preview" value="<%= locations.next_week_preview || '' %>" placeholder="Next week: Chadstone + Coburg + Eltham">
+      </label>
+
+      <button type="submit" class="admin-submit">Save locations</button>
+    </form>
+  </section>
+
+  <section class="admin-section">
+    <h2>Subscribers (<%= subscribers.length %>)</h2>
+    <% if (subscribers.length === 0) { %>
+      <p class="admin-help">No one has subscribed yet. Once people use the form on the site, they'll appear here.</p>
+    <% } else { %>
+      <table class="admin-table">
+        <thead><tr><th>Email</th><th>Joined</th><th></th></tr></thead>
+        <tbody>
+          <% subscribers.slice().reverse().forEach(s => { %>
+            <tr>
+              <td><%= s.email %></td>
+              <td><%= new Date(s.subscribed_at).toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' }) %></td>
+              <td>
+                <form method="POST" action="/admin/subscribers/delete" onsubmit="return confirm('Remove <%= s.email %>?')">
+                  <input type="hidden" name="email" value="<%= s.email %>">
+                  <button type="submit" class="link-button">Remove</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+
+    <h3 style="margin-top:2rem">Send email to all subscribers</h3>
+    <% if (!smtpConfigured) { %>
+      <p class="admin-flash error" style="margin-bottom:1rem">SMTP not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM in Railway and redeploy.</p>
+    <% } %>
+    <form method="POST" action="/admin/send-email" class="admin-form" onsubmit="return confirm('Send to <%= subscribers.length %> subscriber<%= subscribers.length === 1 ? '' : 's' %>?')">
+      <label>Subject
+        <input type="text" name="subject" required placeholder="This week from ManDorons">
+      </label>
+      <label>HTML body
+        <textarea name="body" rows="14" required placeholder="Paste the email_weekly.html template here, or write a custom message in HTML."></textarea>
+      </label>
+      <button type="submit" class="admin-submit" <%= subscribers.length === 0 || !smtpConfigured ? 'disabled' : '' %>>
+        Send to <%= subscribers.length %> subscriber<%= subscribers.length === 1 ? '' : 's' %>
+      </button>
+    </form>
+  </section>
+
+</body>
+</html>

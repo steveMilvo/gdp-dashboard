@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>ManDorons admin · sign in</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="admin-body">
+  <main class="admin-card">
+    <h1>ManDorons admin</h1>
+    <% if (!configured) { %>
+      <p class="admin-error">
+        Server has no <code>ADMIN_PASSWORD</code> set. Add it as a Railway
+        environment variable, redeploy, then try again.
+      </p>
+    <% } %>
+    <% if (error) { %>
+      <p class="admin-error"><%= error %></p>
+    <% } %>
+    <form method="POST" action="/admin/login" class="admin-form" autocomplete="off">
+      <label>Password
+        <input type="password" name="password" required autofocus autocomplete="current-password">
+      </label>
+      <button type="submit">Sign in</button>
+    </form>
+  </main>
+</body>
+</html>

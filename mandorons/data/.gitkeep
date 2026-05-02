@@ -1,0 +1,2 @@
+# Runtime data lives here. Keep the directory under git so the container
+# always has it, but ignore the actual JSON files (they're created at boot).
