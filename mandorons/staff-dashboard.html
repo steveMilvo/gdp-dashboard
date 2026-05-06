@@ -723,6 +723,8 @@ function EntryWizard({
       time_end: f.time_end || null,
       cash_sales: num(f.cash_sales),
       card_sales: num(f.card_sales),
+      total_sales: num(f.cash_sales) + num(f.card_sales),
+      boxes_sold: Math.max(0, num(f.boxes_start) - num(f.boxes_end)),
       notes: f.notes,
       pos_receipt_url
     };
