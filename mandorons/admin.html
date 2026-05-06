@@ -1,0 +1,3426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#0a0a0a" />
+<title>Mandorons Admin</title>
+<style>html,body{margin:0;padding:0;background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif}#root{min-height:100dvh}#boot{display:flex;align-items:center;justify-content:center;min-height:100dvh;color:#666;font-size:14px}</style>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div id="root"><div id="boot">Loading…</div></div>
+<script>
+// Defensive: surface any startup error to the page so we can see what's wrong
+window.addEventListener("error", (e) => {
+  const r = document.getElementById("root");
+  if (r) r.innerHTML = '<pre style="color:#fa5;padding:24px;font:12px monospace;white-space:pre-wrap;">JS error: ' + (e.message || e) + '\n' + (e.filename || '') + ':' + (e.lineno || '') + '</pre>';
+});
+window.addEventListener("unhandledrejection", (e) => {
+  const r = document.getElementById("root");
+  if (r) r.innerHTML = '<pre style="color:#fa5;padding:24px;font:12px monospace;white-space:pre-wrap;">Promise rejection: ' + (e.reason && e.reason.message || e.reason) + '</pre>';
+});
+if (!window.React) {
+  document.getElementById("root").innerHTML = '<pre style="color:#fa5;padding:24px;font:12px monospace;">React failed to load from CDN. Check network tab.</pre>';
+} else {
+const {
+  useState,
+  useEffect,
+  useRef,
+  useCallback
+} = React;
+const SUPABASE_URL = "https://nwbxdbpowwvjcivykchg.supabase.co";
+const SUPABASE_ANON = "sb_publishable_s7W81yUixF4lqpdOcd9IJw_WZ89c1O1";
+const ADMIN_USERS = ["admin", "dorontalmi"];
+const ADMIN_DOMAIN = "@mandorons.com.au";
+const toEmail = u => u.toLowerCase().trim() + ADMIN_DOMAIN;
+const FARMERS_MARKETS = ["Coburg Farmers Market", "St Kilda Farmers Market", "Carlton Farmers Market", "Alphington Farmers' Market", "Eltham Farmers Market"];
+const SHOPPING_CENTRES = ["Victoria Park Shopping Centre", "Box Hill Central", "Victoria Gardens"];
+
+// Pre-loaded venue details — used in the Locations tab quick-pick
+const PRESET_LOCATIONS = [{
+  name: "Victoria Park Shopping Centre",
+  hint: "near Coles · Abbotsford",
+  type: "Shopping Centre",
+  address: "Victoria Park, Abbotsford VIC 3067",
+  hours: "9:00 AM – 4:00 PM",
+  map: "https://maps.google.com/?q=Victoria+Park+Shopping+Centre+Abbotsford+VIC",
+  icon: "🏬"
+}, {
+  name: "Box Hill Central",
+  hint: "near Fruit & Vege Grocers",
+  type: "Shopping Centre",
+  address: "1 Main St, Box Hill VIC 3128",
+  hours: "9:00 AM – 4:00 PM",
+  map: "https://maps.google.com/?q=Box+Hill+Central+1+Main+St+Box+Hill+VIC+3128",
+  icon: "🏬"
+}, {
+  name: "St Kilda Farmers Market",
+  hint: "Peanut Farm Reserve",
+  type: "Farmers Market",
+  address: "Peanut Farm Reserve, Fitzroy St, St Kilda VIC 3182",
+  hours: "8:00 AM – 1:00 PM",
+  map: "https://maps.google.com/?q=St+Kilda+Farmers+Market+Peanut+Farm+Reserve+St+Kilda+VIC",
+  icon: "🌿"
+}, {
+  name: "Coburg Farmers Market",
+  hint: "Bridges Reserve",
+  type: "Farmers Market",
+  address: "Bridges Reserve, Murray Rd, Coburg VIC 3058",
+  hours: "8:00 AM – 1:00 PM",
+  map: "https://maps.google.com/?q=Coburg+Farmers+Market+Murray+Rd+Coburg+VIC+3058",
+  icon: "🌿"
+}, {
+  name: "Carlton Farmers Market",
+  hint: "Lincoln Square",
+  type: "Farmers Market",
+  address: "Lincoln Square, Queensberry St, Carlton VIC 3053",
+  hours: "7:30 AM – 12:30 PM",
+  map: "https://maps.google.com/?q=Carlton+Farmers+Market+Lincoln+Square+Carlton+VIC+3053",
+  icon: "🌿"
+}, {
+  name: "Alphington Farmers' Market",
+  hint: "Alphington Park",
+  type: "Farmers Market",
+  address: "Alphington Park, Chandler Hwy, Alphington VIC 3078",
+  hours: "8:00 AM – 1:00 PM",
+  map: "https://maps.google.com/?q=Alphington+Farmers+Market+Chandler+Highway+Alphington+VIC",
+  icon: "🌿"
+}];
+const sb = {
+  _token: null,
+  _user: null,
+  h: () => ({
+    "Content-Type": "application/json",
+    apikey: SUPABASE_ANON,
+    Authorization: `Bearer ${sb._token || SUPABASE_ANON}`
+  }),
+  async signIn(email, pw) {
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON
+      },
+      body: JSON.stringify({
+        email,
+        password: pw
+      })
+    });
+    const d = await r.json();
+    if (d.access_token) {
+      sb._token = d.access_token;
+      sb._user = d.user;
+    }
+    return d;
+  },
+  async signOut() {
+    await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+      method: "POST",
+      headers: sb.h()
+    });
+    sb._token = null;
+    sb._user = null;
+  },
+  async select(table, qs = "") {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${qs}`, {
+      headers: sb.h()
+    });
+    return r.json();
+  },
+  async upsert(table, row, conflictCol) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${conflictCol}`, {
+      method: "POST",
+      headers: {
+        ...sb.h(),
+        Prefer: "return=representation,resolution=merge-duplicates"
+      },
+      body: JSON.stringify(row)
+    });
+    return r.json();
+  }
+};
+const num = n => Number(n) || 0;
+const aud = n => "$" + num(n).toLocaleString("en-AU", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0
+});
+const calcBonus = total => Math.floor(num(total) / 1000) * 40;
+const audf = n => num(n).toLocaleString("en-AU", {
+  style: "currency",
+  currency: "AUD",
+  minimumFractionDigits: 2
+});
+const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const monthOf = d => d?.slice(0, 7) || "";
+const weekOf = dateStr => {
+  const d = new Date(dateStr + "T00:00:00");
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - day + 1);
+  return d.toISOString().slice(0, 10);
+};
+const fmtWeek = w => {
+  const s = new Date(w + "T00:00:00");
+  const e = new Date(s);
+  e.setDate(e.getDate() + 6);
+  return `${s.toLocaleDateString("en-AU", {
+    day: "2-digit",
+    month: "short"
+  })}–${e.toLocaleDateString("en-AU", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  })}`;
+};
+const locType = loc => FARMERS_MARKETS.includes(loc) ? "Farmers Market" : SHOPPING_CENTRES.includes(loc) ? "Shopping Centre" : "Other";
+function agg(rows) {
+  return rows.reduce((a, e) => ({
+    cash: a.cash + num(e.cash_sales),
+    card: a.card + num(e.card_sales),
+    total: a.total + num(e.total_sales),
+    sold: a.sold + num(e.boxes_sold),
+    sampled: a.sampled + num(e.samples_used),
+    boxEnd: a.boxEnd + num(e.boxes_end),
+    entries: a.entries + 1
+  }), {
+    cash: 0,
+    card: 0,
+    total: 0,
+    sold: 0,
+    sampled: 0,
+    boxEnd: 0,
+    entries: 0
+  });
+}
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg: "#080F0A",
+  surface: "#0E1810",
+  card: "#131F15",
+  cardHi: "#1A2A1C",
+  orange: "#F07020",
+  green: "#4DB870",
+  amber: "#F5A623",
+  blue: "#5BA4E8",
+  red: "#E05555",
+  text: "#EEE9E2",
+  muted: "#6B8A6E",
+  border: "#1E2E20",
+  borderHi: "#2A4030",
+  radius: 12
+};
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@300;400;500;600&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:${C.bg};font-family:'Outfit',sans-serif;color:${C.text};min-height:100dvh;-webkit-font-smoothing:antialiased}
+  input,select,textarea,button{font-family:inherit}
+  ::-webkit-scrollbar{width:4px;height:4px} ::-webkit-scrollbar-track{background:${C.surface}} ::-webkit-scrollbar-thumb{background:${C.borderHi};border-radius:2px}
+  @keyframes fu{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  .fu{animation:fu 0.35s ease both}
+  .fu1{animation-delay:.04s} .fu2{animation-delay:.08s} .fu3{animation-delay:.12s} .fu4{animation-delay:.16s}
+  table{border-collapse:collapse;width:100%}
+  th{position:sticky;top:0;background:${C.cardHi};z-index:2}
+`;
+
+// ── Primitives ────────────────────────────────────────────────────────────────
+function Card({
+  children,
+  style = {},
+  className = ""
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: className,
+    style: {
+      background: C.card,
+      border: `1px solid ${C.border}`,
+      borderRadius: C.radius,
+      boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
+      ...style
+    }
+  }, children);
+}
+function KPI({
+  label,
+  value,
+  sub,
+  color = C.orange,
+  className = ""
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: className,
+    style: {
+      background: C.card,
+      border: `1px solid ${C.border}`,
+      borderRadius: C.radius,
+      padding: "14px 16px",
+      flex: 1,
+      minWidth: 120
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 600,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.07em",
+      marginBottom: 5
+    }
+  }, label), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontSize: 20,
+      fontWeight: 800,
+      color
+    }
+  }, value), sub && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      marginTop: 3
+    }
+  }, sub));
+}
+function SplitBar({
+  cashPct,
+  style = {}
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 16,
+      ...style
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 5,
+      fontWeight: 600
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Cash ", cashPct, "%"), /*#__PURE__*/React.createElement("span", null, "Card ", 100 - cashPct, "%")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 6,
+      borderRadius: 3,
+      background: C.border,
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: "100%",
+      width: `${cashPct}%`,
+      background: `linear-gradient(90deg,${C.orange},${C.amber})`,
+      borderRadius: 3,
+      transition: "width 0.6s ease"
+    }
+  })));
+}
+function Sel({
+  value,
+  onChange,
+  children,
+  style = {}
+}) {
+  return /*#__PURE__*/React.createElement("select", {
+    value: value,
+    onChange: e => onChange(e.target.value),
+    style: {
+      background: C.surface,
+      border: `1.5px solid ${C.border}`,
+      borderRadius: 9,
+      color: C.text,
+      padding: "8px 14px",
+      fontSize: 14,
+      outline: "none",
+      ...style
+    }
+  }, children);
+}
+function DlBtn({
+  onClick,
+  label
+}) {
+  const [hover, setHover] = useState(false);
+  return /*#__PURE__*/React.createElement("button", {
+    onClick: onClick,
+    onMouseEnter: () => setHover(true),
+    onMouseLeave: () => setHover(false),
+    style: {
+      background: hover ? C.green : `${C.green}20`,
+      border: `1.5px solid ${C.green}50`,
+      color: hover ? "#fff" : C.green,
+      padding: "8px 16px",
+      borderRadius: 10,
+      fontWeight: 700,
+      fontSize: 13,
+      cursor: "pointer",
+      transition: "all 0.2s",
+      display: "flex",
+      alignItems: "center",
+      gap: 6
+    }
+  }, "\u2B07 ", label);
+}
+
+// ── Type badge ────────────────────────────────────────────────────────────────
+function TypeBadge({
+  type
+}) {
+  const map = {
+    "Farmers Market": [C.green, "#27500A"],
+    "Shopping Centre": [C.blue, "#0C447C"],
+    "Other": [C.muted, "#444441"]
+  };
+  const [bg, col] = map[type] || map["Other"];
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: `${bg}20`,
+      border: `1px solid ${bg}40`,
+      color: bg,
+      fontSize: 11,
+      fontWeight: 700,
+      padding: "2px 8px",
+      borderRadius: 20,
+      whiteSpace: "nowrap"
+    }
+  }, type);
+}
+
+// ── XLSX export helpers ───────────────────────────────────────────────────────
+function sheetRaw(rows) {
+  const data = [["Date", "Location", "Type", "Staff", "Float $", "Boxing Total", "Boxing Detail", "Boxes Start", "Boxes Added", "Boxes Sold", "Samples Used", "Boxes End", "Time Start", "Time End", "Cash $", "Card $", "Total $", "Notes", "POS URL"], ...rows.map(r => {
+    const bt = r.boxing_tally || {};
+    const btDetail = Object.entries(bt).map(([n, v]) => `${n}:${v}`).join(", ");
+    return [r.entry_date, r.location, locType(r.location), (r.staff || []).join(", "), num(r.float_start), num(r.boxing_total) || 0, btDetail, num(r.boxes_start), num(r.boxes_added), num(r.boxes_sold), num(r.samples_used), num(r.boxes_end), r.time_start || "", r.time_end || "", num(r.cash_sales), num(r.card_sales), num(r.total_sales), r.notes || "", r.pos_receipt_url || ""];
+  })];
+  return XLSX.utils.aoa_to_sheet(data);
+}
+function sheetBoxingTally(rows) {
+  // Aggregate boxing per person per week
+  const byWeek = {};
+  rows.forEach(r => {
+    if (!r.boxing_tally || Object.keys(r.boxing_tally).length === 0) return;
+    const w = weekOf(r.entry_date);
+    if (!byWeek[w]) byWeek[w] = {};
+    Object.entries(r.boxing_tally).forEach(([name, boxes]) => {
+      byWeek[w][name] = (byWeek[w][name] || 0) + num(boxes);
+    });
+  });
+  const weeks = Object.keys(byWeek).sort().reverse();
+  const allNames = [...new Set(rows.flatMap(r => Object.keys(r.boxing_tally || {})))].sort();
+  const data = [["MANDORONS — MORNING BOXING TALLY"], ["Boxes packed per person per week"], [""], ["Week", ...allNames, "TEAM TOTAL"]];
+  weeks.forEach(w => {
+    const row = [fmtWeek(w)];
+    let total = 0;
+    allNames.forEach(name => {
+      const v = byWeek[w][name] || 0;
+      row.push(v);
+      total += v;
+    });
+    row.push(total);
+    data.push(row);
+  });
+  // Grand total row
+  const totals = ["TOTAL"];
+  let grandTotal = 0;
+  allNames.forEach(name => {
+    const t = weeks.reduce((a, w) => a + (byWeek[w][name] || 0), 0);
+    totals.push(t);
+    grandTotal += t;
+  });
+  totals.push(grandTotal);
+  data.push([]);
+  data.push(totals);
+  return XLSX.utils.aoa_to_sheet(data);
+}
+function sheetByLocation(rows) {
+  const byLoc = {};
+  rows.forEach(r => {
+    const k = r.location || "Unknown";
+    if (!byLoc[k]) byLoc[k] = [];
+    byLoc[k].push(r);
+  });
+  const data = [["Location", "Type", "Visits", "Total Sales $", "Cash $", "Card $", "Boxes Sold", "Samples Used", "Sales per Visit $"]];
+  Object.keys(byLoc).sort().forEach(loc => {
+    const a = agg(byLoc[loc]);
+    data.push([loc, locType(loc), byLoc[loc].length, a.total, a.cash, a.card, a.sold, a.sampled, (a.entries ? a.total / a.entries : 0).toFixed(2)]);
+  });
+  return XLSX.utils.aoa_to_sheet(data);
+}
+function sheetFarmerPromo(rows, farmGatePerTonne = 520) {
+  const BOX_KG = 4.5;
+  const fmRows = rows.filter(r => locType(r.location) === "Farmers Market");
+  const totFM = agg(fmRows);
+  const fmDays = new Set(fmRows.map(r => r.entry_date)).size;
+  const totalKg = (totFM.sold + totFM.sampled) * BOX_KG;
+  const totalTonnes = totalKg / 1000;
+  const mndRevenuePerKg = totFM.sold > 0 ? totFM.total / (totFM.sold * BOX_KG) : 0;
+  const mndPerTonne = mndRevenuePerKg * 1000;
+  const commProcessing = 425; // avg post-harvest cost $/t
+  const commWastage = 0.25;
+  const commNetTonne = Math.max(0, farmGatePerTonne * (1 - commWastage) - commProcessing);
+  const advantage = mndPerTonne - commNetTonne;
+  const multiplier = commNetTonne > 0 ? (mndPerTonne / commNetTonne).toFixed(1) : "N/A";
+
+  // Weekly breakdown
+  const byWeek = {};
+  fmRows.forEach(r => {
+    const w = weekOf(r.entry_date);
+    if (!byWeek[w]) byWeek[w] = [];
+    byWeek[w].push(r);
+  });
+
+  // Per-market breakdown
+  const byLoc = {};
+  fmRows.forEach(r => {
+    const k = r.location;
+    if (!byLoc[k]) byLoc[k] = [];
+    byLoc[k].push(r);
+  });
+  const data = [["MANDORONS — FARMER GRAFTING PROMOTION REPORT"], ["Proof of active Melbourne market demand vs standard commercial orange returns"], ["Report generated: " + new Date().toLocaleDateString("en-AU")], [""], ["MANDORONS MARKET PERFORMANCE — FARMERS MARKETS ONLY"], [""], ["Total Revenue (all FM)", "$" + totFM.total.toFixed(2)], ["Total Trading Days", fmDays], ["Avg Revenue per Day", "$" + (fmDays ? totFM.total / fmDays : 0).toFixed(2)], ["Total Boxes Sold", totFM.sold], ["Total Sample Boxes Used", totFM.sampled], ["Total kg to Market", totalKg.toFixed(1) + " kg"], ["Total Tonnes to Market", totalTonnes.toFixed(2) + " t"], ["Revenue per Box", "$" + (totFM.sold ? totFM.total / totFM.sold : 0).toFixed(2)], ["Revenue per kg", "$" + mndRevenuePerKg.toFixed(2)], ["Revenue per Tonne (Mandorons)", "$" + Math.round(mndPerTonne).toLocaleString()], [""], ["COMMERCIAL ORANGE COMPARISON"], [""], ["Farm gate price entered (current)", "$" + farmGatePerTonne + "/tonne"], ["Typical range (Australian 2025-26)", "$450–$600/tonne"], ["Post-harvest costs (sorting/wax/gas/freight)", "$350–$500/tonne on saleable fruit"], ["Blemish/size rejection wastage", "20–30% of crop discarded or juiced at ~$150/t"], ["Commercial net to grower (est.)", "$" + commNetTonne.toFixed(0) + "/tonne after all deductions"], [""], ["SIDE-BY-SIDE INCOME COMPARISON"], [""], ["", "Commercial oranges", "Mandorons"], ["Farm gate / market price", "$" + farmGatePerTonne + "/tonne", "$" + Math.round(mndPerTonne) + "/tonne"], ["Post-harvest cost burden", "−$425/tonne (est.)", "$0 — zero deductions"], ["Wastage (rejected fruit)", "25% of crop lost", "Zero — sold as grown"], ["Sizing & grading required", "Yes — mandatory", "None"], ["Waxing", "Industry standard", "None — organic"], ["Ethylene gassing", "Standard practice", "None — natural ripeness"], ["Net to grower per tonne", "$" + commNetTonne.toFixed(0), "$" + Math.round(mndPerTonne).toLocaleString()], ["Mandorons advantage", "", "$" + Math.round(advantage).toLocaleString() + "/tonne more"], ["Mandorons multiplier", "", multiplier + "x the commercial return"], [""], ["1-HECTARE BLOCK PROJECTION"], [""], ["Estimated yield / ha", "25–35 tonnes", "20–25 tonnes"], ["Net revenue at 20 tonnes/ha", "$" + (commNetTonne * 20).toFixed(0), "$" + Math.round(mndPerTonne * 20).toLocaleString()], ["Net revenue at 25 tonnes/ha", "$" + (commNetTonne * 25).toFixed(0), "$" + Math.round(mndPerTonne * 25).toLocaleString()], [""], ["WEEKLY SALES BREAKDOWN — FARMERS MARKETS"], ["Week", "Trading Days", "Boxes Sold", "Sample Boxes", "Total kg to Market", "Revenue $", "Rev/kg $", "Rev/Tonne $"]];
+  Object.keys(byWeek).sort().reverse().forEach(w => {
+    const wa = agg(byWeek[w]);
+    const wDays = new Set(byWeek[w].map(r => r.entry_date)).size;
+    const wKg = (wa.sold + wa.sampled) * BOX_KG;
+    const wRpkg = wa.sold > 0 ? wa.total / (wa.sold * BOX_KG) : 0;
+    data.push([fmtWeek(w), wDays, wa.sold, wa.sampled, wKg.toFixed(1), wa.total.toFixed(2), wRpkg.toFixed(2), Math.round(wRpkg * 1000)]);
+  });
+  data.push([""]);
+  data.push(["PER-MARKET BREAKDOWN"]);
+  data.push(["Market", "Trading Days", "Boxes Sold", "Sample Boxes", "Revenue $", "Rev/Box $", "Rev/Tonne $", "Sample-to-Sale Ratio"]);
+  Object.keys(byLoc).sort().forEach(loc => {
+    const la = agg(byLoc[loc]);
+    const lDays = new Set(byLoc[loc].map(r => r.entry_date)).size;
+    const lRpkg = la.sold > 0 ? la.total / (la.sold * BOX_KG) : 0;
+    const convRate = la.sampled > 0 ? (la.sold / la.sampled * 100).toFixed(0) + "%" : "—";
+    data.push([loc, lDays, la.sold, la.sampled, la.total.toFixed(2), (la.sold ? la.total / la.sold : 0).toFixed(2), Math.round(lRpkg * 1000), convRate]);
+  });
+  data.push([""]);
+  data.push(["NOTES & METHODOLOGY"]);
+  data.push(["Box weight", "4.5 kg per box"]);
+  data.push(["Revenue calculation", "Boxes sold × price per box (samples not charged — goodwill tastings)"]);
+  data.push(["Commercial farm gate price", "Entered manually at report generation — verify current price with Citrus Australia or local broker"]);
+  data.push(["Post-harvest cost estimate", "$425/tonne blended average: sizing $200/t, waxing $50/t, gassing $40/t, storage $120/t, freight $70/t, broker commission ~8%"]);
+  data.push(["Wastage rate", "25% blended average — industry standard blemish/size rejection (Citrus Australia / HCSA data)"]);
+  data.push(["Sources", "Citrus Australia; HCSA 2024 farmgate survey; Hort Innovation benchmarking; Tridge AU wholesale data 2026"]);
+  return XLSX.utils.aoa_to_sheet(data);
+}
+function exportFull(rows, filename) {
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sheetRaw(rows), "All Data");
+  XLSX.utils.book_append_sheet(wb, sheetByLocation(rows), "By Location");
+  XLSX.utils.book_append_sheet(wb, sheetBoxingTally(rows), "Boxing Tally");
+  XLSX.utils.book_append_sheet(wb, sheetFarmerPromo(rows), "Farmer Promotion Report");
+  XLSX.writeFile(wb, filename);
+}
+
+// ── Data table ────────────────────────────────────────────────────────────────
+function DataTable({
+  rows
+}) {
+  if (!rows.length) return /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: C.muted,
+      padding: 40,
+      fontSize: 14
+    }
+  }, "No entries for this period.");
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      overflowX: "auto"
+    }
+  }, /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, ["Date", "Location", "Type", "Rep", "Cash", "Card", "Total", "Sold", "Sampled", "End", "Receipt"].map(h => /*#__PURE__*/React.createElement("th", {
+    key: h,
+    style: {
+      padding: "9px 12px",
+      textAlign: "left",
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+      whiteSpace: "nowrap",
+      borderBottom: `1px solid ${C.border}`
+    }
+  }, h)))), /*#__PURE__*/React.createElement("tbody", null, rows.map((r, i) => /*#__PURE__*/React.createElement("tr", {
+    key: r.id || i,
+    style: {
+      borderBottom: `1px solid ${C.border}`,
+      background: i % 2 ? C.surface : "transparent"
+    }
+  }, /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 13,
+      whiteSpace: "nowrap",
+      fontWeight: 600
+    }
+  }, r.entry_date), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 13,
+      maxWidth: 120,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap"
+    }
+  }, r.location), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px"
+    }
+  }, /*#__PURE__*/React.createElement(TypeBadge, {
+    type: locType(r.location)
+  })), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 12,
+      color: C.muted
+    }
+  }, r.user_email?.split("@")[0]), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 13,
+      color: C.orange,
+      fontWeight: 600
+    }
+  }, aud(r.cash_sales)), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 13,
+      color: C.amber,
+      fontWeight: 600
+    }
+  }, aud(r.card_sales)), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 13,
+      fontWeight: 800,
+      color: C.green
+    }
+  }, aud(r.total_sales)), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 13
+    }
+  }, num(r.boxes_sold), " bx"), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 13,
+      color: C.orange
+    }
+  }, num(r.samples_used), " bx"), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 13,
+      color: C.muted
+    }
+  }, num(r.boxes_end), " bx"), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px"
+    }
+  }, r.pos_receipt_url ? /*#__PURE__*/React.createElement("a", {
+    href: r.pos_receipt_url,
+    target: "_blank",
+    rel: "noreferrer",
+    style: {
+      color: C.blue,
+      fontSize: 12,
+      fontWeight: 700
+    }
+  }, "View") : /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.border
+    }
+  }, "\u2014")))))));
+}
+
+// ── KPI row ───────────────────────────────────────────────────────────────────
+function KPIRow({
+  rows,
+  className = ""
+}) {
+  const a = agg(rows);
+  const cashPct = pct(a.cash, a.total);
+  const days = new Set(rows.map(r => r.entry_date)).size;
+  return /*#__PURE__*/React.createElement("div", {
+    className: className
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement(KPI, {
+    label: "Total Sales",
+    value: aud(a.total),
+    color: C.green,
+    className: "fu fu1"
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Cash",
+    value: aud(a.cash),
+    color: C.orange,
+    className: "fu fu2",
+    sub: `${cashPct}% of total`
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Card",
+    value: aud(a.card),
+    color: C.amber,
+    className: "fu fu3",
+    sub: `${100 - cashPct}%`
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Avg/Day",
+    value: aud(days ? Math.round(a.total / days) : 0),
+    color: C.blue,
+    className: "fu fu4",
+    sub: `${days} day${days !== 1 ? "s" : ""}`
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Boxes Sold",
+    value: a.sold,
+    color: C.green
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Samples Used",
+    value: a.sampled,
+    color: C.orange
+  })), /*#__PURE__*/React.createElement(SplitBar, {
+    cashPct: cashPct
+  }));
+}
+
+// ── OVERVIEW TAB ──────────────────────────────────────────────────────────────
+function OverviewTab({
+  rows
+}) {
+  const thisMonth = rows.filter(r => monthOf(r.entry_date) === todayStr().slice(0, 7));
+  const thisWeekStart = weekOf(todayStr());
+  const thisWeek = rows.filter(r => weekOf(r.entry_date) === thisWeekStart);
+  const todayRows = rows.filter(r => r.entry_date === todayStr());
+  const byRep = {};
+  thisMonth.forEach(r => {
+    const k = r.user_email || "?";
+    if (!byRep[k]) byRep[k] = [];
+    byRep[k].push(r);
+  });
+
+  // By location type
+  const byType = {
+    "Farmers Market": [],
+    "Shopping Centre": [],
+    "Other": []
+  };
+  thisMonth.forEach(r => {
+    const t = locType(r.location);
+    if (byType[t]) byType[t].push(r);
+  });
+  return /*#__PURE__*/React.createElement("div", null, todayRows.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 24
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.orange,
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: 10
+    }
+  }, "Today \u2014 ", todayStr()), /*#__PURE__*/React.createElement(KPIRow, {
+    rows: todayRows
+  }), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement(DataTable, {
+    rows: todayRows
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 24
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.blue,
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: 10
+    }
+  }, "This Week \u2014 ", fmtWeek(thisWeekStart)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      marginBottom: 12
+    }
+  }, (() => {
+    const a = agg(thisWeek);
+    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(KPI, {
+      label: "Week Sales",
+      value: aud(a.total),
+      color: C.green,
+      className: "fu fu1"
+    }), /*#__PURE__*/React.createElement(KPI, {
+      label: "Cash",
+      value: aud(a.cash),
+      color: C.orange,
+      className: "fu fu2"
+    }), /*#__PURE__*/React.createElement(KPI, {
+      label: "Card",
+      value: aud(a.card),
+      color: C.amber,
+      className: "fu fu3"
+    }), /*#__PURE__*/React.createElement(KPI, {
+      label: "Boxes Sold",
+      value: a.sold,
+      color: C.green,
+      className: "fu fu4"
+    }));
+  })())), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 24
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.green,
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: 10
+    }
+  }, "This Month \u2014 ", todayStr().slice(0, 7)), /*#__PURE__*/React.createElement(KPIRow, {
+    rows: thisMonth
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 24
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: 10
+    }
+  }, "By Venue Type \u2014 This Month"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      marginBottom: 14
+    }
+  }, [["Farmers Market", C.green], ["Shopping Centre", C.blue], ["Other", C.muted]].map(([type, col]) => {
+    const a = agg(byType[type]);
+    return /*#__PURE__*/React.createElement("div", {
+      key: type,
+      style: {
+        background: C.card,
+        border: `1px solid ${C.border}`,
+        borderRadius: C.radius,
+        padding: "14px 16px",
+        flex: 1,
+        minWidth: 140
+      }
+    }, /*#__PURE__*/React.createElement(TypeBadge, {
+      type: type
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Syne',sans-serif",
+        fontSize: 22,
+        fontWeight: 800,
+        color: col,
+        marginTop: 8
+      }
+    }, aud(a.total)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.muted,
+        marginTop: 4
+      }
+    }, a.sold, " boxes \xB7 ", a.entries, " visits"));
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 24
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: 10
+    }
+  }, "Rep Performance \u2014 This Month"), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, ["Rep", "Days", "Cash", "Card", "Total", "Boxes", "Sampled", "Avg/Day"].map(h => /*#__PURE__*/React.createElement("th", {
+    key: h,
+    style: {
+      padding: "9px 12px",
+      textAlign: "left",
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+      borderBottom: `1px solid ${C.border}`
+    }
+  }, h)))), /*#__PURE__*/React.createElement("tbody", null, Object.keys(byRep).sort((a, b) => agg(byRep[b]).total - agg(byRep[a]).total).map((rep, i) => {
+    const a = agg(byRep[rep]);
+    const days = new Set(byRep[rep].map(r => r.entry_date)).size;
+    return /*#__PURE__*/React.createElement("tr", {
+      key: rep,
+      style: {
+        borderBottom: `1px solid ${C.border}`,
+        background: i % 2 ? C.surface : "transparent"
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        fontWeight: 700,
+        fontSize: 13
+      }
+    }, rep.split("@")[0]), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        color: C.muted,
+        fontSize: 13
+      }
+    }, days), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        color: C.orange,
+        fontSize: 13,
+        fontWeight: 600
+      }
+    }, aud(a.cash)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        color: C.amber,
+        fontSize: 13,
+        fontWeight: 600
+      }
+    }, aud(a.card)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        color: C.green,
+        fontWeight: 800,
+        fontSize: 14
+      }
+    }, aud(a.total)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        fontSize: 13
+      }
+    }, a.sold), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        fontSize: 13,
+        color: C.orange
+      }
+    }, a.sampled), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        color: C.blue,
+        fontSize: 13
+      }
+    }, aud(days ? Math.round(a.total / days) : 0)));
+  }))))), (() => {
+    const weekRows = thisWeek.filter(r => r.boxing_tally && Object.keys(r.boxing_tally).length > 0);
+    if (!weekRows.length) return null;
+    const byPerson = {};
+    weekRows.forEach(r => Object.entries(r.boxing_tally || {}).forEach(([n, v]) => {
+      byPerson[n] = (byPerson[n] || 0) + num(v);
+    }));
+    const weekTotal = Object.values(byPerson).reduce((a, b) => a + b, 0);
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 24
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Syne',sans-serif",
+        fontWeight: 800,
+        fontSize: 13,
+        color: C.muted,
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        marginBottom: 10
+      }
+    }, "Morning Boxing \u2014 This Week"), /*#__PURE__*/React.createElement(Card, {
+      style: {
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, ["Person", "Boxes Packed This Week"].map(h => /*#__PURE__*/React.createElement("th", {
+      key: h,
+      style: {
+        padding: "9px 12px",
+        textAlign: "left",
+        fontSize: 11,
+        fontWeight: 700,
+        color: C.muted,
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+        borderBottom: `1px solid ${C.border}`
+      }
+    }, h)))), /*#__PURE__*/React.createElement("tbody", null, Object.entries(byPerson).sort((a, b) => b[1] - a[1]).map(([name, boxes], i) => /*#__PURE__*/React.createElement("tr", {
+      key: name,
+      style: {
+        borderBottom: `1px solid ${C.border}`,
+        background: i % 2 ? C.surface : "transparent"
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        fontWeight: 700,
+        fontSize: 13
+      }
+    }, name), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        color: C.green,
+        fontWeight: 800,
+        fontSize: 14
+      }
+    }, boxes, " boxes")))), /*#__PURE__*/React.createElement("tfoot", null, /*#__PURE__*/React.createElement("tr", {
+      style: {
+        background: C.cardHi,
+        fontWeight: 700
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        color: C.muted
+      }
+    }, "TEAM TOTAL"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 12px",
+        color: C.green
+      }
+    }, weekTotal, " boxes"))))));
+  })());
+}
+
+// ── WEEKLY TAB ────────────────────────────────────────────────────────────────
+function WeeklyTab({
+  rows
+}) {
+  const byWeek = {};
+  rows.forEach(r => {
+    const w = weekOf(r.entry_date);
+    if (!byWeek[w]) byWeek[w] = [];
+    byWeek[w].push(r);
+  });
+  const weeks = Object.keys(byWeek).sort().reverse();
+  const [sel, setSel] = useState(weeks[0] || "");
+  const filtered = byWeek[sel] || [];
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: 10,
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement(Sel, {
+    value: sel,
+    onChange: setSel
+  }, weeks.map(w => /*#__PURE__*/React.createElement("option", {
+    key: w,
+    value: w
+  }, fmtWeek(w)))), /*#__PURE__*/React.createElement(DlBtn, {
+    onClick: () => {
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, sheetRaw(filtered), "Entries");
+      XLSX.utils.book_append_sheet(wb, sheetByLocation(filtered), "By Location");
+      XLSX.writeFile(wb, `Mandorons_Week_${sel}.xlsx`);
+    },
+    label: "Export week"
+  })), /*#__PURE__*/React.createElement(KPIRow, {
+    rows: filtered
+  }), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement(DataTable, {
+    rows: filtered
+  })));
+}
+
+// ── MONTHLY TAB ───────────────────────────────────────────────────────────────
+function MonthlyTab({
+  rows
+}) {
+  const byMonth = {};
+  rows.forEach(r => {
+    const m = monthOf(r.entry_date);
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(r);
+  });
+  const months = Object.keys(byMonth).sort().reverse();
+  const [sel, setSel] = useState(months[0] || "");
+  const filtered = byMonth[sel] || [];
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: 10,
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement(Sel, {
+    value: sel,
+    onChange: setSel
+  }, months.map(m => /*#__PURE__*/React.createElement("option", {
+    key: m,
+    value: m
+  }, m))), /*#__PURE__*/React.createElement(DlBtn, {
+    onClick: () => {
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, sheetRaw(filtered), "Entries");
+      XLSX.utils.book_append_sheet(wb, sheetByLocation(filtered), "By Location");
+      XLSX.utils.book_append_sheet(wb, sheetFarmerPromo(filtered), "Farmer Promotion");
+      XLSX.writeFile(wb, `Mandorons_${sel}.xlsx`);
+    },
+    label: "Export month"
+  })), /*#__PURE__*/React.createElement(KPIRow, {
+    rows: filtered
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      marginBottom: 16
+    }
+  }, [["Farmers Market", C.green], ["Shopping Centre", C.blue], ["Other", C.muted]].map(([type, col]) => {
+    const typeRows = filtered.filter(r => locType(r.location) === type);
+    const a = agg(typeRows);
+    return /*#__PURE__*/React.createElement("div", {
+      key: type,
+      style: {
+        background: C.card,
+        border: `1px solid ${C.border}`,
+        borderRadius: C.radius,
+        padding: "12px 16px",
+        flex: 1,
+        minWidth: 130
+      }
+    }, /*#__PURE__*/React.createElement(TypeBadge, {
+      type: type
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Syne',sans-serif",
+        fontSize: 20,
+        fontWeight: 800,
+        color: col,
+        marginTop: 8
+      }
+    }, aud(a.total)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.muted,
+        marginTop: 3
+      }
+    }, a.sold, " boxes \xB7 ", a.sampled, " sampled"));
+  })), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement(DataTable, {
+    rows: filtered
+  })));
+}
+
+// ── ALL DATA TAB ──────────────────────────────────────────────────────────────
+function AllDataTab({
+  rows
+}) {
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("All");
+  const filtered = rows.filter(r => {
+    const matchSearch = (r.location || "").toLowerCase().includes(search.toLowerCase()) || (r.user_email || "").toLowerCase().includes(search.toLowerCase()) || (r.entry_date || "").includes(search);
+    const matchType = typeFilter === "All" || locType(r.location) === typeFilter;
+    return matchSearch && matchType;
+  });
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      marginBottom: 14,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    placeholder: "Search location, rep, date\u2026",
+    value: search,
+    onChange: e => setSearch(e.target.value),
+    style: {
+      flex: 1,
+      minWidth: 180,
+      background: C.surface,
+      border: `1.5px solid ${C.border}`,
+      borderRadius: 9,
+      color: C.text,
+      padding: "9px 14px",
+      fontSize: 14,
+      outline: "none"
+    }
+  }), /*#__PURE__*/React.createElement(Sel, {
+    value: typeFilter,
+    onChange: setTypeFilter
+  }, ["All", "Farmers Market", "Shopping Centre", "Other"].map(t => /*#__PURE__*/React.createElement("option", {
+    key: t,
+    value: t
+  }, t))), /*#__PURE__*/React.createElement(DlBtn, {
+    onClick: () => exportFull(rows, `Mandorons_AllData_${todayStr()}.xlsx`),
+    label: "Export all"
+  })), /*#__PURE__*/React.createElement(KPIRow, {
+    rows: filtered
+  }), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement(DataTable, {
+    rows: filtered
+  })));
+}
+
+// ── FARMER PROMOTION TAB ──────────────────────────────────────────────────────
+const BOX_KG = 4.5;
+const COMM_PROCESSING = 425; // $/tonne blended post-harvest cost estimate
+
+function FarmerPromoTab({
+  rows
+}) {
+  const [farmGate, setFarmGate] = useState(520);
+  const [inputVal, setInputVal] = useState("520");
+  const fmRows = rows.filter(r => locType(r.location) === "Farmers Market");
+  const totFM = agg(fmRows);
+  const fmDays = new Set(fmRows.map(r => r.entry_date)).size;
+  const totalKgSold = totFM.sold * BOX_KG;
+  const totalKgSampled = totFM.sampled * BOX_KG;
+  const totalKg = totalKgSold + totalKgSampled;
+  const totalTonnes = totalKg / 1000;
+  const mndRpkg = totFM.sold > 0 ? totFM.total / (totFM.sold * BOX_KG) : 0;
+  const mndPerTonne = Math.round(mndRpkg * 1000);
+  const commWastage = 0.25;
+  const commNetTonne = Math.max(0, Math.round(farmGate * (1 - commWastage) - COMM_PROCESSING));
+  const advantage = mndPerTonne - commNetTonne;
+  const multiplier = commNetTonne > 0 ? (mndPerTonne / commNetTonne).toFixed(1) + "x" : "∞";
+
+  // Weekly breakdown — farmers markets only
+  const byWeek = {};
+  fmRows.forEach(r => {
+    const w = weekOf(r.entry_date);
+    if (!byWeek[w]) byWeek[w] = [];
+    byWeek[w].push(r);
+  });
+  const weeks = Object.keys(byWeek).sort().reverse();
+
+  // Per-market
+  const byLoc = {};
+  fmRows.forEach(r => {
+    const k = r.location;
+    if (!byLoc[k]) byLoc[k] = [];
+    byLoc[k].push(r);
+  });
+  function handleFarmGate(v) {
+    setInputVal(v);
+    const n = parseInt(v);
+    if (!isNaN(n) && n > 0) setFarmGate(n);
+  }
+  function doExport() {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheetFarmerPromo(rows, farmGate), "Farmer Promotion Report");
+    XLSX.utils.book_append_sheet(wb, sheetByLocation(rows), "All Locations");
+    XLSX.utils.book_append_sheet(wb, sheetRaw(rows), "Raw Data");
+    XLSX.writeFile(wb, `Mandorons_FarmerReport_${todayStr()}.xlsx`);
+  }
+  const secStyle = {
+    fontFamily: "'Syne',sans-serif",
+    fontWeight: 800,
+    fontSize: 11,
+    color: C.muted,
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    marginBottom: 10,
+    marginTop: 20
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.green}12`,
+      border: `1px solid ${C.green}30`,
+      borderRadius: C.radius,
+      padding: "16px 18px",
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 15,
+      color: C.green,
+      marginBottom: 5
+    }
+  }, "Farmer Grafting Promotion Report"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: C.muted,
+      lineHeight: 1.6
+    }
+  }, "Built from your real weekly sales data at Melbourne farmers markets. Shows what grafting to Mandorons returns compared to the commercial orange farm gate price \u2014 which you enter manually below as it changes.")), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      marginBottom: 16,
+      padding: "16px 18px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.amber,
+      marginBottom: 10
+    }
+  }, "Current Commercial Orange Farm Gate Price"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 12,
+      lineHeight: 1.5
+    }
+  }, "Enter today's farm gate price for standard commercial oranges. This is the price a grower receives per tonne before any packing, sorting or processing costs. Check with your local broker or Citrus Australia for current rates."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      flexWrap: "wrap"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      background: C.surface,
+      border: `2px solid ${C.amber}`,
+      borderRadius: 10,
+      padding: "8px 14px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.amber,
+      fontWeight: 800,
+      fontSize: 16
+    }
+  }, "$"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "100",
+    max: "2000",
+    step: "10",
+    value: inputVal,
+    onChange: e => handleFarmGate(e.target.value),
+    style: {
+      background: "transparent",
+      border: "none",
+      color: C.text,
+      fontSize: 18,
+      fontWeight: 800,
+      width: 80,
+      outline: "none"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.muted,
+      fontSize: 13
+    }
+  }, "/tonne")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      flexWrap: "wrap"
+    }
+  }, [450, 500, 520, 550, 600].map(v => /*#__PURE__*/React.createElement("button", {
+    key: v,
+    onClick: () => {
+      setFarmGate(v);
+      setInputVal(String(v));
+    },
+    style: {
+      padding: "6px 12px",
+      borderRadius: 8,
+      border: `1px solid ${farmGate === v ? C.amber : C.border}`,
+      background: farmGate === v ? `${C.amber}20` : C.surface,
+      color: farmGate === v ? C.amber : C.muted,
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer"
+    }
+  }, "$", v)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10,
+      fontSize: 12,
+      color: C.muted
+    }
+  }, "Typical Australian range 2025\u201326: $450\u2013$600/tonne \xB7 Often below production cost of $600\u2013$900/tonne")), /*#__PURE__*/React.createElement("div", {
+    style: secStyle
+  }, "Income per tonne \u2014 head to head"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10,
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.red}12`,
+      border: `1px solid ${C.red}30`,
+      borderRadius: C.radius,
+      padding: "14px 16px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.red,
+      fontWeight: 700,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 6
+    }
+  }, "Commercial orange"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontSize: 22,
+      fontWeight: 800,
+      color: C.red
+    }
+  }, aud(farmGate), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      fontWeight: 400
+    }
+  }, "/t farm gate")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginTop: 6
+    }
+  }, "Less ~$", COMM_PROCESSING, "/t processing + 25% crop wastage"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontSize: 18,
+      fontWeight: 800,
+      color: C.red,
+      marginTop: 8,
+      borderTop: `1px solid ${C.red}20`,
+      paddingTop: 8
+    }
+  }, commNetTonne <= 0 ? "Loss-making" : aud(commNetTonne) + " net/t")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.green}12`,
+      border: `1px solid ${C.green}30`,
+      borderRadius: C.radius,
+      padding: "14px 16px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.green,
+      fontWeight: 700,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 6
+    }
+  }, "Mandorons direct"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontSize: 22,
+      fontWeight: 800,
+      color: C.green
+    }
+  }, totFM.sold > 0 ? aud(mndPerTonne) : "—", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      fontWeight: 400
+    }
+  }, "/t")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginTop: 6
+    }
+  }, "Zero sorting, waxing, gassing, storage or broker"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontSize: 18,
+      fontWeight: 800,
+      color: C.green,
+      marginTop: 8,
+      borderTop: `1px solid ${C.green}20`,
+      paddingTop: 8
+    }
+  }, totFM.sold > 0 ? aud(mndPerTonne) + " net/t" : "No sales data yet"))), totFM.sold > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.green}15`,
+      border: `1px solid ${C.green}30`,
+      borderRadius: C.radius,
+      padding: "14px 18px",
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 4
+    }
+  }, "Mandorons advantage per tonne"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontSize: 28,
+      fontWeight: 800,
+      color: C.green
+    }
+  }, aud(advantage), "/t more")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "right"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 4
+    }
+  }, "Multiplier vs commercial"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontSize: 28,
+      fontWeight: 800,
+      color: C.green
+    }
+  }, multiplier)))), /*#__PURE__*/React.createElement("div", {
+    style: secStyle
+  }, "Mandorons \u2014 all farmers markets data"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement(KPI, {
+    label: "Total Revenue (FM)",
+    value: aud(totFM.total),
+    color: C.green,
+    className: "fu fu1"
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Avg Revenue/Day",
+    value: aud(fmDays ? Math.round(totFM.total / fmDays) : 0),
+    color: C.orange,
+    className: "fu fu2",
+    sub: `${fmDays} trading days`
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Boxes Sold",
+    value: `${totFM.sold} boxes`,
+    color: C.green,
+    className: "fu fu3"
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Tasting Samples",
+    value: `${totFM.sampled} boxes`,
+    color: C.orange,
+    className: "fu fu4",
+    sub: `${totalKgSampled.toFixed(0)} kg to market`
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Total kg to Market",
+    value: `${totalKg.toFixed(0)} kg`,
+    color: C.amber,
+    sub: `${totalTonnes.toFixed(2)} tonnes`
+  }), /*#__PURE__*/React.createElement(KPI, {
+    label: "Revenue per kg",
+    value: audf(mndRpkg),
+    color: C.green
+  })), totFM.sold > 0 && /*#__PURE__*/React.createElement(Card, {
+    style: {
+      marginBottom: 16,
+      padding: "14px 16px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      fontWeight: 700,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 12
+    }
+  }, "Income per tonne \u2014 visual"), [["Commercial farm gate", farmGate, C.red, "100%"], ["Commercial net (after costs)", commNetTonne, commNetTonne <= 0 ? C.red : C.amber, `${Math.round(Math.max(0, commNetTonne) / farmGate * 100)}%`], ["Mandorons per tonne", mndPerTonne, C.green, "100%"]].map(([lbl, val, col, pctW]) => {
+    const barPct = lbl === "Mandorons per tonne" ? 100 : Math.round(Math.max(1, val / mndPerTonne * 100));
+    return /*#__PURE__*/React.createElement("div", {
+      key: lbl,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.muted,
+        width: 170,
+        flexShrink: 0
+      }
+    }, lbl), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        height: 22,
+        background: C.surface,
+        borderRadius: 4,
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        width: `${barPct}%`,
+        height: "100%",
+        background: `${col}30`,
+        border: `1px solid ${col}50`,
+        borderRadius: 4,
+        display: "flex",
+        alignItems: "center",
+        paddingLeft: 8,
+        minWidth: 2
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        fontWeight: 700,
+        color: col,
+        whiteSpace: "nowrap"
+      }
+    }, val <= 0 ? "loss-making" : aud(val) + "/t"))));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: secStyle
+  }, "Weekly sales \u2014 farmers markets"), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      overflow: "hidden",
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, ["Week", "Days", "Boxes Sold", "Sampled", "Total kg", "Revenue", "Rev/kg", "Rev/Tonne"].map(h => /*#__PURE__*/React.createElement("th", {
+    key: h,
+    style: {
+      padding: "9px 12px",
+      textAlign: "left",
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+      borderBottom: `1px solid ${C.border}`,
+      whiteSpace: "nowrap"
+    }
+  }, h)))), /*#__PURE__*/React.createElement("tbody", null, weeks.length === 0 ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    colSpan: 8,
+    style: {
+      padding: "24px 12px",
+      textAlign: "center",
+      color: C.muted,
+      fontSize: 13
+    }
+  }, "No farmers market entries yet")) : weeks.map((w, i) => {
+    const wa = agg(byWeek[w]);
+    const wDays = new Set(byWeek[w].map(r => r.entry_date)).size;
+    const wKg = (wa.sold + wa.sampled) * BOX_KG;
+    const wRpkg = wa.sold > 0 ? wa.total / (wa.sold * BOX_KG) : 0;
+    return /*#__PURE__*/React.createElement("tr", {
+      key: w,
+      style: {
+        borderBottom: `1px solid ${C.border}`,
+        background: i % 2 ? C.surface : "transparent"
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        fontSize: 12,
+        whiteSpace: "nowrap",
+        fontWeight: 600
+      }
+    }, fmtWeek(w)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        fontSize: 13,
+        color: C.muted
+      }
+    }, wDays), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        fontSize: 13,
+        color: C.green,
+        fontWeight: 600
+      }
+    }, wa.sold, " bx"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        fontSize: 13,
+        color: C.orange
+      }
+    }, wa.sampled, " bx"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        fontSize: 13,
+        color: C.muted
+      }
+    }, wKg.toFixed(1), " kg"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        fontSize: 13,
+        fontWeight: 800,
+        color: C.green
+      }
+    }, aud(wa.total)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        fontSize: 13,
+        color: C.amber
+      }
+    }, audf(wRpkg)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "9px 12px",
+        fontSize: 13,
+        color: C.green
+      }
+    }, aud(wRpkg * 1000)));
+  })), weeks.length > 0 && /*#__PURE__*/React.createElement("tfoot", null, /*#__PURE__*/React.createElement("tr", {
+    style: {
+      borderTop: `1px solid ${C.border}`,
+      background: C.cardHi,
+      fontWeight: 700
+    }
+  }, /*#__PURE__*/React.createElement("td", {
+    colSpan: 2,
+    style: {
+      padding: "10px 12px",
+      color: C.muted
+    }
+  }, "TOTAL"), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "10px 12px",
+      color: C.green
+    }
+  }, totFM.sold, " bx"), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "10px 12px",
+      color: C.orange
+    }
+  }, totFM.sampled, " bx"), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "10px 12px",
+      color: C.muted
+    }
+  }, totalKg.toFixed(1), " kg"), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "10px 12px",
+      color: C.green
+    }
+  }, aud(totFM.total)), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "10px 12px",
+      color: C.amber
+    }
+  }, audf(mndRpkg)), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "10px 12px",
+      color: C.green
+    }
+  }, aud(mndPerTonne)))))), /*#__PURE__*/React.createElement("div", {
+    style: secStyle
+  }, "Performance by market"), Object.keys(byLoc).sort().map(loc => {
+    const la = agg(byLoc[loc]);
+    const lDays = new Set(byLoc[loc].map(r => r.entry_date)).size;
+    const lRpkg = la.sold > 0 ? la.total / (la.sold * BOX_KG) : 0;
+    const lRpTonne = Math.round(lRpkg * 1000);
+    const convRate = la.sampled ? Math.round(la.sold / la.sampled * 100) : 0;
+    const lKg = (la.sold + la.sampled) * BOX_KG;
+    return /*#__PURE__*/React.createElement(Card, {
+      key: loc,
+      style: {
+        marginBottom: 12,
+        padding: "14px 16px"
+      },
+      className: "fu"
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        marginBottom: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Syne',sans-serif",
+        fontWeight: 800,
+        fontSize: 15,
+        color: C.text,
+        marginBottom: 4
+      }
+    }, loc), /*#__PURE__*/React.createElement(TypeBadge, {
+      type: "Farmers Market"
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "right"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Syne',sans-serif",
+        fontSize: 22,
+        fontWeight: 800,
+        color: C.green
+      }
+    }, aud(la.total)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C.muted
+      }
+    }, lDays, " trading days"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "grid",
+        gridTemplateColumns: "repeat(3,1fr)",
+        gap: 8,
+        marginBottom: la.sampled > 0 ? 10 : 0
+      }
+    }, [["Boxes sold", `${la.sold} boxes`, C.green], ["Sampled", `${la.sampled} boxes`, C.orange], ["Total kg", `${lKg.toFixed(1)} kg`, C.amber], ["Rev/box", audf(la.sold ? la.total / la.sold : 0), C.green], ["Rev/kg", audf(lRpkg), C.amber], ["Rev/tonne", aud(lRpTonne), C.green]].map(([lbl, val, col]) => /*#__PURE__*/React.createElement("div", {
+      key: lbl,
+      style: {
+        background: C.cardHi,
+        borderRadius: 8,
+        padding: "8px 10px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 9,
+        color: C.muted,
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+        marginBottom: 2
+      }
+    }, lbl), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: col
+      }
+    }, val)))), la.sampled > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: `${C.orange}10`,
+        border: `1px solid ${C.orange}25`,
+        borderRadius: 8,
+        padding: "8px 12px",
+        fontSize: 12,
+        color: C.orange
+      }
+    }, "Sample-to-sale ratio: ", convRate, "% \u2014 every tasting box opened drove ", convRate, " boxes sold"));
+  }), fmRows.length === 0 && /*#__PURE__*/React.createElement(Card, {
+    style: {
+      textAlign: "center",
+      color: C.muted,
+      padding: 40,
+      fontSize: 14
+    }
+  }, "No farmers market entries yet. Start logging sales at Coburg, Eltham, St Kilda or Carlton."), totFM.sold > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: secStyle
+  }, "1-hectare block projection"), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      marginBottom: 16,
+      overflow: "hidden"
+    }
+  }, /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, ["", "Commercial oranges", "Mandorons (grafted)"].map(h => /*#__PURE__*/React.createElement("th", {
+    key: h,
+    style: {
+      padding: "9px 12px",
+      textAlign: "left",
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+      borderBottom: `1px solid ${C.border}`
+    }
+  }, h)))), /*#__PURE__*/React.createElement("tbody", null, [["Yield/ha", "25–35 tonnes", "20–25 tonnes"], ["Crop wasted", "5–9 tonnes rejected/juiced", "Zero — all fruit sold as grown"], ["Farm gate/market", `${aud(farmGate)}/tonne`, `${aud(mndPerTonne)}/tonne`], ["Processing costs", "−$425/tonne + wastage loss", "$0 — picked, packed, sold direct"], ["Net at 20t/ha", commNetTonne <= 0 ? "Loss-making" : `${aud(commNetTonne * 20)}`, aud(mndPerTonne * 20)], ["Net at 25t/ha", commNetTonne <= 0 ? "Loss-making" : `${aud(commNetTonne * 25)}`, aud(mndPerTonne * 25)]].map(([label, comm, mnd], i) => /*#__PURE__*/React.createElement("tr", {
+    key: label,
+    style: {
+      borderBottom: `1px solid ${C.border}`,
+      background: i % 2 ? C.surface : "transparent"
+    }
+  }, /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "9px 12px",
+      fontSize: 13,
+      color: C.muted,
+      fontWeight: 600
+    }
+  }, label), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "9px 12px",
+      fontSize: 13,
+      color: C.red
+    }
+  }, comm), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "9px 12px",
+      fontSize: 13,
+      color: C.green,
+      fontWeight: i >= 4 ? 700 : 400
+    }
+  }, mnd))))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      lineHeight: 1.7,
+      marginBottom: 16,
+      padding: "12px 0",
+      borderTop: `1px solid ${C.border}`
+    }
+  }, "Commercial farm gate price: entered manually \u2014 confirm with local broker or Citrus Australia. Post-harvest cost estimate $425/t blended: sizing/grading $200/t, waxing $50/t, ethylene gassing $40/t, cool storage $120/t, freight $70/t, broker commission ~8%. Wastage 25%: industry standard blemish/size rejection (HCSA 2024, Citrus Australia grower submissions). Mandorons box weight: 4.5 kg. Revenue per tonne derived from actual weekly sales data recorded at Melbourne farmers markets."), /*#__PURE__*/React.createElement(DlBtn, {
+    onClick: doExport,
+    label: "Download Farmer Promotion Report (XLSX)"
+  }));
+}
+
+// ── BONUSES TAB ───────────────────────────────────────────────────────────────
+function BonusesTab({
+  rows,
+  user
+}) {
+  const [paidRecords, setPaidRecords] = useState([]);
+  const [paying, setPaying] = useState(null); // email being processed
+  const [msg, setMsg] = useState("");
+  const [selWeek, setSelWeek] = useState("");
+
+  // Derive all weeks present in data
+  const allWeeks = [...new Set(rows.map(r => weekOf(r.entry_date)))].sort().reverse();
+  const week = selWeek || allWeeks[0] || "";
+  useEffect(() => {
+    loadPaid();
+  }, []);
+  async function loadPaid() {
+    const r = await sb.select("bonus_payments", "order=week_start.desc&limit=200");
+    if (Array.isArray(r)) setPaidRecords(r);
+  }
+
+  // Filter entries to selected week
+  const weekRows = rows.filter(r => weekOf(r.entry_date) === week);
+
+  // Group by staff member (user_email)
+  const byStaff = {};
+  weekRows.forEach(r => {
+    const k = r.user_email || "unknown";
+    if (!byStaff[k]) byStaff[k] = [];
+    byStaff[k].push(r);
+  });
+  const paidThisWeek = new Set(paidRecords.filter(p => p.week_start === week).map(p => p.user_email));
+  async function markPaid(email, salesTotal, bonusAmt) {
+    setPaying(email);
+    setMsg("");
+    const row = {
+      week_start: week,
+      user_email: email,
+      sales_total: salesTotal,
+      bonus_amount: bonusAmt,
+      paid_at: new Date().toISOString(),
+      paid_by: user?.email || "admin"
+    };
+    const r = await sb.upsert("bonus_payments", row, "week_start,user_email");
+    setPaying(null);
+    if (Array.isArray(r) && r[0]) {
+      setMsg(`✓ ${email.split("@")[0]}'s bonus recorded as paid.`);
+      loadPaid();
+    } else setMsg("❌ Error recording payment.");
+  }
+  async function unmarkPaid(email) {
+    setPaying(email);
+    setMsg("");
+    // Delete the payment record
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/bonus_payments?week_start=eq.${week}&user_email=eq.${encodeURIComponent(email)}`, {
+      method: "DELETE",
+      headers: {
+        ...sb.h()
+      }
+    });
+    setPaying(null);
+    if (r.ok) {
+      setMsg(`↩ ${email.split("@")[0]}'s payment undone.`);
+      loadPaid();
+    } else setMsg("❌ Error undoing payment.");
+  }
+  const fmtWeek = w => {
+    if (!w) return "";
+    const s = new Date(w + "T00:00:00");
+    const e = new Date(s);
+    e.setDate(e.getDate() + 6);
+    return `${s.toLocaleDateString("en-AU", {
+      day: "numeric",
+      month: "short"
+    })} – ${e.toLocaleDateString("en-AU", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    })}`;
+  };
+
+  // Historical paid records
+  const histByWeek = {};
+  paidRecords.forEach(p => {
+    if (!histByWeek[p.week_start]) histByWeek[p.week_start] = [];
+    histByWeek[p.week_start].push(p);
+  });
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: 10,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 14,
+      color: C.orange,
+      marginBottom: 4
+    }
+  }, "\uD83D\uDCB5 Staff Bonus Payments"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted
+    }
+  }, "$40 bonus per $1,000 in daily sales \xB7 Mark paid to keep records")), /*#__PURE__*/React.createElement(Sel, {
+    value: week,
+    onChange: setSelWeek
+  }, allWeeks.map(w => /*#__PURE__*/React.createElement("option", {
+    key: w,
+    value: w
+  }, fmtWeek(w))))), week && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.text,
+      marginBottom: 12
+    }
+  }, "Week of ", fmtWeek(week)), Object.keys(byStaff).length === 0 && /*#__PURE__*/React.createElement(Card, {
+    style: {
+      textAlign: "center",
+      color: C.muted,
+      padding: 40,
+      fontSize: 14
+    }
+  }, "No entries for this week."), Object.entries(byStaff).sort((a, b) => {
+    const ba = a[1].reduce((s, e) => s + calcBonus(num(e.total_sales)), 0);
+    const bb = b[1].reduce((s, e) => s + calcBonus(num(e.total_sales)), 0);
+    return bb - ba;
+  }).map(([email, entries]) => {
+    const name = email.split("@")[0];
+    const totalSales = entries.reduce((a, e) => a + num(e.total_sales), 0);
+    const totalBonus = entries.reduce((a, e) => a + calcBonus(num(e.total_sales)), 0);
+    const isPaid = paidThisWeek.has(email);
+    const isProcessing = paying === email;
+    return /*#__PURE__*/React.createElement(Card, {
+      key: email,
+      style: {
+        marginBottom: 14,
+        overflow: "hidden"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        padding: "14px 16px",
+        borderBottom: `1px solid ${C.border}`,
+        background: isPaid ? `${C.green}08` : C.card
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Syne',sans-serif",
+        fontWeight: 800,
+        fontSize: 17,
+        color: C.text,
+        marginBottom: 3,
+        textTransform: "capitalize"
+      }
+    }, name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.muted
+      }
+    }, entries.length, " entries \xB7 ", [...new Set(entries.map(e => e.entry_date))].length, " days")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "right"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 22,
+        fontWeight: 900,
+        color: C.green
+      }
+    }, aud(totalSales)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 15,
+        fontWeight: 800,
+        color: totalBonus > 0 ? C.orange : C.muted
+      }
+    }, totalBonus > 0 ? `$${totalBonus} bonus` : "No bonus"), isPaid && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C.green,
+        fontWeight: 700,
+        marginTop: 2
+      }
+    }, "\u2713 PAID"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "8px 16px"
+      }
+    }, entries.sort((a, b) => a.entry_date.localeCompare(b.entry_date)).map((e, i) => {
+      const bonus = calcBonus(num(e.total_sales));
+      return /*#__PURE__*/React.createElement("div", {
+        key: i,
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "7px 0",
+          borderBottom: i < entries.length - 1 ? `1px solid ${C.border}` : "none",
+          fontSize: 13
+        }
+      }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.muted,
+          fontWeight: 600
+        }
+      }, e.entry_date), /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.muted,
+          margin: "0 6px"
+        }
+      }, "\xB7"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.text
+        }
+      }, e.location)), /*#__PURE__*/React.createElement("div", {
+        style: {
+          textAlign: "right"
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontWeight: 700,
+          color: C.green
+        }
+      }, aud(e.total_sales)), bonus > 0 && /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.orange,
+          fontWeight: 700,
+          marginLeft: 8
+        }
+      }, "+$", bonus)));
+    })), totalBonus > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: "12px 16px",
+        background: C.surface,
+        borderTop: `1px solid ${C.border}`,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700
+      }
+    }, "Total to pay: ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.orange
+      }
+    }, "$", totalBonus)), isPaid ? /*#__PURE__*/React.createElement("button", {
+      onClick: () => unmarkPaid(email),
+      disabled: isProcessing,
+      style: {
+        background: "none",
+        border: `1.5px solid ${C.border}`,
+        color: C.muted,
+        borderRadius: 9,
+        padding: "7px 14px",
+        fontWeight: 700,
+        fontSize: 12,
+        cursor: "pointer"
+      }
+    }, isProcessing ? "…" : "↩ Undo") : /*#__PURE__*/React.createElement("button", {
+      onClick: () => markPaid(email, totalSales, totalBonus),
+      disabled: isProcessing,
+      style: {
+        background: isProcessing ? C.border : C.green,
+        border: "none",
+        color: "#fff",
+        borderRadius: 9,
+        padding: "9px 18px",
+        fontWeight: 800,
+        fontSize: 13,
+        cursor: isProcessing ? "not-allowed" : "pointer",
+        boxShadow: `0 4px 16px ${C.green}40`
+      }
+    }, isProcessing ? "Recording…" : `✓ Mark $${totalBonus} Paid`)));
+  }), msg && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: "12px 16px",
+      borderRadius: 12,
+      background: `${C.green}15`,
+      border: `1px solid ${C.green}30`,
+      color: C.green,
+      fontWeight: 700,
+      fontSize: 13,
+      marginBottom: 16
+    }
+  }, msg), Object.keys(byStaff).length > 0 && /*#__PURE__*/React.createElement(Card, {
+    style: {
+      padding: "14px 16px",
+      marginBottom: 24
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 10
+    }
+  }, "Week Total"), (() => {
+    const totalSales = weekRows.reduce((a, e) => a + num(e.total_sales), 0);
+    const totalBonus = Object.values(byStaff).reduce((a, entries) => a + entries.reduce((s, e) => s + calcBonus(num(e.total_sales)), 0), 0);
+    const paidBonus = paidRecords.filter(p => p.week_start === week).reduce((a, p) => a + num(p.bonus_amount), 0);
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 10,
+        flexWrap: "wrap"
+      }
+    }, /*#__PURE__*/React.createElement(KPI, {
+      label: "Team Sales",
+      value: aud(totalSales),
+      color: C.green
+    }), /*#__PURE__*/React.createElement(KPI, {
+      label: "Total Bonuses",
+      value: `$${totalBonus}`,
+      color: C.orange,
+      sub: `$${paidBonus} paid · $${totalBonus - paidBonus} pending`
+    }), /*#__PURE__*/React.createElement(KPI, {
+      label: "Staff",
+      value: Object.keys(byStaff).length,
+      color: C.muted
+    }));
+  })()), paidRecords.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.08em",
+      marginBottom: 10
+    }
+  }, "Payment History"), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      overflow: "hidden",
+      marginBottom: 32
+    }
+  }, /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, ["Week", "Staff", "Sales", "Bonus Paid", "Paid At"].map(h => /*#__PURE__*/React.createElement("th", {
+    key: h,
+    style: {
+      padding: "9px 12px",
+      textAlign: "left",
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+      borderBottom: `1px solid ${C.border}`
+    }
+  }, h)))), /*#__PURE__*/React.createElement("tbody", null, paidRecords.map((p, i) => /*#__PURE__*/React.createElement("tr", {
+    key: p.id,
+    style: {
+      borderBottom: `1px solid ${C.border}`,
+      background: i % 2 ? C.surface : "transparent"
+    }
+  }, /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 13,
+      color: C.muted
+    }
+  }, fmtWeek(p.week_start)), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 13,
+      fontWeight: 700,
+      textTransform: "capitalize"
+    }
+  }, p.user_email?.split("@")[0]), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 13,
+      color: C.green,
+      fontWeight: 600
+    }
+  }, aud(p.sales_total)), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 14,
+      fontWeight: 800,
+      color: C.orange
+    }
+  }, "$", num(p.bonus_amount)), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      fontSize: 12,
+      color: C.muted
+    }
+  }, p.paid_at ? new Date(p.paid_at).toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric"
+  }) : ""))))))));
+}
+
+// ── Address autocomplete (Nominatim / OpenStreetMap — free, AU-filtered) ──────
+function AddressAutocomplete({
+  nameValue,
+  onNameChange,
+  onSelect,
+  inputStyle
+}) {
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const timer = useRef(null);
+  const wrap = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handler(e) {
+      if (wrap.current && !wrap.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+  function handleInput(e) {
+    const q = e.target.value;
+    onNameChange(q);
+    clearTimeout(timer.current);
+    if (q.length < 3) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+    timer.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&countrycodes=au&addressdetails=1`, {
+          headers: {
+            Accept: "application/json"
+          }
+        });
+        const data = await r.json();
+        setResults(data);
+        setOpen(data.length > 0);
+      } catch (_) {}
+      setLoading(false);
+    }, 450);
+  }
+  function buildAddr(a) {
+    const p = [];
+    if (a.road || a.pedestrian || a.path) p.push(a.road || a.pedestrian || a.path);
+    const suburb = a.suburb || a.neighbourhood || a.town || a.village || a.city_district;
+    if (suburb) p.push(suburb);
+    const state = a.state === "Victoria" ? "VIC" : a.state === "New South Wales" ? "NSW" : a.state === "Queensland" ? "QLD" : a.state === "South Australia" ? "SA" : a.state === "Western Australia" ? "WA" : a.state || "";
+    if (state) p.push(state);
+    if (a.postcode) p.push(a.postcode);
+    return p.join(", ");
+  }
+  function pick(s) {
+    const name = s.name || s.display_name.split(",")[0].trim();
+    const address = buildAddr(s.address || {});
+    const map = `https://maps.google.com/?q=${s.lat},${s.lon}`;
+    onSelect({
+      name,
+      address,
+      map
+    });
+    setOpen(false);
+    setResults([]);
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    ref: wrap,
+    style: {
+      position: "relative"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: nameValue,
+    onChange: handleInput,
+    placeholder: "Start typing \u2014 e.g. Coburg Farmers Market\u2026",
+    style: inputStyle
+  }), loading && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: "#7A9A80",
+      padding: "3px 2px"
+    }
+  }, "\uD83D\uDD0D Searching\u2026"), open && results.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "absolute",
+      top: "100%",
+      left: 0,
+      right: 0,
+      background: "#1A2B1E",
+      border: "1.5px solid #243328",
+      borderRadius: "0 0 12px 12px",
+      zIndex: 200,
+      boxShadow: "0 10px 32px rgba(0,0,0,0.5)",
+      maxHeight: 260,
+      overflowY: "auto"
+    }
+  }, results.map((s, i) => {
+    const name = s.name || s.display_name.split(",")[0].trim();
+    const preview = s.display_name.split(",").slice(1, 4).map(x => x.trim()).join(", ");
+    return /*#__PURE__*/React.createElement("button", {
+      key: i,
+      onMouseDown: () => pick(s),
+      style: {
+        display: "block",
+        width: "100%",
+        padding: "11px 14px",
+        textAlign: "left",
+        background: "none",
+        border: "none",
+        borderBottom: "1px solid #243328",
+        cursor: "pointer",
+        color: "#F0EDE6",
+        transition: "background 0.1s"
+      },
+      onMouseEnter: e => e.currentTarget.style.background = "#243328",
+      onMouseLeave: e => e.currentTarget.style.background = "none"
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        marginBottom: 2
+      }
+    }, name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: "#7A9A80",
+        lineHeight: 1.4
+      }
+    }, preview));
+  })));
+}
+
+// ── LOCATIONS TAB ─────────────────────────────────────────────────────────────
+const EMPTY_STALL = {
+  name: "",
+  address: "",
+  day: "Monday",
+  date: "",
+  hours: "",
+  map: ""
+};
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+function LocationsTab({
+  user
+}) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [cfg, setCfg] = useState({
+    week_of: "",
+    tagline: "",
+    variety_now: "Miho",
+    next_week_preview: "",
+    this_week: []
+  });
+  const [newStall, setNewStall] = useState({
+    ...EMPTY_STALL
+  });
+  const [addOpen, setAddOpen] = useState(false);
+  useEffect(() => {
+    loadCfg();
+  }, []);
+  async function loadCfg() {
+    setLoading(true);
+    const r = await sb.select("site_config", "key=eq.weekly_locations&select=value");
+    setLoading(false);
+    if (Array.isArray(r) && r[0]?.value) setCfg(r[0].value);
+  }
+  async function save() {
+    setSaving(true);
+    setMsg("");
+    const row = {
+      key: "weekly_locations",
+      value: cfg,
+      updated_at: new Date().toISOString(),
+      updated_by: user?.email || "admin"
+    };
+    const r = await sb.upsert("site_config", row, "key");
+    setSaving(false);
+    setMsg(Array.isArray(r) && r[0] ? "✓ Saved — homepage will update within seconds." : "❌ Save failed. Try again.");
+  }
+  function setField(k) {
+    return e => setCfg(c => ({
+      ...c,
+      [k]: e.target.value
+    }));
+  }
+  function setNew(k) {
+    return e => setNewStall(n => ({
+      ...n,
+      [k]: e.target.value
+    }));
+  }
+  function addStall() {
+    if (!newStall.name.trim()) return;
+    setCfg(c => ({
+      ...c,
+      this_week: [...c.this_week, {
+        ...newStall
+      }]
+    }));
+    setNewStall({
+      ...EMPTY_STALL
+    });
+    setAddOpen(false);
+  }
+  function removeStall(i) {
+    setCfg(c => ({
+      ...c,
+      this_week: c.this_week.filter((_, idx) => idx !== i)
+    }));
+  }
+  function moveStall(i, dir) {
+    const arr = [...cfg.this_week];
+    const j = i + dir;
+    if (j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    setCfg(c => ({
+      ...c,
+      this_week: arr
+    }));
+  }
+  const inp = {
+    width: "100%",
+    background: C.surface,
+    border: `1.5px solid ${C.border}`,
+    borderRadius: 9,
+    color: C.text,
+    padding: "9px 12px",
+    fontSize: 14,
+    outline: "none",
+    boxSizing: "border-box"
+  };
+  const lbl = {
+    fontSize: 11,
+    fontWeight: 700,
+    color: C.muted,
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
+    marginBottom: 5
+  };
+  if (loading) return /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: C.muted,
+      padding: 48
+    }
+  }, "Loading\u2026");
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fu"
+  }, /*#__PURE__*/React.createElement(Card, {
+    style: {
+      padding: "18px 20px",
+      marginBottom: 16
+    },
+    className: "fu fu1"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 14,
+      color: C.orange,
+      marginBottom: 14
+    }
+  }, "\uD83C\uDF10 Homepage Settings"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 12,
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: lbl
+  }, "Week of"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: cfg.week_of || "",
+    onChange: setField("week_of"),
+    style: inp
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: lbl
+  }, "Variety now"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: cfg.variety_now || "",
+    onChange: setField("variety_now"),
+    placeholder: "Miho",
+    style: inp
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: lbl
+  }, "Hero tagline (shown on homepage banner)"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: cfg.tagline || "",
+    onChange: setField("tagline"),
+    placeholder: "Picked yesterday in Colignan. Eaten today in Melbourne.",
+    style: inp
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: lbl
+  }, "Next week preview (shown below locations)"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: cfg.next_week_preview || "",
+    onChange: setField("next_week_preview"),
+    placeholder: "Next week: South Melbourne Market + Eltham...",
+    style: inp
+  }))), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      padding: "18px 20px",
+      marginBottom: 16
+    },
+    className: "fu fu2"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 14,
+      color: C.text
+    }
+  }, "\uD83D\uDCCD This Week's Stalls ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.muted,
+      fontWeight: 400,
+      fontSize: 13
+    }
+  }, "(", cfg.this_week.length, ")")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAddOpen(o => !o),
+    style: {
+      background: `${C.orange}20`,
+      border: `1.5px solid ${C.orange}50`,
+      color: C.orange,
+      borderRadius: 9,
+      padding: "7px 14px",
+      fontWeight: 700,
+      fontSize: 13,
+      cursor: "pointer"
+    }
+  }, addOpen ? "✕ Cancel" : "+ Add Stall")), addOpen && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.cardHi,
+      borderRadius: 12,
+      padding: "14px 16px",
+      marginBottom: 16,
+      border: `1px solid ${C.borderHi}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 13,
+      color: C.orange,
+      marginBottom: 4
+    }
+  }, "New Stall"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 10
+    }
+  }, "Choose a preset below, or start typing the venue name to auto-fill address and map."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginBottom: 7
+    }
+  }, "Quick Presets"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 7
+    }
+  }, PRESET_LOCATIONS.map(p => {
+    const active = newStall.name === p.name;
+    return /*#__PURE__*/React.createElement("button", {
+      key: p.name,
+      onClick: () => setNewStall(n => ({
+        ...n,
+        name: p.name,
+        address: p.address,
+        hours: p.hours,
+        map: p.map
+      })),
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        gap: 1,
+        background: active ? `${C.orange}22` : `${C.card}`,
+        border: `1.5px solid ${active ? C.orange : C.border}`,
+        borderRadius: 10,
+        padding: "8px 12px",
+        cursor: "pointer",
+        textAlign: "left",
+        minWidth: 140
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: active ? C.orange : C.text
+      }
+    }, p.icon, " ", p.name), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: C.muted
+      }
+    }, p.hint));
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: lbl
+  }, "Location name *"), /*#__PURE__*/React.createElement(AddressAutocomplete, {
+    nameValue: newStall.name,
+    onNameChange: v => setNewStall(n => ({
+      ...n,
+      name: v
+    })),
+    onSelect: ({
+      name,
+      address,
+      map
+    }) => setNewStall(n => ({
+      ...n,
+      name,
+      address,
+      map
+    })),
+    inputStyle: inp
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      gridColumn: "1/-1"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: lbl
+  }, "Address ", newStall.address && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.green,
+      fontWeight: 600
+    }
+  }, "\u2713 auto-filled")), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: newStall.address,
+    onChange: setNew("address"),
+    placeholder: "Auto-filled from lookup, or type manually",
+    style: {
+      ...inp,
+      borderColor: newStall.address ? C.green : undefined
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: lbl
+  }, "Day"), /*#__PURE__*/React.createElement("select", {
+    value: newStall.day,
+    onChange: setNew("day"),
+    style: inp
+  }, DAYS.map(d => /*#__PURE__*/React.createElement("option", {
+    key: d,
+    value: d
+  }, d)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: lbl
+  }, "Date"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: newStall.date,
+    onChange: setNew("date"),
+    style: inp
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      gridColumn: "1/-1"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: lbl
+  }, "Hours"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: newStall.hours,
+    onChange: setNew("hours"),
+    placeholder: "e.g. 8:00 AM \u2013 1:00 PM",
+    style: inp
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      gridColumn: "1/-1"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: lbl
+  }, "Google Maps URL ", newStall.map && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.green,
+      fontWeight: 600
+    }
+  }, "\u2713 auto-filled")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "url",
+    value: newStall.map,
+    onChange: setNew("map"),
+    placeholder: "Auto-filled from lookup, or paste manually",
+    style: {
+      ...inp,
+      flex: 1,
+      marginBottom: 0,
+      borderColor: newStall.map ? C.green : undefined
+    }
+  }), newStall.map && /*#__PURE__*/React.createElement("a", {
+    href: newStall.map,
+    target: "_blank",
+    rel: "noreferrer",
+    style: {
+      background: `${C.blue}20`,
+      border: `1px solid ${C.blue}40`,
+      color: C.blue,
+      borderRadius: 9,
+      padding: "9px 14px",
+      fontSize: 12,
+      fontWeight: 700,
+      whiteSpace: "nowrap",
+      textDecoration: "none"
+    }
+  }, "Preview \u2197")))), /*#__PURE__*/React.createElement("button", {
+    onClick: addStall,
+    disabled: !newStall.name.trim(),
+    style: {
+      background: newStall.name.trim() ? C.green : C.border,
+      border: "none",
+      color: "#fff",
+      borderRadius: 9,
+      padding: "10px 20px",
+      fontWeight: 800,
+      fontSize: 14,
+      cursor: newStall.name.trim() ? "pointer" : "not-allowed"
+    }
+  }, "+ Add to This Week")), cfg.this_week.length === 0 && !addOpen && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: C.muted,
+      padding: "24px 0",
+      fontSize: 13
+    }
+  }, "No stalls added yet. Click \"+ Add Stall\" to start."), cfg.this_week.map((s, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      display: "flex",
+      gap: 12,
+      alignItems: "flex-start",
+      background: C.cardHi,
+      borderRadius: 10,
+      padding: "12px 14px",
+      marginBottom: 10,
+      border: `1px solid ${C.border}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 14,
+      color: C.green,
+      marginBottom: 3
+    }
+  }, s.name), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 2
+    }
+  }, s.day, s.date ? " · " + s.date : "", s.hours ? " · " + s.hours : ""), s.address && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted
+    }
+  }, s.address), s.map && /*#__PURE__*/React.createElement("a", {
+    href: s.map,
+    target: "_blank",
+    rel: "noreferrer",
+    style: {
+      fontSize: 11,
+      color: C.blue,
+      fontWeight: 600
+    }
+  }, "View map \u2197")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 6,
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => moveStall(i, -1),
+    disabled: i === 0,
+    style: {
+      background: "none",
+      border: `1px solid ${C.border}`,
+      color: C.muted,
+      borderRadius: 7,
+      width: 28,
+      height: 28,
+      cursor: i === 0 ? "not-allowed" : "pointer",
+      fontSize: 14
+    }
+  }, "\u2191"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => moveStall(i, 1),
+    disabled: i === cfg.this_week.length - 1,
+    style: {
+      background: "none",
+      border: `1px solid ${C.border}`,
+      color: C.muted,
+      borderRadius: 7,
+      width: 28,
+      height: 28,
+      cursor: i === cfg.this_week.length - 1 ? "not-allowed" : "pointer",
+      fontSize: 14
+    }
+  }, "\u2193"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => removeStall(i),
+    style: {
+      background: `${C.red}18`,
+      border: `1px solid ${C.red}40`,
+      color: C.red,
+      borderRadius: 7,
+      padding: "4px 10px",
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 700
+    }
+  }, "\u2715"))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 16,
+      paddingBottom: 32
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: save,
+    disabled: saving,
+    style: {
+      background: saving ? C.border : C.green,
+      border: "none",
+      color: "#fff",
+      borderRadius: 12,
+      padding: "14px 28px",
+      fontWeight: 900,
+      fontSize: 15,
+      cursor: saving ? "not-allowed" : "pointer",
+      boxShadow: `0 4px 20px ${C.green}40`
+    }
+  }, saving ? "Saving…" : "✓ Save & Publish to Website"), msg && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: msg.startsWith("✓") ? C.green : C.red,
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, msg)));
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────────────────────
+function Login({
+  onLogin
+}) {
+  const [username, setUsername] = useState("");
+  const [pw, setPw] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  async function go() {
+    setErr("");
+    setBusy(true);
+    // Accept full email (dorontalmi@gmail.com) or just username (dorontalmi)
+    const u = username.trim().toLowerCase().replace(/@.*$/, "");
+    if (!ADMIN_USERS.includes(u)) {
+      setBusy(false);
+      setErr("Access denied. Restricted to authorised administrators.");
+      return;
+    }
+    try {
+      const d = await sb.signIn(toEmail(u), pw);
+      setBusy(false);
+      if (d.access_token) onLogin(d.user);else setErr(d.msg || d.error_description || d.error || "Incorrect password.");
+    } catch (e) {
+      setBusy(false);
+      setErr("Connection error — check your internet and try again.");
+    }
+  }
+  const inp = {
+    width: "100%",
+    padding: "12px 14px",
+    paddingLeft: 40,
+    borderRadius: 10,
+    border: `2px solid ${C.border}`,
+    background: C.surface,
+    color: C.text,
+    fontSize: 16,
+    outline: "none"
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100dvh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: `radial-gradient(ellipse at 20% 10%,#102010 0%,${C.bg} 70%)`,
+      padding: 20
+    }
+  }, /*#__PURE__*/React.createElement("style", null, CSS), /*#__PURE__*/React.createElement("div", {
+    className: "fu",
+    style: {
+      width: "100%",
+      maxWidth: 380
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      marginBottom: 32
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 80,
+      height: 80,
+      background: `radial-gradient(circle at 35% 30%,#F5A020,#B04010)`,
+      borderRadius: 22,
+      margin: "0 auto 16px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 40,
+      boxShadow: `0 8px 36px ${C.orange}50`
+    }
+  }, "\uD83C\uDF4A"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 28,
+      letterSpacing: "-0.03em"
+    }
+  }, "Mandorons"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: C.muted,
+      fontSize: 12,
+      marginTop: 5,
+      fontWeight: 700,
+      letterSpacing: "0.08em",
+      textTransform: "uppercase"
+    }
+  }, "Admin Dashboard \xB7 Restricted")), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      padding: "24px 22px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 7
+    }
+  }, "Username"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: "absolute",
+      left: 13,
+      top: "50%",
+      transform: "translateY(-50%)",
+      fontSize: 16,
+      pointerEvents: "none"
+    }
+  }, "\uD83D\uDC64"), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    placeholder: "dorontalmi  or  admin",
+    value: username,
+    onChange: e => setUsername(e.target.value),
+    onKeyDown: e => e.key === "Enter" && go(),
+    autoCapitalize: "none",
+    autoCorrect: "off",
+    style: inp
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 18
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 7,
+      display: "flex",
+      justifyContent: "space-between"
+    }
+  }, "Password ", /*#__PURE__*/React.createElement("button", {
+    onClick: () => setShowPw(s => !s),
+    style: {
+      background: "none",
+      border: "none",
+      color: C.muted,
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 700
+    }
+  }, showPw ? "Hide" : "Show")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: "absolute",
+      left: 13,
+      top: "50%",
+      transform: "translateY(-50%)",
+      fontSize: 16,
+      pointerEvents: "none"
+    }
+  }, "\uD83D\uDD12"), /*#__PURE__*/React.createElement("input", {
+    type: showPw ? "text" : "password",
+    placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+    value: pw,
+    onChange: e => setPw(e.target.value),
+    onKeyDown: e => e.key === "Enter" && go(),
+    style: {
+      ...inp,
+      paddingRight: 14
+    }
+  }))), err && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: "rgba(224,85,85,0.12)",
+      border: "1px solid rgba(224,85,85,0.35)",
+      borderRadius: 10,
+      padding: "11px 14px",
+      color: C.red,
+      fontWeight: 600,
+      fontSize: 13,
+      marginBottom: 14
+    }
+  }, err), /*#__PURE__*/React.createElement("button", {
+    onClick: go,
+    disabled: busy || !username || !pw,
+    style: {
+      width: "100%",
+      padding: "14px",
+      borderRadius: 12,
+      background: busy || !username || !pw ? C.border : C.orange,
+      border: "none",
+      color: "#fff",
+      fontWeight: 800,
+      fontSize: 16,
+      cursor: busy || !username || !pw ? "not-allowed" : "pointer",
+      transition: "background 0.2s"
+    }
+  }, busy ? "Signing in…" : "Access Dashboard →"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 14,
+      padding: "9px 12px",
+      background: `${C.orange}08`,
+      borderRadius: 9,
+      border: `1px solid ${C.orange}20`
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14
+    }
+  }, "\uD83D\uDD12"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      fontWeight: 600
+    }
+  }, "Restricted to Steve & Doron only")))));
+}
+
+// ── ROOT ──────────────────────────────────────────────────────────────────────
+const TABS = [{
+  id: "overview",
+  label: "Overview"
+}, {
+  id: "weekly",
+  label: "Weekly"
+}, {
+  id: "monthly",
+  label: "Monthly"
+}, {
+  id: "all",
+  label: "All Data"
+}, {
+  id: "farmer",
+  label: "Farmer Report"
+}, {
+  id: "bonuses",
+  label: "💵 Bonuses"
+}, {
+  id: "locations",
+  label: "📍 Locations"
+}];
+function AdminApp() {
+  const [user, setUser] = useState(null);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState("overview");
+  const [lastRefresh, setLastRefresh] = useState(null);
+  const load = useCallback(async () => {
+    setLoading(true);
+    const d = await sb.select("daily_sales", "order=entry_date.desc,created_at.desc&limit=2000");
+    setLoading(false);
+    if (Array.isArray(d)) {
+      setRows(d);
+      setLastRefresh(new Date());
+    }
+  }, []);
+  useEffect(() => {
+    if (user) load();
+  }, [user, load]);
+  if (!user) return /*#__PURE__*/React.createElement(Login, {
+    onLogin: setUser
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100dvh",
+      background: C.bg
+    }
+  }, /*#__PURE__*/React.createElement("style", null, CSS), /*#__PURE__*/React.createElement("header", {
+    style: {
+      background: C.surface,
+      borderBottom: `1px solid ${C.border}`,
+      padding: "0 20px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      height: 56,
+      position: "sticky",
+      top: 0,
+      zIndex: 200,
+      boxShadow: "0 2px 20px rgba(0,0,0,0.5)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20
+    }
+  }, "\uD83C\uDF4A"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 17
+    }
+  }, "Mandorons"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: `${C.orange}20`,
+      color: C.orange,
+      fontSize: 10,
+      fontWeight: 800,
+      padding: "3px 8px",
+      borderRadius: 6,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginLeft: 4
+    }
+  }, "Admin")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8
+    }
+  }, lastRefresh && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: C.muted
+    }
+  }, "Updated ", lastRefresh.toLocaleTimeString("en-AU", {
+    hour: "2-digit",
+    minute: "2-digit"
+  })), /*#__PURE__*/React.createElement("button", {
+    onClick: load,
+    disabled: loading,
+    style: {
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      color: loading ? C.muted : C.text,
+      padding: "6px 12px",
+      borderRadius: 8,
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 700
+    }
+  }, loading ? "…" : "↻"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      sb.signOut();
+      setUser(null);
+    },
+    style: {
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      color: C.muted,
+      padding: "6px 12px",
+      borderRadius: 8,
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 700
+    }
+  }, "Out"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.surface,
+      borderBottom: `1px solid ${C.border}`,
+      display: "flex",
+      paddingLeft: 16,
+      overflowX: "auto"
+    }
+  }, TABS.map(t => /*#__PURE__*/React.createElement("button", {
+    key: t.id,
+    onClick: () => setTab(t.id),
+    style: {
+      padding: "12px 16px",
+      border: "none",
+      background: "none",
+      fontWeight: 700,
+      fontSize: 13,
+      cursor: "pointer",
+      whiteSpace: "nowrap",
+      color: tab === t.id ? C.orange : C.muted,
+      borderBottom: `2.5px solid ${tab === t.id ? C.orange : "transparent"}`,
+      transition: "all 0.2s"
+    }
+  }, t.id === "farmer" ? "🌿 " + t.label : t.label)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => exportFull(rows, `Mandorons_AllData_${todayStr()}.xlsx`),
+    style: {
+      margin: "8px 16px 8px 0",
+      background: `${C.green}18`,
+      border: `1.5px solid ${C.green}40`,
+      color: C.green,
+      padding: "6px 14px",
+      borderRadius: 9,
+      fontWeight: 700,
+      fontSize: 12,
+      cursor: "pointer"
+    }
+  }, "\u2B07 Full Export")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      maxWidth: 1200,
+      margin: "0 auto",
+      padding: "20px 16px 48px"
+    }
+  }, loading && rows.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: C.muted,
+      padding: 64
+    }
+  }, "Loading data\u2026") : /*#__PURE__*/React.createElement(React.Fragment, null, tab === "overview" && /*#__PURE__*/React.createElement(OverviewTab, {
+    rows: rows
+  }), tab === "weekly" && /*#__PURE__*/React.createElement(WeeklyTab, {
+    rows: rows
+  }), tab === "monthly" && /*#__PURE__*/React.createElement(MonthlyTab, {
+    rows: rows
+  }), tab === "all" && /*#__PURE__*/React.createElement(AllDataTab, {
+    rows: rows
+  }), tab === "farmer" && /*#__PURE__*/React.createElement(FarmerPromoTab, {
+    rows: rows
+  }), tab === "bonuses" && /*#__PURE__*/React.createElement(BonusesTab, {
+    rows: rows,
+    user: user
+  }), tab === "locations" && /*#__PURE__*/React.createElement(LocationsTab, {
+    user: user
+  }))));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(AdminApp));
+}
+</script>
+</body>
+</html>

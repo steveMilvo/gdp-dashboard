@@ -204,6 +204,18 @@ app.get('/locations.json', (req, res) => {
   res.sendFile(LOCATIONS_FILE);
 });
 
+// Staff portal — serve without redirect (no port leakage)
+app.get(['/staff', '/staff.html'], (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(ROOT, 'staff.html'));
+});
+
+// Staff dashboard — multiple clean URLs
+app.get(['/staff-dashboard', '/staff-dashboard.html', '/dashboard'], (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(ROOT, 'staff-dashboard.html'));
+});
+
 app.use(express.static(ROOT, {
   index: 'index.html',
   setHeaders(res, filePath) {

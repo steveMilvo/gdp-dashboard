@@ -1,15 +1,39 @@
+const SUPABASE_URL  = "https://nwbxdbpowwvjcivykchg.supabase.co";
+const SUPABASE_ANON = "sb_publishable_s7W81yUixF4lqpdOcd9IJw_WZ89c1O1";
+
 async function loadLocations() {
-  const res = await fetch('locations.json', { cache: 'no-store' });
-  const data = await res.json();
+  let data = null;
+
+  // 1. Try Supabase site_config table (admin-editable)
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL}/rest/v1/site_config?key=eq.weekly_locations&select=value`,
+      { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` } }
+    );
+    if (r.ok) {
+      const rows = await r.json();
+      if (rows && rows[0] && rows[0].value) data = rows[0].value;
+    }
+  } catch (_) { /* network error — fall through */ }
+
+  // 2. Fall back to static locations.json
+  if (!data) {
+    try {
+      const r = await fetch('locations.json', { cache: 'no-store' });
+      if (r.ok) data = await r.json();
+    } catch (_) { return; }
+  }
+
+  if (!data) return;
 
   if (data.tagline) {
     document.getElementById('hero-tagline').textContent = data.tagline;
   }
   document.getElementById('week-of').textContent = 'Week of ' + formatDate(data.week_of);
-  document.getElementById('next-week').textContent = data.next_week_preview;
+  document.getElementById('next-week').textContent = data.next_week_preview || '';
 
   const wrap = document.getElementById('locations');
-  wrap.innerHTML = data.this_week.map(loc => `
+  wrap.innerHTML = (data.this_week || []).map(loc => `
     <article class="location">
       <h3>${esc(loc.name)}</h3>
       <p class="when">${esc(loc.day)} ${formatDate(loc.date)} &middot; ${esc(loc.hours)}</p>
@@ -20,12 +44,12 @@ async function loadLocations() {
 
 function formatDate(iso) {
   if (!iso) return '';
-  const d = new Date(iso);
+  const d = new Date(iso + 'T00:00:00');
   return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long' });
 }
 
 function esc(s) {
-  return String(s).replace(/[&<>"']/g, c => ({
+  return String(s || '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
 }
