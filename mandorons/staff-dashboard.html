@@ -155,19 +155,27 @@ const sb = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const todayStr = () => new Date().toISOString().slice(0, 10);
+// Use local date (not UTC) — toISOString() would return yesterday for AU mornings
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const HOURLY_RATE = 35;
 const num = n => Number(n) || 0;
 const aud = n => num(n).toLocaleString("en-AU", {
   style: "currency",
   currency: "AUD",
   minimumFractionDigits: 2
 });
-const calcBonus = total => Math.floor(num(total) / 1000) * 40;
+const calcBonus = (total, workers) => Math.round(Math.floor(num(total) / 1000) * 40 / Math.max(1, num(workers) || 1));
+const entryHours = e => num(e.hours_worked);
+const calcBoxBonus = e => num(e.boxes_packed_solo) + Math.round(num(e.boxes_packed_shared) / Math.max(1, num(e.packing_partners) || 1));
 function weekOf(dateStr) {
   const d = new Date(dateStr + "T00:00:00");
   const day = d.getDay() || 7;
   d.setDate(d.getDate() - day + 1);
-  return d.toISOString().slice(0, 10);
+  // Use local date components — toISOString() shifts to UTC and gives wrong day for AU
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 function monthOf(d) {
   return d?.slice(0, 7) || "";
@@ -646,6 +654,10 @@ const EMPTY = {
   boxes_end: 0,
   time_start: "",
   time_end: "",
+  hours_worked: "",
+  boxes_packed_solo: 0,
+  boxes_packed_shared: 0,
+  packing_partners: 1,
   cash_sales: "",
   card_sales: "",
   notes: ""
@@ -655,9 +667,14 @@ function EntryWizard({
   onSaved
 }) {
   const [step, setStep] = useState(0);
+  const myName = (() => {
+    const p = (user.email?.split("@")[0] || "").toLowerCase();
+    return STAFF_ROSTER.find(n => n.toLowerCase() === p || n.toLowerCase().startsWith(p)) || null;
+  })();
   const [f, setF] = useState({
     ...EMPTY,
-    entry_date: todayStr()
+    entry_date: todayStr(),
+    staff: myName ? [myName] : []
   });
   const [posFile, setPosFile] = useState(null);
   const [posPreview, setPosPreview] = useState(null);
@@ -673,7 +690,27 @@ function EntryWizard({
     [k]: e.target.value
   }));
   const totalSales = num(f.cash_sales) + num(f.card_sales);
-  const bonusToday = calcBonus(totalSales);
+  const workerCount = Math.max(1, f.staff.length);
+  const bonusToday = calcBonus(totalSales, workerCount);
+  const staffName = (() => {
+    const n = user.email?.split("@")[0] || "";
+    return n.charAt(0).toUpperCase() + n.slice(1);
+  })();
+  const boxingBonus = num(f.boxes_packed_solo) + Math.round(num(f.boxes_packed_shared) / Math.max(1, num(f.packing_partners) || 1));
+
+  // Auto-fill hours_worked from start/end time — useEffect catches mobile pickers
+  // that only fire onChange when the picker is fully dismissed
+  useEffect(() => {
+    if (!f.time_start || !f.time_end) return;
+    const [sh, sm] = f.time_start.split(":").map(Number);
+    const [eh, em] = f.time_end.split(":").map(Number);
+    if (isNaN(sh) || isNaN(eh)) return;
+    const mins = eh * 60 + em - (sh * 60 + sm);
+    if (mins > 0) setF(p => ({
+      ...p,
+      hours_worked: String(Math.round(mins / 60 * 10) / 10)
+    }));
+  }, [f.time_start, f.time_end]);
   function next() {
     if (step === 0 && !f.location) {
       setErr("Select or enter a location.");
@@ -681,6 +718,10 @@ function EntryWizard({
     }
     if (step === 0 && f.staff.length === 0) {
       setErr("Select at least one staff member.");
+      return;
+    }
+    if (step === 2 && num(f.cash_sales) === 0 && num(f.card_sales) === 0) {
+      setErr("Enter at least cash or card sales before continuing.");
       return;
     }
     setErr("");
@@ -696,11 +737,19 @@ function EntryWizard({
     let pos_receipt_url = null;
     if (posFile) {
       try {
+        const ct = posFile.type || "image/jpeg";
         const path = `${user.id}/${f.entry_date}_pos_${Date.now()}.jpg`;
-        pos_receipt_url = await sb.upload("pos-receipts", path, posFile);
+        pos_receipt_url = await sb.upload("pos-receipts", path, new File([posFile], path, {
+          type: ct
+        }));
       } catch (e) {
-        setErr("Photo upload: " + e.message);
+        // Don't block submission — save without the photo and note the failure
+        console.warn("Photo upload failed:", e.message);
+        setErr("⚠ Photo couldn't upload — entry will save without it. Tap Submit again to confirm.");
         setSaving(false);
+        // Allow a second tap to proceed without photo
+        setPosFile(null);
+        setPosPreview(null);
         return;
       }
     }
@@ -712,70 +761,90 @@ function EntryWizard({
       location_type: getLocType(f.location),
       staff: f.staff,
       float_start: 0,
-      boxing_tally: {},
-      boxing_total: 0,
+      boxing_tally: myName ? {
+        [myName]: num(f.boxes_packed_solo) + num(f.boxes_packed_shared)
+      } : {},
       boxes_start: num(f.boxes_start),
       boxes_added: 0,
       boxes_end: num(f.boxes_end),
-      boxes_sold: 0,
       samples_used: num(f.samples_used),
+      boxes_sold: Math.max(0, num(f.boxes_start) + 0 - num(f.boxes_end) - num(f.samples_used)),
+      boxes_packed_solo: num(f.boxes_packed_solo) || 0,
+      boxes_packed_shared: num(f.boxes_packed_shared) || 0,
+      packing_partners: num(f.packing_partners) || 1,
       time_start: f.time_start || null,
       time_end: f.time_end || null,
       cash_sales: num(f.cash_sales),
       card_sales: num(f.card_sales),
-      total_sales: num(f.cash_sales) + num(f.card_sales),
-      boxes_sold: Math.max(0, num(f.boxes_start) - num(f.boxes_end)),
+      hours_worked: num(f.hours_worked) || null,
       notes: f.notes,
       pos_receipt_url
     };
-    const res = await sb.insert("daily_sales", row);
+    let res;
+    try {
+      res = await sb.insert("daily_sales", row);
+    } catch (e) {
+      setSaving(false);
+      setErr("Network error — check your connection and try again.");
+      return;
+    }
     setSaving(false);
     if (Array.isArray(res) && res[0]?.id) {
       setDone(true);
       onSaved(res[0]);
-    } else setErr(res?.message || "Save failed — check connection.");
+    } else setErr(res?.message || "Save failed — check your connection and try again.");
   }
   function reset() {
     setDone(false);
     setF({
       ...EMPTY,
-      entry_date: todayStr()
+      entry_date: todayStr(),
+      staff: myName ? [myName] : []
     });
     setStep(0);
     setPosFile(null);
     setPosPreview(null);
+    setErr("");
   }
   if (done) return /*#__PURE__*/React.createElement("div", {
     className: "su",
     style: {
       textAlign: "center",
-      padding: "40px 20px"
+      padding: "48px 20px"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 64,
-      marginBottom: 12
+      fontSize: 72,
+      marginBottom: 16
     }
-  }, "\u2705"), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83C\uDF89"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 22,
+      fontSize: 28,
       fontWeight: 900,
       color: C.green,
-      marginBottom: 4
+      marginBottom: 6,
+      letterSpacing: "-0.02em"
     }
-  }, "Entry Saved!"), /*#__PURE__*/React.createElement("div", {
+  }, "Great work today, ", staffName, "!"), /*#__PURE__*/React.createElement("div", {
     style: {
+      fontSize: 16,
+      fontWeight: 700,
       color: C.muted,
+      marginBottom: 6
+    }
+  }, "Submission complete \u2705"), /*#__PURE__*/React.createElement("div", {
+    style: {
       fontSize: 13,
-      marginBottom: 20
+      color: C.muted,
+      marginBottom: 28
     }
   }, f.location, " \xB7 ", fmtDate(f.entry_date)), /*#__PURE__*/React.createElement("div", {
     style: {
       background: `${C.green}15`,
       border: `1px solid ${C.green}30`,
-      borderRadius: 14,
-      padding: "16px 20px",
-      marginBottom: 12
+      borderRadius: 16,
+      padding: "18px 20px",
+      marginBottom: 14
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -783,11 +852,12 @@ function EntryWizard({
       color: C.muted,
       fontWeight: 700,
       textTransform: "uppercase",
-      marginBottom: 4
+      letterSpacing: "0.06em",
+      marginBottom: 6
     }
-  }, "Your Sales Today"), /*#__PURE__*/React.createElement("div", {
+  }, "Sales Recorded"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 32,
+      fontSize: 36,
       fontWeight: 900,
       color: C.green
     }
@@ -795,15 +865,15 @@ function EntryWizard({
     style: {
       fontSize: 13,
       color: C.muted,
-      marginTop: 4
+      marginTop: 6
     }
   }, "Cash ", aud(f.cash_sales), " \xB7 Card ", aud(f.card_sales))), bonusToday > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       background: `${C.orange}15`,
       border: `1px solid ${C.orange}30`,
-      borderRadius: 14,
-      padding: "14px 20px",
-      marginBottom: 20
+      borderRadius: 16,
+      padding: "16px 20px",
+      marginBottom: 14
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -811,11 +881,12 @@ function EntryWizard({
       color: C.muted,
       fontWeight: 700,
       textTransform: "uppercase",
+      letterSpacing: "0.06em",
       marginBottom: 4
     }
-  }, "\uD83C\uDF89 Bonus Earned Today"), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83C\uDF89 Sales Bonus"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 28,
+      fontSize: 30,
       fontWeight: 900,
       color: C.orange
     }
@@ -825,19 +896,88 @@ function EntryWizard({
       color: C.muted,
       marginTop: 4
     }
-  }, "$40 per $1,000 in sales")), /*#__PURE__*/React.createElement("button", {
-    onClick: reset,
+  }, "$40 per $1,000 split ", workerCount > 1 ? `${workerCount} ways` : "— sole worker", " \xB7 paid by Doron")), boxingBonus > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
-      background: C.orange,
+      background: `${C.amber}15`,
+      border: `1px solid ${C.amber}30`,
+      borderRadius: 16,
+      padding: "16px 20px",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      fontWeight: 700,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 4
+    }
+  }, "\uD83D\uDCE6 Boxing Bonus"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 30,
+      fontWeight: 900,
+      color: C.amber
+    }
+  }, "$", boxingBonus), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginTop: 4
+    }
+  }, "$1 per box packed \xB7 paid by Doron")), (bonusToday > 0 || boxingBonus > 0) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.green}12`,
+      border: `1px solid ${C.green}30`,
+      borderRadius: 14,
+      padding: "12px 16px",
+      marginBottom: 28,
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      fontWeight: 700,
+      marginBottom: 4
+    }
+  }, "TOTAL BONUS TODAY"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 26,
+      fontWeight: 900,
+      color: C.green
+    }
+  }, "$", bonusToday + boxingBonus)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      window.location.href = "/staff";
+    },
+    style: {
+      width: "100%",
+      background: C.green,
       color: "#fff",
       border: "none",
+      borderRadius: 16,
+      padding: "16px",
+      fontSize: 17,
+      fontWeight: 900,
+      cursor: "pointer",
+      marginBottom: 12,
+      boxShadow: `0 6px 24px ${C.green}50`
+    }
+  }, "Done \u2014 see you next time \uD83D\uDC4B"), /*#__PURE__*/React.createElement("button", {
+    onClick: reset,
+    style: {
+      width: "100%",
+      background: "transparent",
+      color: C.muted,
+      border: `1.5px solid ${C.border}`,
       borderRadius: 14,
-      padding: "14px 32px",
-      fontSize: 16,
-      fontWeight: 800,
+      padding: "12px",
+      fontSize: 14,
+      fontWeight: 700,
       cursor: "pointer"
     }
-  }, "+ New Entry"));
+  }, "+ Log another entry"));
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(ProgressBar, {
     step: step
   }), step === 0 && /*#__PURE__*/React.createElement("div", {
@@ -871,20 +1011,62 @@ function EntryWizard({
     emoji: "\uD83D\uDCE6",
     title: "Boxes at Start of Day",
     color: C.amber
-  }), /*#__PURE__*/React.createElement(Stepper, {
-    hint: "How many boxes did you arrive with?",
-    value: f.boxes_start,
-    onChange: set("boxes_start"),
-    color: C.amber
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 10
+    }
+  }, "How many boxes did you arrive with?"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "numeric",
+    min: "0",
+    placeholder: "0",
+    value: f.boxes_start || "",
+    onChange: e => set("boxes_start")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.amber,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
   })), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
     emoji: "\uD83E\uDDEA",
     title: "Sample Boxes Used",
     color: C.orange
-  }), /*#__PURE__*/React.createElement(Stepper, {
-    hint: "Boxes opened for customer tastings",
-    value: f.samples_used,
-    onChange: set("samples_used"),
-    color: C.orange
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 10
+    }
+  }, "Boxes opened for customer tastings"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "numeric",
+    min: "0",
+    placeholder: "0",
+    value: f.samples_used || "",
+    onChange: e => set("samples_used")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.orange,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       background: `${C.orange}10`,
@@ -893,16 +1075,33 @@ function EntryWizard({
       padding: "10px 12px",
       fontSize: 12,
       color: C.orange,
-      lineHeight: 1.5
+      lineHeight: 1.5,
+      marginTop: 10
     }
   }, "\uD83C\uDF4A Tasting data is key \u2014 helps show farmers the market demand.")), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
     emoji: "\uD83D\uDCE6",
     title: "Boxes Remaining at End of Day",
     color: C.muted
-  }), /*#__PURE__*/React.createElement(Stepper, {
-    value: f.boxes_end,
-    onChange: set("boxes_end"),
-    color: C.muted
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "numeric",
+    min: "0",
+    placeholder: "0",
+    value: f.boxes_end || "",
+    onChange: e => set("boxes_end")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.text,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
   }))), step === 2 && /*#__PURE__*/React.createElement("div", {
     className: "su"
   }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
@@ -913,19 +1112,203 @@ function EntryWizard({
     style: {
       display: "grid",
       gridTemplateColumns: "1fr 1fr",
-      gap: 10
+      gap: 10,
+      marginBottom: 4
     }
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Lbl, null, "Start"), /*#__PURE__*/React.createElement(Inp, {
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Lbl, null, "Start time"), /*#__PURE__*/React.createElement("input", {
     type: "time",
     value: f.time_start,
-    onChange: setE("time_start"),
-    icon: "\uD83D\uDD50"
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Lbl, null, "End"), /*#__PURE__*/React.createElement(Inp, {
+    onChange: e => setF(p => ({
+      ...p,
+      time_start: e.target.value
+    })),
+    onBlur: e => setF(p => ({
+      ...p,
+      time_start: e.target.value
+    })),
+    style: {
+      width: "100%",
+      padding: "13px 14px",
+      borderRadius: 12,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.text,
+      fontSize: 18,
+      fontWeight: 700,
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Lbl, null, "End time"), /*#__PURE__*/React.createElement("input", {
     type: "time",
     value: f.time_end,
-    onChange: setE("time_end"),
-    icon: "\uD83D\uDD54"
-  })))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    onChange: e => setF(p => ({
+      ...p,
+      time_end: e.target.value
+    })),
+    onBlur: e => setF(p => ({
+      ...p,
+      time_end: e.target.value
+    })),
+    style: {
+      width: "100%",
+      padding: "13px 14px",
+      borderRadius: 12,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.text,
+      fontSize: 18,
+      fontWeight: 700,
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement(Lbl, null, "Total hours worked today"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      marginBottom: 8
+    }
+  }, "Auto-filled from your times \u2014 tap to edit if needed"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "decimal",
+    min: "0",
+    max: "24",
+    step: "0.5",
+    placeholder: "e.g. 7.5",
+    value: f.hours_worked,
+    onChange: e => setF(p => ({
+      ...p,
+      hours_worked: e.target.value
+    })),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${f.hours_worked ? C.green : C.border}`,
+      background: C.surface,
+      color: C.green,
+      fontSize: 40,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  }), f.hours_worked > 0 && f.time_start && f.time_end && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      textAlign: "center",
+      marginTop: 6
+    }
+  }, f.time_start, " \u2192 ", f.time_end))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDCE6",
+    title: "Boxing Tally",
+    color: C.amber
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 14
+    }
+  }, "Boxes you packed today earn $1 each. Shared packing is split between the team."), /*#__PURE__*/React.createElement(Lbl, null, "Boxes I packed solo"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "numeric",
+    min: "0",
+    placeholder: "0",
+    value: f.boxes_packed_solo || "",
+    onChange: e => set("boxes_packed_solo")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.amber}40`,
+      background: C.surface,
+      color: C.amber,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box",
+      marginBottom: 14
+    }
+  }), /*#__PURE__*/React.createElement(Lbl, null, "Boxes packed with others"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "numeric",
+    min: "0",
+    placeholder: "0",
+    value: f.boxes_packed_shared || "",
+    onChange: e => set("boxes_packed_shared")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.amber,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box",
+      marginBottom: 10
+    }
+  }), num(f.boxes_packed_shared) > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement(Lbl, null, "How many people packing together (including you)?"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "numeric",
+    min: "1",
+    placeholder: "2",
+    value: f.packing_partners || "",
+    onChange: e => set("packing_partners")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.text,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  })), boxingBonus > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.amber}15`,
+      border: `1px solid ${C.amber}40`,
+      borderRadius: 12,
+      padding: "14px",
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      fontWeight: 700,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 4
+    }
+  }, "\uD83D\uDCE6 Boxing Bonus"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 32,
+      fontWeight: 900,
+      color: C.amber
+    }
+  }, "$", boxingBonus), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      marginTop: 4
+    }
+  }, num(f.boxes_packed_solo) > 0 && `${num(f.boxes_packed_solo)} solo × $1`, num(f.boxes_packed_solo) > 0 && num(f.boxes_packed_shared) > 0 && " + ", num(f.boxes_packed_shared) > 0 && `${num(f.boxes_packed_shared)} shared ÷ ${num(f.packing_partners) || 1} ppl × $1`))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
     emoji: "\uD83D\uDCB0",
     title: "Sales",
     color: C.green
@@ -1039,7 +1422,7 @@ function EntryWizard({
       color: C.muted,
       marginTop: 2
     }
-  }, getLocType(f.location))), [["📅 Date", fmtDate(f.entry_date)], ["👥 Staff", f.staff.join(", ") || "—"], ["⏱ Hours", f.time_start ? `${f.time_start}–${f.time_end}` : "—"], ["📦 Boxes Start", f.boxes_start], ["🧪 Samples", f.samples_used], ["📦 Boxes End", f.boxes_end], ["💵 Cash", aud(f.cash_sales)], ["💳 Card", aud(f.card_sales)]].map(([lbl, val]) => /*#__PURE__*/React.createElement("div", {
+  }, getLocType(f.location))), [["📅 Date", fmtDate(f.entry_date)], ["👥 Staff", f.staff.join(", ") || "—"], ["⏱ Trading", f.time_start ? `${f.time_start}–${f.time_end}` : "—"], ["⏳ Hours Total", f.hours_worked ? `${f.hours_worked} hrs` : "—"], ["📦 Boxes Start", f.boxes_start], ["🧪 Samples", f.samples_used], ["📦 Boxes End", f.boxes_end], ["📦 Solo Packed", num(f.boxes_packed_solo) || "—"], ["📦 Shared Packed", num(f.boxes_packed_shared) > 0 ? `${num(f.boxes_packed_shared)} (÷${num(f.packing_partners) || 1})` : "—"], ["💵 Cash", aud(f.cash_sales)], ["💳 Card", aud(f.card_sales)]].map(([lbl, val]) => /*#__PURE__*/React.createElement("div", {
     key: lbl,
     style: {
       display: "flex",
@@ -1085,7 +1468,14 @@ function EntryWizard({
       fontWeight: 800,
       marginTop: 6
     }
-  }, "\uD83C\uDF89 Bonus today: $", bonusToday)))), err && /*#__PURE__*/React.createElement("div", {
+  }, "\uD83C\uDF89 Sales bonus: $", bonusToday), boxingBonus > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: C.amber,
+      fontWeight: 800,
+      marginTop: 4
+    }
+  }, "\uD83D\uDCE6 Boxing bonus: $", boxingBonus)))), err && /*#__PURE__*/React.createElement("div", {
     style: {
       background: `${C.red}15`,
       border: `1px solid ${C.red}40`,
@@ -1173,37 +1563,51 @@ function MyStats({
   const today = todayStr();
   const thisWeekStart = weekOf(today);
   const thisMonth = monthOf(today);
-
-  // Group entries by week
   const byWeek = {};
   entries.forEach(e => {
     const w = weekOf(e.entry_date);
     if (!byWeek[w]) byWeek[w] = [];
     byWeek[w].push(e);
   });
-
-  // Group entries by month
   const byMonth = {};
   entries.forEach(e => {
     const m = monthOf(e.entry_date);
     if (!byMonth[m]) byMonth[m] = [];
     byMonth[m].push(e);
   });
-  const weekSales = (byWeek[thisWeekStart] || []).reduce((a, e) => a + num(e.total_sales), 0);
-  const weekBonus = (byWeek[thisWeekStart] || []).reduce((a, e) => a + calcBonus(e.total_sales), 0);
-  const monthSales = (byMonth[thisMonth] || []).reduce((a, e) => a + num(e.total_sales), 0);
-  const monthBonus = (byMonth[thisMonth] || []).reduce((a, e) => a + calcBonus(e.total_sales), 0);
+
+  // This week
+  const weekEntries = byWeek[thisWeekStart] || [];
+  const weekSales = weekEntries.reduce((a, e) => a + num(e.total_sales), 0);
+  const weekBonus = weekEntries.reduce((a, e) => a + calcBonus(e.total_sales, (e.staff || []).length), 0);
+  const weekBoxing = weekEntries.reduce((a, e) => a + calcBoxBonus(e), 0);
+  const weekHours = weekEntries.reduce((a, e) => a + entryHours(e), 0);
+  const weekTotalBonus = weekBonus + weekBoxing;
+
+  // This month
+  const monthEntries = byMonth[thisMonth] || [];
+  const monthSales = monthEntries.reduce((a, e) => a + num(e.total_sales), 0);
+  const monthBonus = monthEntries.reduce((a, e) => a + calcBonus(e.total_sales, (e.staff || []).length), 0);
+  const monthBoxing = monthEntries.reduce((a, e) => a + calcBoxBonus(e), 0);
+  const monthHours = monthEntries.reduce((a, e) => a + entryHours(e), 0);
+
+  // Total unpaid (base pay + sales bonus + boxing bonus across all unpaid weeks)
   const paidWeeks = new Set(paid.map(p => p.week_start));
-  const unpaidWeeks = Object.keys(byWeek).filter(w => !paidWeeks.has(w) && (byWeek[w] || []).reduce((a, e) => a + calcBonus(e.total_sales), 0) > 0);
-  const totalUnpaid = unpaidWeeks.reduce((a, w) => (byWeek[w] || []).reduce((s, e) => s + calcBonus(e.total_sales), a), 0);
-  const statBox = (label, value, color, sub = null) => /*#__PURE__*/React.createElement("div", {
+  const totalUnpaid = Object.entries(byWeek).filter(([w]) => !paidWeeks.has(w)).reduce((a, [, rows]) => a + rows.reduce((s, e) => s + entryHours(e) * HOURLY_RATE + calcBonus(e.total_sales, (e.staff || []).length) + calcBoxBonus(e), 0), 0);
+  const MiniStat = ({
+    label,
+    value,
+    color,
+    sub
+  }) => /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.card,
       border: `1px solid ${C.border}`,
       borderRadius: 14,
       padding: "14px 16px",
       flex: 1,
-      minWidth: 120
+      minWidth: 100,
+      textAlign: "center"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1216,7 +1620,7 @@ function MyStats({
     }
   }, label), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 22,
+      fontSize: 20,
       fontWeight: 900,
       color
     }
@@ -1227,15 +1631,123 @@ function MyStats({
       marginTop: 3
     }
   }, sub));
+  const weekBasePay = Math.round(weekHours * HOURLY_RATE * 100) / 100;
+  const weekTotalPay = weekBasePay + weekTotalBonus;
+  const PayRow = ({
+    emoji,
+    label,
+    value,
+    sub,
+    color,
+    border = true,
+    dim = false
+  }) => /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "11px 0",
+      borderBottom: border ? `1px solid ${C.border}` : "none",
+      opacity: dim ? 0.45 : 1
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.muted,
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, emoji, " ", label), sub && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      marginTop: 1
+    }
+  }, sub)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 900,
+      fontSize: 17,
+      color: dim ? C.muted : color
+    }
+  }, value));
   return /*#__PURE__*/React.createElement("div", {
     className: "su"
-  }, totalUnpaid > 0 && /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
-      background: `${C.orange}15`,
-      border: `1px solid ${C.orange}40`,
+      marginBottom: 8,
+      fontWeight: 800,
+      fontSize: 11,
+      color: C.orange,
+      textTransform: "uppercase",
+      letterSpacing: "0.08em"
+    }
+  }, "\uD83D\uDCB0 This Week's Pay \xB7 ", fmtWeekRange(thisWeekStart)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.card,
+      border: `2px solid ${C.orange}35`,
+      borderRadius: 18,
+      padding: "16px 18px",
+      marginBottom: 18
+    }
+  }, weekEntries.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: C.muted,
+      fontSize: 14,
+      textAlign: "center",
+      padding: "12px 0"
+    }
+  }, "No shifts logged this week yet") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(PayRow, {
+    emoji: "\u23F1",
+    label: "Hours worked",
+    sub: weekHours > 0 ? `${weekHours} hrs × $${HOURLY_RATE}/hr` : null,
+    value: weekHours > 0 ? aud(weekBasePay) : "—",
+    color: C.blue,
+    dim: weekHours === 0
+  }), /*#__PURE__*/React.createElement(PayRow, {
+    emoji: "\uD83C\uDF89",
+    label: "Sales bonus",
+    value: weekBonus > 0 ? `$${weekBonus}` : "—",
+    color: C.orange,
+    dim: weekBonus === 0
+  }), /*#__PURE__*/React.createElement(PayRow, {
+    emoji: "\uD83D\uDCE6",
+    label: "Boxing bonus",
+    value: weekBoxing > 0 ? `$${weekBoxing}` : "—",
+    color: C.amber,
+    dim: weekBoxing === 0
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingTop: 14,
+      marginTop: 4,
+      borderTop: `2px solid ${C.border}`
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 16,
+      color: C.text
+    }
+  }, "Total pay this week"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      marginTop: 2
+    }
+  }, weekEntries.length, " shift", weekEntries.length !== 1 ? "s" : "", " logged")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 900,
+      fontSize: 30,
+      color: C.green
+    }
+  }, aud(weekTotalPay))))), totalUnpaid > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.green}12`,
+      border: `1px solid ${C.green}35`,
       borderRadius: 14,
       padding: "14px 18px",
-      marginBottom: 16,
+      marginBottom: 18,
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center"
@@ -1243,45 +1755,122 @@ function MyStats({
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 800,
-      color: C.orange,
+      color: C.green,
       fontSize: 15
     }
-  }, "\uD83C\uDF89 Bonus owed to you"), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDCB5 Total pay owed to you"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: C.muted,
       marginTop: 3
     }
-  }, "Pending payment from Doron")), /*#__PURE__*/React.createElement("div", {
+  }, "Wages + bonuses \xB7 pending Doron")), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 26,
+      fontSize: 28,
       fontWeight: 900,
-      color: C.orange
+      color: C.green
     }
-  }, "$", totalUnpaid)), /*#__PURE__*/React.createElement("div", {
+  }, "$", totalUnpaid)), weekEntries.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
-      marginBottom: 6,
-      fontWeight: 800,
-      fontSize: 12,
-      color: C.orange,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 8,
+      fontWeight: 700,
+      fontSize: 11,
+      color: C.muted,
       textTransform: "uppercase",
-      letterSpacing: "0.07em"
+      letterSpacing: "0.06em"
     }
-  }, "This Week \xB7 ", fmtWeekRange(thisWeekStart)), /*#__PURE__*/React.createElement("div", {
+  }, "This week's shifts"), weekEntries.slice().sort((a, b) => a.entry_date.localeCompare(b.entry_date)).map((e, i) => {
+    const bonus = calcBonus(e.total_sales, (e.staff || []).length);
+    const boxing = calcBoxBonus(e);
+    const hrs = entryHours(e);
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderRadius: 13,
+        padding: "12px 14px",
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        marginBottom: bonus > 0 || boxing > 0 ? 8 : 0
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 800,
+        fontSize: 14
+      }
+    }, fmtDate(e.entry_date)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.muted,
+        marginTop: 1
+      }
+    }, e.location, hrs > 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.blue,
+        marginLeft: 8
+      }
+    }, "\u23F1 ", hrs, " hrs"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "right"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 15,
+        fontWeight: 900,
+        color: C.green
+      }
+    }, aud(e.total_sales)), (bonus > 0 || boxing > 0) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontWeight: 800,
+        color: C.orange,
+        marginTop: 2
+      }
+    }, "+$", bonus + boxing, " bonus"))), (bonus > 0 || boxing > 0) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        flexWrap: "wrap"
+      }
+    }, bonus > 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: `${C.orange}18`,
+        border: `1px solid ${C.orange}35`,
+        color: C.orange,
+        fontSize: 11,
+        fontWeight: 800,
+        padding: "3px 10px",
+        borderRadius: 20
+      }
+    }, "\uD83C\uDF89 $$", bonus, " sales"), boxing > 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: `${C.amber}18`,
+        border: `1px solid ${C.amber}35`,
+        color: C.amber,
+        fontSize: 11,
+        fontWeight: 800,
+        padding: "3px 10px",
+        borderRadius: 20
+      }
+    }, "\uD83D\uDCE6 $$", boxing, " boxing")));
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
-      display: "flex",
-      gap: 10,
-      flexWrap: "wrap",
-      marginBottom: 16
-    }
-  }, statBox("My Sales", aud(weekSales), C.green), statBox("My Bonus", `$${weekBonus}`, C.orange, "$40 per $1,000"), statBox("Entries", (byWeek[thisWeekStart] || []).length, C.muted)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 6,
+      marginBottom: 8,
       fontWeight: 800,
-      fontSize: 12,
+      fontSize: 11,
       color: C.blue,
       textTransform: "uppercase",
-      letterSpacing: "0.07em"
+      letterSpacing: "0.08em"
     }
   }, "This Month \xB7 ", thisMonth), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1290,26 +1879,44 @@ function MyStats({
       flexWrap: "wrap",
       marginBottom: 20
     }
-  }, statBox("My Sales", aud(monthSales), C.green), statBox("My Bonus", `$${monthBonus}`, C.orange), statBox("Entries", (byMonth[thisMonth] || []).length, C.muted)), Object.keys(byWeek).sort().reverse().slice(0, 8).map(w => {
+  }, /*#__PURE__*/React.createElement(MiniStat, {
+    label: "Base Pay",
+    value: aud(Math.round(monthHours * HOURLY_RATE)),
+    color: C.blue,
+    sub: monthHours > 0 ? `${monthHours} hrs` : "—"
+  }), /*#__PURE__*/React.createElement(MiniStat, {
+    label: "Bonuses",
+    value: `$${monthBonus + monthBoxing}`,
+    color: C.orange
+  }), /*#__PURE__*/React.createElement(MiniStat, {
+    label: "Total Earned",
+    value: aud(Math.round(monthHours * HOURLY_RATE) + monthBonus + monthBoxing),
+    color: C.green
+  })), Object.keys(byWeek).sort().reverse().filter(w => w !== thisWeekStart).slice(0, 7).map(w => {
     const rows = byWeek[w] || [];
     const wSales = rows.reduce((a, e) => a + num(e.total_sales), 0);
-    const wBonus = rows.reduce((a, e) => a + calcBonus(e.total_sales), 0);
+    const wBonus = rows.reduce((a, e) => a + calcBonus(e.total_sales, (e.staff || []).length), 0);
+    const wBoxing = rows.reduce((a, e) => a + calcBoxBonus(e), 0);
+    const wHours = rows.reduce((a, e) => a + num(e.hours_worked), 0);
+    const wBase = Math.round(wHours * HOURLY_RATE * 100) / 100;
+    const wTotal = wBase + wBonus + wBoxing;
     const isPaid = paidWeeks.has(w);
     return /*#__PURE__*/React.createElement("div", {
       key: w,
       style: {
         background: C.card,
-        border: `1px solid ${C.border}`,
+        border: `1px solid ${isPaid ? C.green : C.border}`,
         borderRadius: 14,
         padding: "14px 16px",
-        marginBottom: 12
+        marginBottom: 12,
+        opacity: isPaid ? 0.75 : 1
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: 10
+        marginBottom: 8
       }
     }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -1322,52 +1929,63 @@ function MyStats({
         color: C.muted,
         marginTop: 2
       }
-    }, rows.length, " entries")), /*#__PURE__*/React.createElement("div", {
+    }, rows.length, " shift", rows.length !== 1 ? "s" : "", wHours > 0 ? ` · ${wHours} hrs` : "")), /*#__PURE__*/React.createElement("div", {
       style: {
         textAlign: "right"
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 18,
+        fontSize: 19,
         fontWeight: 900,
         color: C.green
       }
-    }, aud(wSales)), /*#__PURE__*/React.createElement("div", {
+    }, aud(wTotal)), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 13,
-        fontWeight: 700,
-        color: C.orange
+        fontSize: 12,
+        color: C.muted,
+        marginTop: 1
       }
-    }, "Bonus: $", wBonus), wBonus > 0 && /*#__PURE__*/React.createElement("div", {
+    }, wHours > 0 ? `${wHours}h × $${HOURLY_RATE}` : "no hours logged", wBonus + wBoxing > 0 ? ` + $${wBonus + wBoxing} bonus` : ""), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         fontWeight: 700,
         color: isPaid ? C.green : C.amber,
         marginTop: 2
       }
-    }, isPaid ? "✓ Paid" : "⏳ Pending"))), rows.map((e, i) => /*#__PURE__*/React.createElement("div", {
-      key: i,
-      style: {
-        display: "flex",
-        justifyContent: "space-between",
-        fontSize: 12,
-        padding: "6px 0",
-        borderTop: `1px solid ${C.border}`
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: C.muted
-      }
-    }, fmtDate(e.entry_date), " \xB7 ", e.location), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontWeight: 700,
-        color: C.green
-      }
-    }, aud(e.total_sales), calcBonus(e.total_sales) > 0 && /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: C.orange
-      }
-    }, " +$", calcBonus(e.total_sales))))));
+    }, isPaid ? "✓ Paid" : "⏳ Pending"))), rows.slice().sort((a, b) => a.entry_date.localeCompare(b.entry_date)).map((e, i) => {
+      const bonus = calcBonus(e.total_sales, (e.staff || []).length);
+      const boxing = calcBoxBonus(e);
+      return /*#__PURE__*/React.createElement("div", {
+        key: i,
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: 12,
+          padding: "5px 0",
+          borderTop: `1px solid ${C.border}`
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.muted
+        }
+      }, fmtDate(e.entry_date), " \xB7 ", e.location), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontWeight: 700
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.green
+        }
+      }, aud(e.total_sales)), bonus > 0 && /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.orange
+        }
+      }, " +$", bonus), boxing > 0 && /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.amber
+        }
+      }, " \uD83D\uDCE6$$", boxing)));
+    }));
   }), entries.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: "center",
