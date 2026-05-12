@@ -260,7 +260,7 @@ const fmtWeek = w => {
     year: "numeric"
   })}`;
 };
-const locType = loc => FARMERS_MARKETS.includes(loc) ? "Farmers Market" : SHOPPING_CENTRES.includes(loc) ? "Shopping Centre" : "Other";
+const locType = loc => loc === "Farm" ? "Farm" : loc === "Misc" ? "Misc" : FARMERS_MARKETS.includes(loc) ? "Farmers Market" : SHOPPING_CENTRES.includes(loc) ? "Shopping Centre" : "Other";
 function agg(rows) {
   return rows.reduce((a, e) => ({
     cash: a.cash + num(e.cash_sales),
@@ -5487,7 +5487,12 @@ function ManualEntryTab({
     boxes_packed_solo: "0",
     boxes_packed_shared: "0",
     packing_partners: "1",
-    notes: ""
+    notes: "",
+    // costs
+    fuel: "",
+    pickers_wages: "",
+    equipment: "",
+    misc_costs: ""
   };
   const [f, setF] = useState(EMPTY_F);
   const [saving, setSaving] = useState(false);
@@ -5512,8 +5517,24 @@ function ManualEntryTab({
       hours_worked: String(Math.round(mins / 60 * 10) / 10)
     }));
   }, [f.time_start, f.time_end]);
+
+  // Auto-fill shared boxes from another staff entry on the same day
+  // (boxes are packed once as a team — all staff share the same figure)
+  useEffect(() => {
+    if (!f.entry_date) return;
+    const dayRows = rows.filter(r => r.entry_date === f.entry_date && num(r.boxes_packed_shared) > 0);
+    if (!dayRows.length) return;
+    const ref = dayRows[0];
+    setF(p => ({
+      ...p,
+      boxes_packed_shared: String(num(ref.boxes_packed_shared) || 0),
+      packing_partners: String(num(ref.packing_partners) || 1)
+    }));
+  }, [f.entry_date]);
   const boxesSold = Math.max(0, num(f.boxes_start) + num(f.boxes_added) - num(f.boxes_end) - num(f.samples_used));
   const totalSales = num(f.cash_sales) + num(f.card_sales);
+  const totalCosts = num(f.fuel) + num(f.pickers_wages) + num(f.equipment) + num(f.misc_costs);
+  const isFarmMisc = ["Farm", "Misc"].includes(f.location);
 
   // Known staff emails derived from existing data
   const knownStaff = [...new Set(rows.map(r => r.user_email).filter(Boolean))].sort();
@@ -5543,51 +5564,80 @@ function ManualEntryTab({
       setMsgOk(false);
       return;
     }
-    if (!f.staff_email) {
+    if (!f.staff_email && !isFarmMisc) {
       setMsg("Staff member email is required.");
       setMsgOk(false);
       return;
     }
-    if (num(f.cash_sales) === 0 && num(f.card_sales) === 0) {
-      setMsg("Enter at least cash or card sales.");
+    if (totalSales === 0 && totalCosts === 0) {
+      setMsg("Enter sales figures or at least one cost.");
       setMsgOk(false);
       return;
     }
     setSaving(true);
     setMsg("");
-    const row = {
-      user_id: user.id,
-      user_email: f.staff_email.includes("@") ? f.staff_email : f.staff_email + ADMIN_DOMAIN,
-      entry_date: f.entry_date,
-      location: f.location,
-      location_type: locType(f.location),
-      staff: f.staff,
-      float_start: 0,
-      boxing_tally: {},
-      boxes_start: num(f.boxes_start) || 0,
-      boxes_added: num(f.boxes_added) || 0,
-      boxes_end: num(f.boxes_end) || 0,
-      samples_used: num(f.samples_used) || 0,
-      boxes_sold: boxesSold,
-      boxes_packed_solo: num(f.boxes_packed_solo) || 0,
-      boxes_packed_shared: num(f.boxes_packed_shared) || 0,
-      packing_partners: num(f.packing_partners) || 1,
-      time_start: f.time_start || null,
-      time_end: f.time_end || null,
-      cash_sales: num(f.cash_sales),
-      card_sales: num(f.card_sales),
-      hours_worked: num(f.hours_worked) || null,
-      notes: f.notes || "[Admin manual entry]"
-    };
-    const r = await sb.insert("daily_sales", row);
+    let salesOk = true,
+      errMsg = "";
+
+    // Only insert a sales row if there are actual sales (Farm/Misc cost-only entries skip this)
+    if (totalSales > 0 || f.staff_email) {
+      const staffEmail = f.staff_email ? f.staff_email.includes("@") ? f.staff_email : f.staff_email + ADMIN_DOMAIN : toEmail("admin");
+      const row = {
+        user_id: user.id,
+        user_email: staffEmail,
+        entry_date: f.entry_date,
+        location: f.location,
+        location_type: locType(f.location),
+        staff: f.staff,
+        float_start: 0,
+        boxing_tally: {},
+        boxes_start: num(f.boxes_start) || 0,
+        boxes_added: num(f.boxes_added) || 0,
+        boxes_end: num(f.boxes_end) || 0,
+        samples_used: num(f.samples_used) || 0,
+        boxes_sold: boxesSold,
+        boxes_packed_solo: num(f.boxes_packed_solo) || 0,
+        boxes_packed_shared: num(f.boxes_packed_shared) || 0,
+        packing_partners: num(f.packing_partners) || 1,
+        time_start: f.time_start || null,
+        time_end: f.time_end || null,
+        cash_sales: num(f.cash_sales),
+        card_sales: num(f.card_sales),
+        hours_worked: num(f.hours_worked) || null,
+        notes: f.notes || "[Admin manual entry]"
+      };
+      const r = await sb.insert("daily_sales", row);
+      if (!(Array.isArray(r) && r[0])) {
+        salesOk = false;
+        errMsg = r._error || "unknown error";
+      }
+    }
+
+    // Insert costs row if any costs entered
+    if (totalCosts > 0) {
+      const expRow = {
+        entry_date: f.entry_date,
+        fuel: num(f.fuel) || 0,
+        pickers_wages: num(f.pickers_wages) || 0,
+        equipment: num(f.equipment) || 0,
+        misc: num(f.misc_costs) || 0,
+        notes: f.notes || null,
+        entered_by: user?.email || "admin"
+      };
+      await sb.insert("daily_expenses", expRow);
+    }
     setSaving(false);
-    if (Array.isArray(r) && r[0]) {
-      setMsg(`✓ Entry added for ${f.staff_email} on ${f.entry_date} — ${aud(totalSales)} sales, ${boxesSold} boxes sold.`);
+    if (salesOk) {
+      const parts = [];
+      if (totalSales > 0) parts.push(`${aud(totalSales)} sales`);
+      if (totalCosts > 0) parts.push(`${aud(totalCosts)} costs`);
+      if (boxesSold > 0) parts.push(`${boxesSold} boxes sold`);
+      setMsg(`✓ Entry added for ${f.entry_date} — ${parts.join(", ")}.`);
       setMsgOk(true);
       setF(EMPTY_F);
       if (onSaved) onSaved();
     } else {
-      setMsg("❌ Failed — " + (r._error || "unknown error"));
+      setMsg("❌ Failed — " + errMsg);
       setMsgOk(false);
     }
   }
@@ -5684,7 +5734,13 @@ function ManualEntryTab({
     }
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "\u2014 Select location \u2014"), knownLocs.map(l => /*#__PURE__*/React.createElement("option", {
+  }, "\u2014 Select location \u2014"), /*#__PURE__*/React.createElement("option", {
+    value: "Farm"
+  }, "\uD83C\uDF3E Farm (Mildura)"), /*#__PURE__*/React.createElement("option", {
+    value: "Misc"
+  }, "\uD83D\uDCCB Misc / Other"), /*#__PURE__*/React.createElement("option", {
+    disabled: true
+  }, "\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"), knownLocs.filter(l => l !== "Farm" && l !== "Misc").map(l => /*#__PURE__*/React.createElement("option", {
     key: l,
     value: l
   }, l))))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
@@ -5835,6 +5891,66 @@ function ManualEntryTab({
     }
   }, "Total: ", aud(totalSales))), /*#__PURE__*/React.createElement("div", {
     style: secHdr
+  }, "Costs ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 400,
+      textTransform: "none",
+      letterSpacing: 0,
+      fontSize: 11
+    }
+  }, "(farm expenses \u2014 optional unless no sales)")), /*#__PURE__*/React.createElement(Card, {
+    style: {
+      padding: "16px",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))",
+      gap: 12
+    }
+  }, [["⛽ Fuel ($)", "fuel"], ["👷 Pickers Wages ($)", "pickers_wages"], ["🔧 Equipment / Maintenance ($)", "equipment"], ["📋 Misc Farm Costs ($)", "misc_costs"]].map(([label, key]) => /*#__PURE__*/React.createElement("div", {
+    key: key
+  }, /*#__PURE__*/React.createElement("div", {
+    style: lbl
+  }, label), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "0",
+    step: "0.01",
+    placeholder: "0",
+    value: f[key],
+    onChange: setV(key),
+    style: {
+      ...inp,
+      fontWeight: 700,
+      color: "#ef4444",
+      fontSize: 18,
+      textAlign: "center"
+    }
+  })))), totalCosts > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10,
+      background: "#ef444412",
+      border: "1px solid #ef444430",
+      borderRadius: 9,
+      padding: "10px 14px",
+      fontSize: 14,
+      fontWeight: 700,
+      color: "#ef4444"
+    }
+  }, "\uD83D\uDCB8 Total Costs: ", /*#__PURE__*/React.createElement("strong", {
+    style: {
+      fontSize: 18
+    }
+  }, aud(totalCosts)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      fontWeight: 400,
+      marginLeft: 10
+    }
+  }, [num(f.fuel) && `Fuel ${aud(num(f.fuel))}`, num(f.pickers_wages) && `Pickers ${aud(num(f.pickers_wages))}`, num(f.equipment) && `Equip. ${aud(num(f.equipment))}`, num(f.misc_costs) && `Misc ${aud(num(f.misc_costs))}`].filter(Boolean).join(" · ")))), /*#__PURE__*/React.createElement("div", {
+    style: secHdr
   }, "Boxes"), /*#__PURE__*/React.createElement(Card, {
     style: {
       padding: "16px",
@@ -5945,28 +6061,67 @@ function ManualEntryTab({
       padding: "16px",
       marginBottom: 14
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: "grid",
-      gridTemplateColumns: "1fr 1fr 1fr",
-      gap: 12
-    }
-  }, [["Solo Packed", f.boxes_packed_solo, "boxes_packed_solo"], ["Shared Packed", f.boxes_packed_shared, "boxes_packed_shared"], ["Packing Partners", f.packing_partners, "packing_partners"]].map(([lbl2, val, key]) => /*#__PURE__*/React.createElement("div", {
-    key: key
-  }, /*#__PURE__*/React.createElement("div", {
-    style: lbl
-  }, lbl2), /*#__PURE__*/React.createElement("input", {
-    type: "number",
-    min: "0",
-    step: "1",
-    value: val,
-    onChange: setV(key),
-    style: {
-      ...inp,
-      textAlign: "center",
-      fontWeight: 700
-    }
-  }))))), /*#__PURE__*/React.createElement("div", {
+  }, (() => {
+    const sharedSource = f.entry_date ? rows.find(r => r.entry_date === f.entry_date && num(r.boxes_packed_shared) > 0) : null;
+    return /*#__PURE__*/React.createElement(React.Fragment, null, sharedSource && /*#__PURE__*/React.createElement("div", {
+      style: {
+        background: `${C.amber}15`,
+        border: `1px solid ${C.amber}40`,
+        borderRadius: 8,
+        padding: "8px 12px",
+        fontSize: 12,
+        color: C.amber,
+        fontWeight: 600,
+        marginBottom: 12
+      }
+    }, "\uD83D\uDCE6 Shared packed auto-filled from ", sharedSource.user_email?.split("@")[0], "'s entry for this day"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr 1fr",
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: lbl
+    }, "Solo Packed"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      min: "0",
+      step: "1",
+      value: f.boxes_packed_solo,
+      onChange: setV("boxes_packed_solo"),
+      style: {
+        ...inp,
+        textAlign: "center",
+        fontWeight: 700
+      }
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: lbl
+    }, "Shared Packed"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      min: "0",
+      step: "1",
+      value: f.boxes_packed_shared,
+      onChange: setV("boxes_packed_shared"),
+      style: {
+        ...inp,
+        textAlign: "center",
+        fontWeight: 700,
+        border: `1.5px solid ${sharedSource ? C.amber : C.border}`
+      }
+    })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: lbl
+    }, "Packing Partners"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      min: "1",
+      step: "1",
+      value: f.packing_partners,
+      onChange: setV("packing_partners"),
+      style: {
+        ...inp,
+        textAlign: "center",
+        fontWeight: 700
+      }
+    }))));
+  })()), /*#__PURE__*/React.createElement("div", {
     style: secHdr
   }, "Notes"), /*#__PURE__*/React.createElement(Card, {
     style: {
