@@ -83,6 +83,14 @@ app.get(['/admin', '/admin.html'], (req, res) => {
   res.sendFile(path.join(ROOT, 'admin.html'));
 });
 
+// Compatibility: old /admin/* links redirect to /site-admin/*
+app.all('/admin/login',              (req, res) => res.redirect(301, '/site-admin/login'));
+app.all('/admin/logout',             (req, res) => res.redirect(301, '/site-admin/logout'));
+app.all('/admin/locations',          (req, res) => res.redirect(301, '/site-admin/locations'));
+app.all('/admin/socials',            (req, res) => res.redirect(301, '/site-admin/socials'));
+app.all('/admin/subscribers/delete', (req, res) => res.redirect(301, '/site-admin/subscribers/delete'));
+app.all('/admin/send-email',         (req, res) => res.redirect(301, '/site-admin/send-email'));
+
 // ── Marketing site admin (EJS, password-protected) ───────────────────────────
 app.get('/site-admin/login', (req, res) => {
   if (req.session.isAdmin) return res.redirect('/site-admin');
