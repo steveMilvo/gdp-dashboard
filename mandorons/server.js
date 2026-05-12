@@ -60,7 +60,7 @@ app.use(session({
 
 function requireAdmin(req, res, next) {
   if (req.session && req.session.isAdmin) return next();
-  return res.redirect('/admin/login');
+  return res.redirect('/site-admin/login');
 }
 
 app.post('/api/subscribe', (req, res) => {
@@ -77,27 +77,34 @@ app.post('/api/subscribe', (req, res) => {
   res.json({ ok: true, message: "Thanks! Watch your inbox each Monday." });
 });
 
-app.get('/admin/login', (req, res) => {
-  if (req.session.isAdmin) return res.redirect('/admin');
+// ── React sales admin (Supabase auth) ────────────────────────────────────────
+app.get(['/admin', '/admin.html'], (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.sendFile(path.join(ROOT, 'admin.html'));
+});
+
+// ── Marketing site admin (EJS, password-protected) ───────────────────────────
+app.get('/site-admin/login', (req, res) => {
+  if (req.session.isAdmin) return res.redirect('/site-admin');
   res.render('login', { error: null, configured: ADMIN_PASSWORD.length > 0 });
 });
 
-app.post('/admin/login', (req, res) => {
+app.post('/site-admin/login', (req, res) => {
   if (!ADMIN_PASSWORD) {
     return res.render('login', { error: 'ADMIN_PASSWORD env var is not set on the server.', configured: false });
   }
   if (String(req.body.password) === ADMIN_PASSWORD) {
     req.session.isAdmin = true;
-    return res.redirect('/admin');
+    return res.redirect('/site-admin');
   }
   res.render('login', { error: 'Wrong password.', configured: true });
 });
 
-app.get('/admin/logout', (req, res) => {
+app.get('/site-admin/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/'));
 });
 
-app.get('/admin', requireAdmin, (req, res) => {
+app.get('/site-admin', requireAdmin, (req, res) => {
   const locations = readJson(LOCATIONS_FILE, { this_week: [] });
   const subs = readJson(SUBSCRIBERS_FILE, { subscribers: [] });
   const socials = readJson(SOCIALS_FILE, {});
@@ -111,7 +118,7 @@ app.get('/admin', requireAdmin, (req, res) => {
   });
 });
 
-app.post('/admin/locations', requireAdmin, (req, res) => {
+app.post('/site-admin/locations', requireAdmin, (req, res) => {
   const b = req.body;
   const updated = {
     week_of: b.week_of || '',
@@ -132,18 +139,18 @@ app.post('/admin/locations', requireAdmin, (req, res) => {
     });
   }
   writeJson(LOCATIONS_FILE, updated);
-  res.redirect('/admin?saved=1');
+  res.redirect('/site-admin?saved=1');
 });
 
-app.post('/admin/subscribers/delete', requireAdmin, (req, res) => {
+app.post('/site-admin/subscribers/delete', requireAdmin, (req, res) => {
   const email = String(req.body.email || '').toLowerCase();
   const data = readJson(SUBSCRIBERS_FILE, { subscribers: [] });
   data.subscribers = data.subscribers.filter(s => s.email !== email);
   writeJson(SUBSCRIBERS_FILE, data);
-  res.redirect('/admin?removed=1');
+  res.redirect('/site-admin?removed=1');
 });
 
-app.post('/admin/socials', requireAdmin, (req, res) => {
+app.post('/site-admin/socials', requireAdmin, (req, res) => {
   const out = {};
   for (const p of SOCIAL_PLATFORMS) {
     let v = String(req.body[p] || '').trim();
@@ -151,7 +158,7 @@ app.post('/admin/socials', requireAdmin, (req, res) => {
     out[p] = v;
   }
   writeJson(SOCIALS_FILE, out);
-  res.redirect('/admin?saved=socials');
+  res.redirect('/site-admin?saved=socials');
 });
 
 app.get('/socials.json', (req, res) => {
@@ -160,13 +167,13 @@ app.get('/socials.json', (req, res) => {
   res.sendFile(SOCIALS_FILE);
 });
 
-app.post('/admin/send-email', requireAdmin, async (req, res) => {
+app.post('/site-admin/send-email', requireAdmin, async (req, res) => {
   const subject = (req.body.subject || '').trim();
   const body = req.body.body || '';
-  if (!subject || !body) return res.redirect('/admin?error=missing');
+  if (!subject || !body) return res.redirect('/site-admin?error=missing');
 
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
-    return res.redirect('/admin?error=smtp');
+    return res.redirect('/site-admin?error=smtp');
   }
 
   const transporter = nodemailer.createTransport({
@@ -195,7 +202,7 @@ app.post('/admin/send-email', requireAdmin, async (req, res) => {
       console.error('Email failed for', sub.email, err.message);
     }
   }
-  res.redirect(`/admin?sent=${sent}&failed=${failed}`);
+  res.redirect(`/site-admin?sent=${sent}&failed=${failed}`);
 });
 
 app.get('/locations.json', (req, res) => {

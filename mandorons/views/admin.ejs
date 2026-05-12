@@ -14,7 +14,7 @@
       <p class="admin-eyebrow">ManDorons admin</p>
       <h1>Dashboard</h1>
     </div>
-    <a class="admin-logout" href="/admin/logout">Sign out</a>
+    <a class="admin-logout" href="/site-admin/logout">Sign out</a>
   </header>
 
   <% if (flash.saved === '1') { %><p class="admin-flash success">Locations saved &mdash; live in a few seconds.</p><% } %>
@@ -28,7 +28,7 @@
     <h2>This week's locations</h2>
     <p class="admin-help">Edit and save &mdash; the public site updates immediately. Leave a row's name blank to remove that stop.</p>
 
-    <form method="POST" action="/admin/locations" class="admin-form">
+    <form method="POST" action="/site-admin/locations" class="admin-form">
       <div class="admin-row">
         <label>Week of
           <input type="date" name="week_of" value="<%= locations.week_of || '' %>">
@@ -68,7 +68,7 @@
   <section class="admin-section">
     <h2>Social media links</h2>
     <p class="admin-help">Paste each profile URL. Leave blank to hide that icon on the site. Saves immediately, no redeploy needed.</p>
-    <form method="POST" action="/admin/socials" class="admin-form">
+    <form method="POST" action="/site-admin/socials" class="admin-form">
       <% const labels = { instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', youtube: 'YouTube', twitter: 'X (Twitter)' }; %>
       <% const placeholders = { instagram: 'https://instagram.com/mandorons', facebook: 'https://facebook.com/mandorons', tiktok: 'https://tiktok.com/@mandorons', youtube: 'https://youtube.com/@mandorons', twitter: 'https://x.com/mandorons' }; %>
       <% platforms.forEach(p => { %>
@@ -94,7 +94,7 @@
               <td><%= s.email %></td>
               <td><%= new Date(s.subscribed_at).toLocaleDateString('en-AU', { day:'numeric', month:'short', year:'numeric' }) %></td>
               <td>
-                <form method="POST" action="/admin/subscribers/delete" onsubmit="return confirm('Remove <%= s.email %>?')">
+                <form method="POST" action="/site-admin/subscribers/delete" onsubmit="return confirm('Remove <%= s.email %>?')">
                   <input type="hidden" name="email" value="<%= s.email %>">
                   <button type="submit" class="link-button">Remove</button>
                 </form>
@@ -109,7 +109,7 @@
     <% if (!smtpConfigured) { %>
       <p class="admin-flash error" style="margin-bottom:1rem">SMTP not configured. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM in Railway and redeploy.</p>
     <% } %>
-    <form method="POST" action="/admin/send-email" class="admin-form" onsubmit="return confirm('Send to <%= subscribers.length %> subscriber<%= subscribers.length === 1 ? '' : 's' %>?')">
+    <form method="POST" action="/site-admin/send-email" class="admin-form" onsubmit="return confirm('Send to <%= subscribers.length %> subscriber<%= subscribers.length === 1 ? '' : 's' %>?')">
       <label>Subject
         <input type="text" name="subject" required placeholder="This week from ManDorons">
       </label>
