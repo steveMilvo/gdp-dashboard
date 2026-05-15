@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ManDorons — Staff Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,700;0,900;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --orange: #f29a1f;
+      --orange-deep: #d97706;
+      --orange-soft: #fde4b8;
+      --green: #1e7a3a;
+      --green-deep: #0f5526;
+      --cream: #fff8ec;
+      --cream-deep: #f6ead0;
+      --ink: #2a1a08;
+      --muted: #6b5a47;
+      --serif: "Fraunces", Georgia, serif;
+      --sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--sans);
+      background: var(--cream);
+      color: var(--ink);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── PORTAL PAGE ─────────────────────────────────────── */
+    #page-portal {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .portal-header {
+      background: var(--green-deep);
+      color: #fff;
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .portal-brand {
+      font-family: var(--serif);
+      font-weight: 900;
+      font-size: 1.6rem;
+      text-decoration: none;
+      color: #fff;
+    }
+    .portal-brand span { color: var(--orange); }
+    .portal-badge {
+      background: rgba(255,255,255,0.12);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.35rem 0.8rem;
+      border-radius: 999px;
+      color: var(--orange-soft);
+    }
+    .portal-main {
+      flex: 1;
+      padding: 3rem 1.5rem 4rem;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+    .portal-title {
+      font-family: var(--serif);
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      font-weight: 900;
+      color: var(--green-deep);
+      margin-bottom: 0.4rem;
+    }
+    .portal-sub {
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin-bottom: 2.5rem;
+    }
+
+    /* Staff grid */
+    .staff-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.25rem;
+    }
+    .staff-card {
+      background: #fff;
+      border: 2px solid var(--green);
+      border-radius: 20px;
+      padding: 2rem 1.25rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+      box-shadow: 0 2px 12px -4px rgba(42,26,8,0.12);
+    }
+    .staff-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px -8px rgba(42,26,8,0.22);
+      border-color: var(--orange);
+    }
+    .avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--serif);
+      font-size: 1.9rem;
+      font-weight: 900;
+      color: #fff;
+      margin: 0 auto 1rem;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+    }
+    .staff-name {
+      font-family: var(--serif);
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--green-deep);
+      margin-bottom: 0.25rem;
+    }
+    .staff-action {
+      font-size: 0.83rem;
+      font-weight: 600;
+      color: var(--green);
+    }
+
+    /* Back link */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--orange-soft);
+      font-size: 0.85rem;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .back-link:hover { color: var(--orange); }
+  </style>
+</head>
+<body>
+
+<div id="page-portal">
+  <header class="portal-header">
+    <a href="/" class="portal-brand">Man<span>Dorons</span></a>
+    <span class="portal-badge">Staff Portal</span>
+  </header>
+
+  <main class="portal-main">
+    <h1 class="portal-title">Who are you?</h1>
+    <p class="portal-sub">Tap your card to open your field sales dashboard.</p>
+
+    <div class="staff-grid" id="staff-grid">
+      <!-- cards injected by JS -->
+    </div>
+  </main>
+</div>
+
+<script>
+const STAFF = [
+  { id: 'moka',    name: 'Moka',    initial: 'M', color: '#b45309' },
+  { id: 'steve',   name: 'Steve',   initial: 'S', color: '#1e7a3a' },
+  { id: 'doron',   name: 'Doron',   initial: 'D', color: '#0f5526' },
+  { id: 'tony',    name: 'Tony',    initial: 'T', color: '#c2410c' },
+  { id: 'raff',    name: 'Raff',    initial: 'R', color: '#7c3aed' },
+  { id: 'xerxie',  name: 'Xerxie',  initial: 'X', color: '#0369a1' },
+  { id: 'ari',     name: 'Ari',     initial: 'A', color: '#0891b2' },
+  { id: 'yuka',    name: 'Yuka',    initial: 'Y', color: '#be185d' },
+  { id: 'raffael', name: 'Raffael', initial: 'Rf', color: '#7c3aed' },
+];
+
+function renderGrid() {
+  const grid = document.getElementById('staff-grid');
+  grid.innerHTML = STAFF.map(s => `
+    <button class="staff-card" data-id="${s.id}" aria-label="Open ${s.name}'s sales dashboard">
+      <div class="avatar" style="background:${s.color}">${s.initial}</div>
+      <div class="staff-name">${s.name}</div>
+      <div class="staff-action">Open Dashboard →</div>
+    </button>
+  `).join('');
+  grid.querySelectorAll('.staff-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const s = STAFF.find(x => x.id === card.dataset.id);
+      if (s) {
+        sessionStorage.setItem('mdn_staff_id',      s.id);
+        sessionStorage.setItem('mdn_staff_name',    s.name);
+        sessionStorage.setItem('mdn_staff_initial', s.initial);
+        sessionStorage.setItem('mdn_staff_color',   s.color);
+      }
+      window.location.href = '/staff-dashboard.html';
+    });
+  });
+}
+
+renderGrid();
+
+// Auto-redirect from URL hash, e.g. staff.html#steve → straight to staff-dashboard.html
+const hashId = window.location.hash.replace('#','').toLowerCase();
+const hashStaff = STAFF.find(s => s.id === hashId);
+if (hashStaff) {
+  sessionStorage.setItem('mdn_staff_id',      hashStaff.id);
+  sessionStorage.setItem('mdn_staff_name',    hashStaff.name);
+  sessionStorage.setItem('mdn_staff_initial', hashStaff.initial);
+  sessionStorage.setItem('mdn_staff_color',   hashStaff.color);
+  window.location.href = '/staff-dashboard.html';
+}
+</script>
+</body>
+</html>

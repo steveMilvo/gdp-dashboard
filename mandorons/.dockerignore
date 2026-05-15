@@ -1,0 +1,9 @@
+previews/
+email_weekly.html
+generate_qr.py
+railway.json
+Dockerfile
+.dockerignore
+*.md
+node_modules
+data/subscribers.json

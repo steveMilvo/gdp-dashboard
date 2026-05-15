@@ -1,0 +1,31 @@
+server {
+  listen ${PORT} default_server;
+  # Don't leak Railway's internal port (8080) into 301 redirects
+  port_in_redirect off;
+  absolute_redirect off;
+
+  root /usr/share/nginx/html;
+  index index.html;
+
+  gzip on;
+  gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+
+  location = /locations.json {
+    add_header Cache-Control "no-store";
+    types { } default_type application/json;
+  }
+
+  # Serve pages with zero redirects — try_files never issues a Location header
+  location = /staff            { add_header Cache-Control "no-store" always; try_files /staff.html =404; }
+  location = /staff.html       { add_header Cache-Control "no-store" always; try_files /staff.html =404; }
+  location = /admin            { add_header Cache-Control "no-store" always; try_files /admin.html =404; }
+  location = /admin.html       { add_header Cache-Control "no-store" always; try_files /admin.html =404; }
+  location = /dashboard        { add_header Cache-Control "no-store" always; try_files /staff-dashboard.html =404; }
+  location = /staff-dashboard  { add_header Cache-Control "no-store" always; try_files /staff-dashboard.html =404; }
+  location = /staff-dashboard.html { add_header Cache-Control "no-store" always; try_files /staff-dashboard.html =404; }
+
+  location ~* \.(jpg|jpeg|png|gif|webp|svg|woff2)$ {
+    expires 30d;
+    add_header Cache-Control "public, max-age=2592000";
+  }
+}

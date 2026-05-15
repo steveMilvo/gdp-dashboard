@@ -1,0 +1,2417 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#0a0a0a" />
+<title>Mandorons Staff</title>
+<style>html,body{margin:0;padding:0;background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif}#root{min-height:100dvh}#boot{display:flex;align-items:center;justify-content:center;min-height:100dvh;color:#666;font-size:14px}</style>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div id="root"><div id="boot">Loading…</div></div>
+<script>
+// Defensive: surface any startup error to the page so we can see what's wrong
+window.addEventListener("error", (e) => {
+  const r = document.getElementById("root");
+  if (r) r.innerHTML = '<pre style="color:#fa5;padding:24px;font:12px monospace;white-space:pre-wrap;">JS error: ' + (e.message || e) + '\n' + (e.filename || '') + ':' + (e.lineno || '') + '</pre>';
+});
+window.addEventListener("unhandledrejection", (e) => {
+  const r = document.getElementById("root");
+  if (r) r.innerHTML = '<pre style="color:#fa5;padding:24px;font:12px monospace;white-space:pre-wrap;">Promise rejection: ' + (e.reason && e.reason.message || e.reason) + '</pre>';
+});
+if (!window.React) {
+  document.getElementById("root").innerHTML = '<pre style="color:#fa5;padding:24px;font:12px monospace;">React failed to load from CDN. Check network tab.</pre>';
+} else {
+const {
+  useState,
+  useEffect,
+  useRef,
+  useCallback
+} = React;
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
+const SUPABASE_URL = "https://nwbxdbpowwvjcivykchg.supabase.co";
+const SUPABASE_ANON = "sb_publishable_s7W81yUixF4lqpdOcd9IJw_WZ89c1O1";
+const LOCATIONS = {
+  "Farmers Markets": ["Coburg Farmers Market", "Eltham Farmers Market", "St Kilda Farmers Market", "Carlton Farmers Market", "Alphington Farmers' Market"],
+  "Shopping Centres": ["Victoria Park Shopping Centre", "Box Hill Central", "Victoria Gardens"],
+  "Other": []
+};
+
+// Quick-pick presets with hints — same venues as admin Locations tab
+const PRESET_LOCATIONS = [{
+  name: "Victoria Park Shopping Centre",
+  hint: "near Coles · Abbotsford",
+  icon: "🏬"
+}, {
+  name: "Box Hill Central",
+  hint: "near Fruit & Vege Grocers",
+  icon: "🏬"
+}, {
+  name: "St Kilda Farmers Market",
+  hint: "Peanut Farm Reserve",
+  icon: "🌿"
+}, {
+  name: "Coburg Farmers Market",
+  hint: "Bridges Reserve",
+  icon: "🌿"
+}, {
+  name: "Carlton Farmers Market",
+  hint: "Lincoln Square",
+  icon: "🌿"
+}, {
+  name: "Alphington Farmers' Market",
+  hint: "Alphington Park",
+  icon: "🌿"
+}, {
+  name: "Eltham Farmers Market",
+  hint: "Eltham",
+  icon: "🌿"
+}, {
+  name: "Victoria Gardens",
+  hint: "Richmond Shopping Centre",
+  icon: "🏬"
+}];
+const STAFF_ROSTER = ["Steve", "Doron", "Xerxie", "Moka", "Raffael", "Tony", "Ari", "Yuka"];
+const sb = {
+  _token: null,
+  _user: null,
+  h: () => ({
+    "Content-Type": "application/json",
+    apikey: SUPABASE_ANON,
+    Authorization: `Bearer ${sb._token || SUPABASE_ANON}`
+  }),
+  async signIn(email, pw) {
+    const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON
+      },
+      body: JSON.stringify({
+        email,
+        password: pw
+      })
+    });
+    const d = await r.json();
+    if (d.access_token) {
+      sb._token = d.access_token;
+      sb._user = d.user;
+    }
+    return d;
+  },
+  async signOut() {
+    await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
+      method: "POST",
+      headers: sb.h()
+    });
+    sb._token = null;
+    sb._user = null;
+  },
+  async select(table, qs = "") {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${qs}`, {
+      headers: sb.h()
+    });
+    return r.json();
+  },
+  async insert(table, row) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: "POST",
+      headers: {
+        ...sb.h(),
+        Prefer: "return=representation"
+      },
+      body: JSON.stringify(row)
+    });
+    return r.json();
+  },
+  async upsert(table, row, conflictCol) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?on_conflict=${conflictCol}`, {
+      method: "POST",
+      headers: {
+        ...sb.h(),
+        Prefer: "return=representation,resolution=merge-duplicates"
+      },
+      body: JSON.stringify(row)
+    });
+    return r.json();
+  },
+  async upload(bucket, path, file) {
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_ANON,
+        Authorization: `Bearer ${sb._token}`,
+        "Content-Type": file.type
+      },
+      body: file
+    });
+    const d = await r.json();
+    if (d.Key) return `${SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
+    throw new Error(d.message || "Upload failed");
+  }
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+// Use local date (not UTC) — toISOString() would return yesterday for AU mornings
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const HOURLY_RATE = 35;
+const num = n => Number(n) || 0;
+const aud = n => num(n).toLocaleString("en-AU", {
+  style: "currency",
+  currency: "AUD",
+  minimumFractionDigits: 2
+});
+const calcBonus = (total, workers) => Math.round(Math.floor(num(total) / 1000) * 40 / Math.max(1, num(workers) || 1));
+const entryHours = e => num(e.hours_worked);
+const calcBoxBonus = e => num(e.boxes_packed_solo) + Math.round(num(e.boxes_packed_shared) / Math.max(1, num(e.packing_partners) || 1));
+function weekOf(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - day + 1);
+  // Use local date components — toISOString() shifts to UTC and gives wrong day for AU
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function monthOf(d) {
+  return d?.slice(0, 7) || "";
+}
+function fmtDate(iso) {
+  if (!iso) return "";
+  return new Date(iso + "T00:00:00").toLocaleDateString("en-AU", {
+    weekday: "short",
+    day: "numeric",
+    month: "short"
+  });
+}
+function fmtWeekRange(start) {
+  const s = new Date(start + "T00:00:00");
+  const e = new Date(s);
+  e.setDate(e.getDate() + 6);
+  return `${s.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short"
+  })}–${e.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short"
+  })}`;
+}
+function getLocType(loc) {
+  if (LOCATIONS["Farmers Markets"].includes(loc)) return "Farmers Market";
+  if (LOCATIONS["Shopping Centres"].includes(loc)) return "Shopping Centre";
+  return "Other";
+}
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg: "#0D1F12",
+  surface: "#132018",
+  card: "#1A2B1E",
+  orange: "#F07020",
+  green: "#4CAF72",
+  amber: "#F5A623",
+  blue: "#5BA4E8",
+  red: "#E05555",
+  text: "#F0EDE6",
+  muted: "#7A9A80",
+  border: "#243328",
+  radius: 16
+};
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{font-size:16px}
+  body{background:${C.bg};font-family:'Nunito',sans-serif;color:${C.text};min-height:100dvh;-webkit-font-smoothing:antialiased}
+  input,select,textarea,button{font-family:inherit}
+  input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+  @keyframes su{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+  .su{animation:su 0.28s ease both}
+`;
+
+// ── UI Primitives ─────────────────────────────────────────────────────────────
+function Card({
+  children,
+  style = {}
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.card,
+      borderRadius: C.radius,
+      border: `1px solid ${C.border}`,
+      padding: "18px 16px",
+      boxShadow: "0 4px 20px rgba(0,0,0,0.35)",
+      marginBottom: 14,
+      ...style
+    }
+  }, children);
+}
+function STitle({
+  emoji,
+  title,
+  color = C.orange
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 20
+    }
+  }, emoji), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 16,
+      fontWeight: 800,
+      color,
+      letterSpacing: "-0.02em"
+    }
+  }, title));
+}
+function Lbl({
+  children
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 6
+    }
+  }, children);
+}
+function Inp({
+  icon,
+  stl = {},
+  ...props
+}) {
+  const [focus, setFocus] = useState(false);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: "relative",
+      marginBottom: 14
+    }
+  }, icon && /*#__PURE__*/React.createElement("span", {
+    style: {
+      position: "absolute",
+      left: 12,
+      top: "50%",
+      transform: "translateY(-50%)",
+      fontSize: 16,
+      pointerEvents: "none"
+    }
+  }, icon), /*#__PURE__*/React.createElement("input", _extends({}, props, {
+    style: {
+      width: "100%",
+      padding: "13px 14px",
+      paddingLeft: icon ? 38 : 14,
+      borderRadius: 12,
+      border: `2px solid ${focus ? C.orange : C.border}`,
+      background: C.surface,
+      color: C.text,
+      fontSize: 16,
+      outline: "none",
+      transition: "border-color 0.15s",
+      boxShadow: focus ? `0 0 0 4px ${C.orange}18` : "none",
+      ...stl
+    },
+    onFocus: () => setFocus(true),
+    onBlur: () => setFocus(false)
+  })));
+}
+function Stepper({
+  label,
+  hint,
+  value,
+  onChange,
+  color = C.text
+}) {
+  const n = num(value);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 16
+    }
+  }, label && /*#__PURE__*/React.createElement(Lbl, null, label), hint && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 8
+    }
+  }, hint), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      borderRadius: 14,
+      border: `2px solid ${C.border}`,
+      overflow: "hidden",
+      background: C.surface,
+      height: 62
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => onChange(Math.max(0, n - 1)),
+    style: {
+      width: 64,
+      height: "100%",
+      background: "none",
+      border: "none",
+      color: C.muted,
+      fontSize: 28,
+      fontWeight: 900,
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, "\u2212"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      textAlign: "center",
+      fontSize: 30,
+      fontWeight: 900,
+      color,
+      lineHeight: 1
+    }
+  }, n), /*#__PURE__*/React.createElement("button", {
+    onClick: () => onChange(n + 1),
+    style: {
+      width: 64,
+      height: "100%",
+      background: `${C.orange}22`,
+      border: "none",
+      color: C.orange,
+      fontSize: 28,
+      fontWeight: 900,
+      cursor: "pointer",
+      flexShrink: 0
+    }
+  }, "+")));
+}
+
+// ── Location picker ───────────────────────────────────────────────────────────
+function LocationPicker({
+  value,
+  onSelect
+}) {
+  const [custom, setCustom] = useState("");
+  const [showCustom, setShowCustom] = useState(false);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 8,
+      marginBottom: 14
+    }
+  }, PRESET_LOCATIONS.map(p => {
+    const sel = value === p.name;
+    const col = p.icon === "🏬" ? C.blue : C.green;
+    return /*#__PURE__*/React.createElement("button", {
+      key: p.name,
+      onClick: () => {
+        setShowCustom(false);
+        onSelect(p.name);
+      },
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "13px 14px",
+        borderRadius: 14,
+        border: `2px solid ${sel ? col : C.border}`,
+        background: sel ? `${col}18` : C.surface,
+        cursor: "pointer",
+        textAlign: "left",
+        transition: "all 0.15s",
+        width: "100%"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 22,
+        flexShrink: 0
+      }
+    }, p.icon), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        fontWeight: 800,
+        color: sel ? col : C.text,
+        lineHeight: 1.2
+      }
+    }, p.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.muted,
+        marginTop: 2
+      }
+    }, p.hint)), sel && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 18,
+        color: col,
+        flexShrink: 0
+      }
+    }, "\u2713"));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setShowCustom(s => !s);
+      if (!showCustom) onSelect("");
+    },
+    style: {
+      width: "100%",
+      padding: "12px",
+      borderRadius: 12,
+      border: `2px dashed ${showCustom ? C.muted : C.border}`,
+      background: "transparent",
+      color: C.muted,
+      fontWeight: 700,
+      fontSize: 13,
+      cursor: "pointer"
+    }
+  }, showCustom ? "▲ Hide custom entry" : "+ Enter custom location"), showCustom && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement(Inp, {
+    type: "text",
+    placeholder: "Type location name\u2026",
+    value: custom,
+    onChange: e => {
+      setCustom(e.target.value);
+      onSelect(e.target.value);
+    },
+    icon: "\uD83D\uDCCD"
+  }))), value && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.green}12`,
+      border: `1px solid ${C.green}30`,
+      borderRadius: 10,
+      padding: "8px 12px",
+      fontSize: 13,
+      color: C.green,
+      fontWeight: 700
+    }
+  }, "\u2713 ", value, " \xB7 ", getLocType(value)));
+}
+
+// ── Staff picker ──────────────────────────────────────────────────────────────
+function StaffPicker({
+  value,
+  onChange
+}) {
+  const toggle = name => onChange(value.includes(name) ? value.filter(n => n !== name) : [...value, name]);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 8
+    }
+  }, STAFF_ROSTER.map(name => {
+    const on = value.includes(name);
+    return /*#__PURE__*/React.createElement("button", {
+      key: name,
+      onClick: () => toggle(name),
+      style: {
+        padding: "12px 8px",
+        borderRadius: 12,
+        border: `2px solid ${on ? C.green : C.border}`,
+        background: on ? `${C.green}18` : C.surface,
+        color: on ? C.green : C.muted,
+        fontWeight: 700,
+        fontSize: 14,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        justifyContent: "center",
+        transition: "all 0.15s"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13
+      }
+    }, on ? "✓" : "○"), name);
+  }));
+}
+
+// ── Photo capture ─────────────────────────────────────────────────────────────
+function PhotoCapture({
+  preview,
+  onFile,
+  onClear
+}) {
+  const ref = useRef();
+  return /*#__PURE__*/React.createElement("div", null, preview ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("img", {
+    src: preview,
+    alt: "pos",
+    style: {
+      width: "100%",
+      maxHeight: 200,
+      objectFit: "cover",
+      borderRadius: 12,
+      border: `2px solid ${C.green}`
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: onClear,
+    style: {
+      marginTop: 8,
+      background: "none",
+      border: "none",
+      color: C.red,
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: "pointer"
+    }
+  }, "\u2715 Remove")) : /*#__PURE__*/React.createElement("button", {
+    onClick: () => ref.current.click(),
+    style: {
+      width: "100%",
+      padding: "18px",
+      borderRadius: 12,
+      border: `2px dashed ${C.border}`,
+      background: C.surface,
+      color: C.muted,
+      fontSize: 15,
+      fontWeight: 700,
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 22
+    }
+  }, "\uD83D\uDCF7"), " Capture EFTPOS Printout"), /*#__PURE__*/React.createElement("input", {
+    ref: ref,
+    type: "file",
+    accept: "image/*",
+    capture: "environment",
+    style: {
+      display: "none"
+    },
+    onChange: e => {
+      const f = e.target.files[0];
+      if (f) onFile(f);
+    }
+  }));
+}
+
+// ── Progress bar (4 steps) ────────────────────────────────────────────────────
+function ProgressBar({
+  step
+}) {
+  const steps = ["Location", "Stock", "Sales", "Review"];
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 0,
+      marginBottom: 22
+    }
+  }, steps.map((s, i) => /*#__PURE__*/React.createElement("div", {
+    key: s,
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 4,
+      background: i <= step ? C.orange : C.border,
+      transition: "background 0.3s",
+      borderRadius: i === 0 ? "4px 0 0 4px" : i === steps.length - 1 ? "0 4px 4px 0" : 0
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 6,
+      fontSize: 10,
+      fontWeight: 700,
+      color: i <= step ? C.orange : C.muted,
+      textAlign: "center",
+      letterSpacing: "0.04em"
+    }
+  }, s))));
+}
+
+// ── Entry Wizard (simplified — no boxing tally) ───────────────────────────────
+const EMPTY = {
+  entry_date: "",
+  location: "",
+  staff: [],
+  boxes_carried: 0,
+  boxes_start: 0,
+  samples_used: 0,
+  boxes_end: 0,
+  time_start: "",
+  time_end: "",
+  hours_worked: "",
+  hours_additional: "",
+  boxes_packed_solo: 0,
+  boxes_packed_shared: 0,
+  packing_partners: 1,
+  cash_sales: "",
+  card_sales: "",
+  notes: ""
+};
+function EntryWizard({
+  user,
+  onSaved
+}) {
+  const [step, setStep] = useState(0);
+  const myName = (() => {
+    const p = (user.email?.split("@")[0] || "").toLowerCase();
+    return STAFF_ROSTER.find(n => n.toLowerCase() === p || n.toLowerCase().startsWith(p)) || null;
+  })();
+  const [f, setF] = useState({
+    ...EMPTY,
+    entry_date: todayStr(),
+    staff: myName ? [myName] : []
+  });
+  const [posFile, setPosFile] = useState(null);
+  const [posPreview, setPosPreview] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+  const [done, setDone] = useState(false);
+  const set = k => v => setF(p => ({
+    ...p,
+    [k]: v
+  }));
+  const setE = k => e => setF(p => ({
+    ...p,
+    [k]: e.target.value
+  }));
+  const totalSales = num(f.cash_sales) + num(f.card_sales);
+  const workerCount = Math.max(1, f.staff.length);
+  const bonusToday = calcBonus(totalSales, workerCount);
+  const staffName = (() => {
+    const n = user.email?.split("@")[0] || "";
+    return n.charAt(0).toUpperCase() + n.slice(1);
+  })();
+  const boxingBonus = num(f.boxes_packed_solo) + Math.round(num(f.boxes_packed_shared) / Math.max(1, num(f.packing_partners) || 1));
+
+  // Auto-fill hours_worked from start/end time — useEffect catches mobile pickers
+  // that only fire onChange when the picker is fully dismissed
+  useEffect(() => {
+    if (!f.time_start || !f.time_end) return;
+    const [sh, sm] = f.time_start.split(":").map(Number);
+    const [eh, em] = f.time_end.split(":").map(Number);
+    if (isNaN(sh) || isNaN(eh)) return;
+    const mins = eh * 60 + em - (sh * 60 + sm);
+    if (mins > 0) setF(p => ({
+      ...p,
+      hours_worked: String(Math.round(mins / 60 * 10) / 10)
+    }));
+  }, [f.time_start, f.time_end]);
+
+  // Carry-forward: prefill boxes_carried from yesterday's boxes_end at this location.
+  // Fetches the most recent prior entry for the selected location whenever
+  // location or entry_date changes. Editable afterwards.
+  useEffect(() => {
+    if (!f.location || !f.entry_date) return;
+    let cancelled = false;
+    (async () => {
+      const qs = `location=eq.${encodeURIComponent(f.location)}&entry_date=lt.${encodeURIComponent(f.entry_date)}&order=entry_date.desc&limit=1&select=boxes_end,entry_date`;
+      let res;
+      try {
+        res = await sb.select("daily_sales", qs);
+      } catch (_) {
+        return;
+      }
+      if (cancelled) return;
+      const prev = Array.isArray(res) ? res[0] : null;
+      setF(p => ({ ...p, boxes_carried: prev ? num(prev.boxes_end) : 0 }));
+    })();
+    return () => { cancelled = true; };
+  }, [f.location, f.entry_date]);
+
+  function next() {
+    if (step === 0 && !f.location) {
+      setErr("Select or enter a location.");
+      return;
+    }
+    if (step === 0 && f.staff.length === 0) {
+      setErr("Select at least one staff member.");
+      return;
+    }
+    if (step === 2 && num(f.cash_sales) === 0 && num(f.card_sales) === 0) {
+      setErr("Enter at least cash or card sales before continuing.");
+      return;
+    }
+    setErr("");
+    setStep(s => s + 1);
+  }
+  function back() {
+    setErr("");
+    setStep(s => s - 1);
+  }
+  async function submit() {
+    setSaving(true);
+    setErr("");
+    let pos_receipt_url = null;
+    if (posFile) {
+      try {
+        const ct = posFile.type || "image/jpeg";
+        const path = `${user.id}/${f.entry_date}_pos_${Date.now()}.jpg`;
+        pos_receipt_url = await sb.upload("pos-receipts", path, new File([posFile], path, {
+          type: ct
+        }));
+      } catch (e) {
+        // Don't block submission — save without the photo and note the failure
+        console.warn("Photo upload failed:", e.message);
+        setErr("⚠ Photo couldn't upload — entry will save without it. Tap Submit again to confirm.");
+        setSaving(false);
+        // Allow a second tap to proceed without photo
+        setPosFile(null);
+        setPosPreview(null);
+        return;
+      }
+    }
+    const row = {
+      user_id: user.id,
+      user_email: user.email,
+      entry_date: f.entry_date,
+      location: f.location,
+      location_type: getLocType(f.location),
+      staff: f.staff,
+      float_start: 0,
+      boxing_tally: myName ? {
+        [myName]: num(f.boxes_packed_solo) + num(f.boxes_packed_shared)
+      } : {},
+      boxes_carried: num(f.boxes_carried),
+      boxes_start: num(f.boxes_start),
+      boxes_added: 0,
+      boxes_end: num(f.boxes_end),
+      samples_used: num(f.samples_used),
+      boxes_sold: Math.max(0, num(f.boxes_carried) + num(f.boxes_start) - num(f.boxes_end) - num(f.samples_used)),
+      boxes_packed_solo: num(f.boxes_packed_solo) || 0,
+      boxes_packed_shared: num(f.boxes_packed_shared) || 0,
+      packing_partners: num(f.packing_partners) || 1,
+      time_start: f.time_start || null,
+      time_end: f.time_end || null,
+      cash_sales: num(f.cash_sales),
+      card_sales: num(f.card_sales),
+      hours_worked: num(f.hours_worked) || null,
+      hours_additional: num(f.hours_additional) || 0,
+      notes: f.notes,
+      pos_receipt_url
+    };
+    let res;
+    try {
+      res = await sb.insert("daily_sales", row);
+    } catch (e) {
+      setSaving(false);
+      setErr("Network error — check your connection and try again.");
+      return;
+    }
+    setSaving(false);
+    if (Array.isArray(res) && res[0]?.id) {
+      setDone(true);
+      onSaved(res[0]);
+    } else setErr(res?.message || "Save failed — check your connection and try again.");
+  }
+  function reset() {
+    setDone(false);
+    setF({
+      ...EMPTY,
+      entry_date: todayStr(),
+      staff: myName ? [myName] : []
+    });
+    setStep(0);
+    setPosFile(null);
+    setPosPreview(null);
+    setErr("");
+  }
+  if (done) return /*#__PURE__*/React.createElement("div", {
+    className: "su",
+    style: {
+      textAlign: "center",
+      padding: "48px 20px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 72,
+      marginBottom: 16
+    }
+  }, "\uD83C\uDF89"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 28,
+      fontWeight: 900,
+      color: C.green,
+      marginBottom: 6,
+      letterSpacing: "-0.02em"
+    }
+  }, "Great work today, ", staffName, "!"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 700,
+      color: C.muted,
+      marginBottom: 6
+    }
+  }, "Submission complete \u2705"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: C.muted,
+      marginBottom: 28
+    }
+  }, f.location, " \xB7 ", fmtDate(f.entry_date)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.green}15`,
+      border: `1px solid ${C.green}30`,
+      borderRadius: 16,
+      padding: "18px 20px",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      fontWeight: 700,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 6
+    }
+  }, "Sales Recorded"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 36,
+      fontWeight: 900,
+      color: C.green
+    }
+  }, aud(totalSales)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: C.muted,
+      marginTop: 6
+    }
+  }, "Cash ", aud(f.cash_sales), " \xB7 Card ", aud(f.card_sales))), bonusToday > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.orange}15`,
+      border: `1px solid ${C.orange}30`,
+      borderRadius: 16,
+      padding: "16px 20px",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      fontWeight: 700,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 4
+    }
+  }, "\uD83C\uDF89 Sales Bonus"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 30,
+      fontWeight: 900,
+      color: C.orange
+    }
+  }, "$", bonusToday), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginTop: 4
+    }
+  }, "$40 per $1,000 split ", workerCount > 1 ? `${workerCount} ways` : "— sole worker", " \xB7 paid by Doron")), boxingBonus > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.amber}15`,
+      border: `1px solid ${C.amber}30`,
+      borderRadius: 16,
+      padding: "16px 20px",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      fontWeight: 700,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 4
+    }
+  }, "\uD83D\uDCE6 Boxing Bonus"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 30,
+      fontWeight: 900,
+      color: C.amber
+    }
+  }, "$", boxingBonus), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginTop: 4
+    }
+  }, "$1 per box packed \xB7 paid by Doron")), (bonusToday > 0 || boxingBonus > 0) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.green}12`,
+      border: `1px solid ${C.green}30`,
+      borderRadius: 14,
+      padding: "12px 16px",
+      marginBottom: 28,
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      fontWeight: 700,
+      marginBottom: 4
+    }
+  }, "TOTAL BONUS TODAY"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 26,
+      fontWeight: 900,
+      color: C.green
+    }
+  }, "$", bonusToday + boxingBonus)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      window.location.href = "/staff";
+    },
+    style: {
+      width: "100%",
+      background: C.green,
+      color: "#fff",
+      border: "none",
+      borderRadius: 16,
+      padding: "16px",
+      fontSize: 17,
+      fontWeight: 900,
+      cursor: "pointer",
+      marginBottom: 12,
+      boxShadow: `0 6px 24px ${C.green}50`
+    }
+  }, "Done \u2014 see you next time \uD83D\uDC4B"), /*#__PURE__*/React.createElement("button", {
+    onClick: reset,
+    style: {
+      width: "100%",
+      background: "transparent",
+      color: C.muted,
+      border: `1.5px solid ${C.border}`,
+      borderRadius: 14,
+      padding: "12px",
+      fontSize: 14,
+      fontWeight: 700,
+      cursor: "pointer"
+    }
+  }, "+ Log another entry"));
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(ProgressBar, {
+    step: step
+  }), step === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "su"
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDCC5",
+    title: "Date",
+    color: C.muted
+  }), /*#__PURE__*/React.createElement(Inp, {
+    type: "date",
+    value: f.entry_date,
+    onChange: setE("entry_date"),
+    icon: "\uD83D\uDCC5"
+  })), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDCCD",
+    title: "Select Location",
+    color: C.orange
+  }), /*#__PURE__*/React.createElement(LocationPicker, {
+    value: f.location,
+    onSelect: set("location")
+  })), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDC65",
+    title: "Who are you working with today?",
+    color: C.green
+  }), /*#__PURE__*/React.createElement(StaffPicker, {
+    value: f.staff,
+    onChange: set("staff")
+  }))), step === 1 && /*#__PURE__*/React.createElement("div", {
+    className: "su"
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDCC5",
+    title: "Boxes Carried from Yesterday",
+    color: C.blue
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 10
+    }
+  }, "Auto-filled from yesterday's remaining stock at this location. Edit if needed."), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "decimal",
+    min: "0",
+    step: "0.5",
+    placeholder: "0",
+    value: f.boxes_carried || "",
+    onChange: e => set("boxes_carried")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.blue,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  })), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDCE6",
+    title: "Boxes at Start of Day (new stock)",
+    color: C.amber
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 10
+    }
+  }, "New boxes you arrived with today (in addition to anything carried over)."), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "decimal",
+    min: "0",
+    step: "0.5",
+    placeholder: "0",
+    value: f.boxes_start || "",
+    onChange: e => set("boxes_start")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.amber,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  })), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83E\uDDEA",
+    title: "Sample Boxes Used",
+    color: C.orange
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 10
+    }
+  }, "Boxes opened for customer tastings"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "decimal",
+    min: "0",
+    step: "0.5",
+    placeholder: "0",
+    value: f.samples_used || "",
+    onChange: e => set("samples_used")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.orange,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.orange}10`,
+      border: `1px solid ${C.orange}25`,
+      borderRadius: 10,
+      padding: "10px 12px",
+      fontSize: 12,
+      color: C.orange,
+      lineHeight: 1.5,
+      marginTop: 10
+    }
+  }, "\uD83C\uDF4A Tasting data is key \u2014 helps show farmers the market demand.")), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDCE6",
+    title: "Boxes Remaining at End of Day",
+    color: C.muted
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "decimal",
+    min: "0",
+    step: "0.5",
+    placeholder: "0",
+    value: f.boxes_end || "",
+    onChange: e => set("boxes_end")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.text,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  }))), step === 2 && /*#__PURE__*/React.createElement("div", {
+    className: "su"
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\u23F1",
+    title: "Trading Hours",
+    color: C.muted
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: 10,
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Lbl, null, "Start time"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: f.time_start,
+    onChange: e => setF(p => ({
+      ...p,
+      time_start: e.target.value
+    })),
+    onBlur: e => setF(p => ({
+      ...p,
+      time_start: e.target.value
+    })),
+    style: {
+      width: "100%",
+      padding: "13px 14px",
+      borderRadius: 12,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.text,
+      fontSize: 18,
+      fontWeight: 700,
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement(Lbl, null, "End time"), /*#__PURE__*/React.createElement("input", {
+    type: "time",
+    value: f.time_end,
+    onChange: e => setF(p => ({
+      ...p,
+      time_end: e.target.value
+    })),
+    onBlur: e => setF(p => ({
+      ...p,
+      time_end: e.target.value
+    })),
+    style: {
+      width: "100%",
+      padding: "13px 14px",
+      borderRadius: 12,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.text,
+      fontSize: 18,
+      fontWeight: 700,
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement(Lbl, null, "Total hours worked today"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      marginBottom: 8
+    }
+  }, "Auto-filled from your times \u2014 tap to edit if needed"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "decimal",
+    min: "0",
+    max: "24",
+    step: "0.5",
+    placeholder: "e.g. 7.5",
+    value: f.hours_worked,
+    onChange: e => setF(p => ({
+      ...p,
+      hours_worked: e.target.value
+    })),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${f.hours_worked ? C.green : C.border}`,
+      background: C.surface,
+      color: C.green,
+      fontSize: 40,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  }), f.hours_worked > 0 && f.time_start && f.time_end && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      textAlign: "center",
+      marginTop: 6
+    }
+  }, f.time_start, " \u2192 ", f.time_end))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDE97",
+    title: "Additional Hours",
+    color: C.green
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 10
+    }
+  }, "Hours outside trading time \u2014 driving to collect fruit, rostering, set-up, etc. Decimals OK (e.g. 1.5)."), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "decimal",
+    min: "0",
+    max: "24",
+    step: "0.5",
+    placeholder: "0",
+    value: f.hours_additional || "",
+    onChange: e => set("hours_additional")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${f.hours_additional ? C.green : C.border}`,
+      background: C.surface,
+      color: C.green,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  }), num(f.hours_worked) > 0 && num(f.hours_additional) > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.green,
+      textAlign: "center",
+      marginTop: 8,
+      fontWeight: 700
+    }
+  }, "Total today: ", (num(f.hours_worked) + num(f.hours_additional)).toFixed(1), " hrs")), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDCE6",
+    title: "Boxing Tally",
+    color: C.amber
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 14
+    }
+  }, "Boxes you packed today earn $1 each. Shared packing is split between the team."), /*#__PURE__*/React.createElement(Lbl, null, "Boxes I packed solo"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "numeric",
+    min: "0",
+    placeholder: "0",
+    value: f.boxes_packed_solo || "",
+    onChange: e => set("boxes_packed_solo")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.amber}40`,
+      background: C.surface,
+      color: C.amber,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box",
+      marginBottom: 14
+    }
+  }), /*#__PURE__*/React.createElement(Lbl, null, "Boxes packed with others"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "numeric",
+    min: "0",
+    placeholder: "0",
+    value: f.boxes_packed_shared || "",
+    onChange: e => set("boxes_packed_shared")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.amber,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box",
+      marginBottom: 10
+    }
+  }), num(f.boxes_packed_shared) > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement(Lbl, null, "How many people packing together (including you)?"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "numeric",
+    min: "1",
+    placeholder: "2",
+    value: f.packing_partners || "",
+    onChange: e => set("packing_partners")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.text,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  })), boxingBonus > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.amber}15`,
+      border: `1px solid ${C.amber}40`,
+      borderRadius: 12,
+      padding: "14px",
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      fontWeight: 700,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 4
+    }
+  }, "\uD83D\uDCE6 Boxing Bonus"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 32,
+      fontWeight: 900,
+      color: C.amber
+    }
+  }, "$", boxingBonus), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      marginTop: 4
+    }
+  }, num(f.boxes_packed_solo) > 0 && `${num(f.boxes_packed_solo)} solo × $1`, num(f.boxes_packed_solo) > 0 && num(f.boxes_packed_shared) > 0 && " + ", num(f.boxes_packed_shared) > 0 && `${num(f.boxes_packed_shared)} shared ÷ ${num(f.packing_partners) || 1} ppl × $1`))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDCB0",
+    title: "Sales",
+    color: C.green
+  }), /*#__PURE__*/React.createElement(Lbl, null, "Cash Sales ($)"), /*#__PURE__*/React.createElement(Inp, {
+    type: "number",
+    min: "0",
+    step: "0.01",
+    placeholder: "0.00",
+    value: f.cash_sales,
+    onChange: setE("cash_sales"),
+    icon: "\uD83D\uDCB5"
+  }), /*#__PURE__*/React.createElement(Lbl, null, "Card / EFTPOS ($)"), /*#__PURE__*/React.createElement(Inp, {
+    type: "number",
+    min: "0",
+    step: "0.01",
+    placeholder: "0.00",
+    value: f.card_sales,
+    onChange: setE("card_sales"),
+    icon: "\uD83D\uDCB3"
+  }), totalSales > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.green}15`,
+      border: `1px solid ${C.green}30`,
+      borderRadius: 12,
+      padding: "14px",
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      fontWeight: 700
+    }
+  }, "TOTAL SALES"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 32,
+      fontWeight: 900,
+      color: C.green
+    }
+  }, aud(totalSales)), bonusToday > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: C.orange,
+      fontWeight: 800,
+      marginTop: 6
+    }
+  }, "\uD83C\uDF89 Bonus today: $", bonusToday))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDCF7",
+    title: "POS Receipt",
+    color: C.muted
+  }), /*#__PURE__*/React.createElement(PhotoCapture, {
+    preview: posPreview,
+    onFile: file => {
+      setPosFile(file);
+      setPosPreview(URL.createObjectURL(file));
+    },
+    onClear: () => {
+      setPosFile(null);
+      setPosPreview(null);
+    }
+  })), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDCDD",
+    title: "Notes",
+    color: C.muted
+  }), /*#__PURE__*/React.createElement("textarea", {
+    value: f.notes,
+    onChange: setE("notes"),
+    placeholder: "Crowd size, weather, anything to remember\u2026",
+    rows: 3,
+    style: {
+      width: "100%",
+      background: C.surface,
+      border: `2px solid ${C.border}`,
+      borderRadius: 12,
+      color: C.text,
+      fontSize: 15,
+      padding: "12px 14px",
+      resize: "vertical",
+      outline: "none"
+    }
+  }))), step === 3 && /*#__PURE__*/React.createElement("div", {
+    className: "su"
+  }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDD0D",
+    title: "Review & Submit",
+    color: C.orange
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.orange}10`,
+      border: `1px solid ${C.orange}25`,
+      borderRadius: 12,
+      padding: "12px 14px",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 4
+    }
+  }, "Location"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      fontWeight: 900
+    }
+  }, f.location), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginTop: 2
+    }
+  }, getLocType(f.location))), [["📅 Date", fmtDate(f.entry_date)], ["👥 Staff", f.staff.join(", ") || "—"], ["⏱ Trading", f.time_start ? `${f.time_start}–${f.time_end}` : "—"], ["⏳ Hours Total", (num(f.hours_worked) + num(f.hours_additional)) > 0 ? `${(num(f.hours_worked) + num(f.hours_additional)).toFixed(1)} hrs${num(f.hours_additional) > 0 ? ` (${f.hours_worked || 0} trading + ${f.hours_additional} extra)` : ''}` : "—"], ["📅 Boxes Carried", f.boxes_carried || 0], ["📦 Boxes Start", f.boxes_start], ["🧪 Samples", f.samples_used], ["📦 Boxes End", f.boxes_end], ["📦 Solo Packed", num(f.boxes_packed_solo) || "—"], ["📦 Shared Packed", num(f.boxes_packed_shared) > 0 ? `${num(f.boxes_packed_shared)} (÷${num(f.packing_partners) || 1})` : "—"], ["💵 Cash", aud(f.cash_sales)], ["💳 Card", aud(f.card_sales)]].map(([lbl, val]) => /*#__PURE__*/React.createElement("div", {
+    key: lbl,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      padding: "9px 0",
+      borderBottom: `1px solid ${C.border}`,
+      fontSize: 14
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.muted,
+      fontWeight: 600
+    }
+  }, lbl), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700
+    }
+  }, val))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.green}15`,
+      border: `1px solid ${C.green}30`,
+      borderRadius: 12,
+      padding: "14px",
+      margin: "14px 0",
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      fontWeight: 700
+    }
+  }, "TOTAL SALES"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 32,
+      fontWeight: 900,
+      color: C.green
+    }
+  }, aud(totalSales)), bonusToday > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: C.orange,
+      fontWeight: 800,
+      marginTop: 6
+    }
+  }, "\uD83C\uDF89 Sales bonus: $", bonusToday), boxingBonus > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: C.amber,
+      fontWeight: 800,
+      marginTop: 4
+    }
+  }, "\uD83D\uDCE6 Boxing bonus: $", boxingBonus)))), err && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.red}15`,
+      border: `1px solid ${C.red}40`,
+      borderRadius: 12,
+      padding: "12px 16px",
+      marginBottom: 14,
+      color: C.red,
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, err), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      paddingBottom: 32
+    }
+  }, step > 0 && /*#__PURE__*/React.createElement("button", {
+    onClick: back,
+    style: {
+      flex: 1,
+      padding: "15px",
+      borderRadius: 14,
+      background: C.surface,
+      border: `2px solid ${C.border}`,
+      color: C.muted,
+      fontWeight: 800,
+      fontSize: 15,
+      cursor: "pointer"
+    }
+  }, "\u2190 Back"), step < 3 ? /*#__PURE__*/React.createElement("button", {
+    onClick: next,
+    style: {
+      flex: 2,
+      padding: "15px",
+      borderRadius: 14,
+      background: C.orange,
+      border: "none",
+      color: "#fff",
+      fontWeight: 900,
+      fontSize: 17,
+      cursor: "pointer"
+    }
+  }, "Next \u2192") : /*#__PURE__*/React.createElement("button", {
+    onClick: submit,
+    disabled: saving,
+    style: {
+      flex: 2,
+      padding: "15px",
+      borderRadius: 14,
+      background: saving ? C.border : C.green,
+      border: "none",
+      color: "#fff",
+      fontWeight: 900,
+      fontSize: 17,
+      cursor: saving ? "not-allowed" : "pointer"
+    }
+  }, saving ? "Saving…" : "✓ Submit Entry")));
+}
+
+// ── My Stats ──────────────────────────────────────────────────────────────────
+function MyStats({
+  user
+}) {
+  const [entries, setEntries] = useState([]);
+  const [paid, setPaid] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [e, p] = await Promise.all([sb.select("daily_sales", `user_id=eq.${user.id}&order=entry_date.desc&limit=120`), sb.select("bonus_payments", `user_email=eq.${encodeURIComponent(user.email)}&order=week_start.desc`)]);
+    setLoading(false);
+    if (Array.isArray(e)) setEntries(e);
+    if (Array.isArray(p)) setPaid(p);
+  }, [user.id, user.email]);
+  useEffect(() => {
+    load();
+  }, [load]);
+  if (loading) return /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: C.muted,
+      padding: 48,
+      fontSize: 14
+    }
+  }, "Loading your stats\u2026");
+  const today = todayStr();
+  const thisWeekStart = weekOf(today);
+  const thisMonth = monthOf(today);
+  const byWeek = {};
+  entries.forEach(e => {
+    const w = weekOf(e.entry_date);
+    if (!byWeek[w]) byWeek[w] = [];
+    byWeek[w].push(e);
+  });
+  const byMonth = {};
+  entries.forEach(e => {
+    const m = monthOf(e.entry_date);
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(e);
+  });
+
+  // This week
+  const weekEntries = byWeek[thisWeekStart] || [];
+  const weekSales = weekEntries.reduce((a, e) => a + num(e.total_sales), 0);
+  const weekBonus = weekEntries.reduce((a, e) => a + calcBonus(e.total_sales, (e.staff || []).length), 0);
+  const weekBoxing = weekEntries.reduce((a, e) => a + calcBoxBonus(e), 0);
+  const weekHours = weekEntries.reduce((a, e) => a + entryHours(e), 0);
+  const weekTotalBonus = weekBonus + weekBoxing;
+
+  // This month
+  const monthEntries = byMonth[thisMonth] || [];
+  const monthSales = monthEntries.reduce((a, e) => a + num(e.total_sales), 0);
+  const monthBonus = monthEntries.reduce((a, e) => a + calcBonus(e.total_sales, (e.staff || []).length), 0);
+  const monthBoxing = monthEntries.reduce((a, e) => a + calcBoxBonus(e), 0);
+  const monthHours = monthEntries.reduce((a, e) => a + entryHours(e), 0);
+
+  // Total unpaid (base pay + sales bonus + boxing bonus across all unpaid weeks)
+  const paidWeeks = new Set(paid.map(p => p.week_start));
+  const totalUnpaid = Object.entries(byWeek).filter(([w]) => !paidWeeks.has(w)).reduce((a, [, rows]) => a + rows.reduce((s, e) => s + entryHours(e) * HOURLY_RATE + calcBonus(e.total_sales, (e.staff || []).length) + calcBoxBonus(e), 0), 0);
+  const MiniStat = ({
+    label,
+    value,
+    color,
+    sub
+  }) => /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.card,
+      border: `1px solid ${C.border}`,
+      borderRadius: 14,
+      padding: "14px 16px",
+      flex: 1,
+      minWidth: 100,
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em",
+      marginBottom: 5
+    }
+  }, label), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 20,
+      fontWeight: 900,
+      color
+    }
+  }, value), sub && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      marginTop: 3
+    }
+  }, sub));
+  const weekBasePay = Math.round(weekHours * HOURLY_RATE * 100) / 100;
+  const weekTotalPay = weekBasePay + weekTotalBonus;
+  const PayRow = ({
+    emoji,
+    label,
+    value,
+    sub,
+    color,
+    border = true,
+    dim = false
+  }) => /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "11px 0",
+      borderBottom: border ? `1px solid ${C.border}` : "none",
+      opacity: dim ? 0.45 : 1
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.muted,
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, emoji, " ", label), sub && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      marginTop: 1
+    }
+  }, sub)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 900,
+      fontSize: 17,
+      color: dim ? C.muted : color
+    }
+  }, value));
+  return /*#__PURE__*/React.createElement("div", {
+    className: "su"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 8,
+      fontWeight: 800,
+      fontSize: 11,
+      color: C.orange,
+      textTransform: "uppercase",
+      letterSpacing: "0.08em"
+    }
+  }, "\uD83D\uDCB0 This Week's Pay \xB7 ", fmtWeekRange(thisWeekStart)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.card,
+      border: `2px solid ${C.orange}35`,
+      borderRadius: 18,
+      padding: "16px 18px",
+      marginBottom: 18
+    }
+  }, weekEntries.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: C.muted,
+      fontSize: 14,
+      textAlign: "center",
+      padding: "12px 0"
+    }
+  }, "No shifts logged this week yet") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(PayRow, {
+    emoji: "\u23F1",
+    label: "Hours worked",
+    sub: weekHours > 0 ? `${weekHours} hrs × $${HOURLY_RATE}/hr` : null,
+    value: weekHours > 0 ? aud(weekBasePay) : "—",
+    color: C.blue,
+    dim: weekHours === 0
+  }), /*#__PURE__*/React.createElement(PayRow, {
+    emoji: "\uD83C\uDF89",
+    label: "Sales bonus",
+    value: weekBonus > 0 ? `$${weekBonus}` : "—",
+    color: C.orange,
+    dim: weekBonus === 0
+  }), /*#__PURE__*/React.createElement(PayRow, {
+    emoji: "\uD83D\uDCE6",
+    label: "Boxing bonus",
+    value: weekBoxing > 0 ? `$${weekBoxing}` : "—",
+    color: C.amber,
+    dim: weekBoxing === 0
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingTop: 14,
+      marginTop: 4,
+      borderTop: `2px solid ${C.border}`
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 16,
+      color: C.text
+    }
+  }, "Total pay this week"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.muted,
+      marginTop: 2
+    }
+  }, weekEntries.length, " shift", weekEntries.length !== 1 ? "s" : "", " logged")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 900,
+      fontSize: 30,
+      color: C.green
+    }
+  }, aud(weekTotalPay))))), totalUnpaid > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.green}12`,
+      border: `1px solid ${C.green}35`,
+      borderRadius: 14,
+      padding: "14px 18px",
+      marginBottom: 18,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      color: C.green,
+      fontSize: 15
+    }
+  }, "\uD83D\uDCB5 Total pay owed to you"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginTop: 3
+    }
+  }, "Wages + bonuses \xB7 pending Doron")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 28,
+      fontWeight: 900,
+      color: C.green
+    }
+  }, "$", totalUnpaid)), weekEntries.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 8,
+      fontWeight: 700,
+      fontSize: 11,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em"
+    }
+  }, "This week's shifts"), weekEntries.slice().sort((a, b) => a.entry_date.localeCompare(b.entry_date)).map((e, i) => {
+    const bonus = calcBonus(e.total_sales, (e.staff || []).length);
+    const boxing = calcBoxBonus(e);
+    const hrs = entryHours(e);
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderRadius: 13,
+        padding: "12px 14px",
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        marginBottom: bonus > 0 || boxing > 0 ? 8 : 0
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 800,
+        fontSize: 14
+      }
+    }, fmtDate(e.entry_date)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.muted,
+        marginTop: 1
+      }
+    }, e.location, hrs > 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.blue,
+        marginLeft: 8
+      }
+    }, "\u23F1 ", hrs, " hrs"))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "right"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 15,
+        fontWeight: 900,
+        color: C.green
+      }
+    }, aud(e.total_sales)), (bonus > 0 || boxing > 0) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontWeight: 800,
+        color: C.orange,
+        marginTop: 2
+      }
+    }, "+$", bonus + boxing, " bonus"))), (bonus > 0 || boxing > 0) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 8,
+        flexWrap: "wrap"
+      }
+    }, bonus > 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: `${C.orange}18`,
+        border: `1px solid ${C.orange}35`,
+        color: C.orange,
+        fontSize: 11,
+        fontWeight: 800,
+        padding: "3px 10px",
+        borderRadius: 20
+      }
+    }, "\uD83C\uDF89 $$", bonus, " sales"), boxing > 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        background: `${C.amber}18`,
+        border: `1px solid ${C.amber}35`,
+        color: C.amber,
+        fontSize: 11,
+        fontWeight: 800,
+        padding: "3px 10px",
+        borderRadius: 20
+      }
+    }, "\uD83D\uDCE6 $$", boxing, " boxing")));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 8,
+      fontWeight: 800,
+      fontSize: 11,
+      color: C.blue,
+      textTransform: "uppercase",
+      letterSpacing: "0.08em"
+    }
+  }, "This Month \xB7 ", thisMonth), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement(MiniStat, {
+    label: "Base Pay",
+    value: aud(Math.round(monthHours * HOURLY_RATE)),
+    color: C.blue,
+    sub: monthHours > 0 ? `${monthHours} hrs` : "—"
+  }), /*#__PURE__*/React.createElement(MiniStat, {
+    label: "Bonuses",
+    value: `$${monthBonus + monthBoxing}`,
+    color: C.orange
+  }), /*#__PURE__*/React.createElement(MiniStat, {
+    label: "Total Earned",
+    value: aud(Math.round(monthHours * HOURLY_RATE) + monthBonus + monthBoxing),
+    color: C.green
+  })), Object.keys(byWeek).sort().reverse().filter(w => w !== thisWeekStart).slice(0, 7).map(w => {
+    const rows = byWeek[w] || [];
+    const wSales = rows.reduce((a, e) => a + num(e.total_sales), 0);
+    const wBonus = rows.reduce((a, e) => a + calcBonus(e.total_sales, (e.staff || []).length), 0);
+    const wBoxing = rows.reduce((a, e) => a + calcBoxBonus(e), 0);
+    const wHours = rows.reduce((a, e) => a + num(e.hours_worked), 0);
+    const wBase = Math.round(wHours * HOURLY_RATE * 100) / 100;
+    const wTotal = wBase + wBonus + wBoxing;
+    const isPaid = paidWeeks.has(w);
+    return /*#__PURE__*/React.createElement("div", {
+      key: w,
+      style: {
+        background: C.card,
+        border: `1px solid ${isPaid ? C.green : C.border}`,
+        borderRadius: 14,
+        padding: "14px 16px",
+        marginBottom: 12,
+        opacity: isPaid ? 0.75 : 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 800,
+        fontSize: 14
+      }
+    }, fmtWeekRange(w)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.muted,
+        marginTop: 2
+      }
+    }, rows.length, " shift", rows.length !== 1 ? "s" : "", wHours > 0 ? ` · ${wHours} hrs` : "")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        textAlign: "right"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 19,
+        fontWeight: 900,
+        color: C.green
+      }
+    }, aud(wTotal)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.muted,
+        marginTop: 1
+      }
+    }, wHours > 0 ? `${wHours}h × $${HOURLY_RATE}` : "no hours logged", wBonus + wBoxing > 0 ? ` + $${wBonus + wBoxing} bonus` : ""), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        fontWeight: 700,
+        color: isPaid ? C.green : C.amber,
+        marginTop: 2
+      }
+    }, isPaid ? "✓ Paid" : "⏳ Pending"))), rows.slice().sort((a, b) => a.entry_date.localeCompare(b.entry_date)).map((e, i) => {
+      const bonus = calcBonus(e.total_sales, (e.staff || []).length);
+      const boxing = calcBoxBonus(e);
+      return /*#__PURE__*/React.createElement("div", {
+        key: i,
+        style: {
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: 12,
+          padding: "5px 0",
+          borderTop: `1px solid ${C.border}`
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.muted
+        }
+      }, fmtDate(e.entry_date), " \xB7 ", e.location), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontWeight: 700
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.green
+        }
+      }, aud(e.total_sales)), bonus > 0 && /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.orange
+        }
+      }, " +$", bonus), boxing > 0 && /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.amber
+        }
+      }, " \uD83D\uDCE6$$", boxing)));
+    }));
+  }), entries.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      color: C.muted,
+      padding: "40px 0",
+      fontSize: 14
+    }
+  }, "No entries yet. Submit your first daily entry!"), /*#__PURE__*/React.createElement("button", {
+    onClick: load,
+    style: {
+      width: "100%",
+      padding: "12px",
+      borderRadius: 12,
+      background: "none",
+      border: `1.5px solid ${C.border}`,
+      color: C.muted,
+      fontWeight: 700,
+      fontSize: 13,
+      cursor: "pointer",
+      marginBottom: 32
+    }
+  }, "\u21BB Refresh"));
+}
+
+// ── Login ─────────────────────────────────────────────────────────────────────
+// Staff tap their name card on /staff → identity stored in sessionStorage →
+// this screen shows "Hi [Name]" and asks only for a PIN.
+// If arriving directly (no sessionStorage), falls back to email + PIN.
+// These are internal Supabase-only usernames — no real inbox needed.
+// Email confirmation must be OFF in Supabase → Auth → Settings.
+const STAFF_EMAIL_DOMAIN = "@mdn-staff.app";
+function Login({
+  onLogin
+}) {
+  // Read identity set by staff.html card tap
+  const storedId = sessionStorage.getItem("mdn_staff_id") || "";
+  const storedName = sessionStorage.getItem("mdn_staff_name") || "";
+  const storedInitial = sessionStorage.getItem("mdn_staff_initial") || "";
+  const storedColor = sessionStorage.getItem("mdn_staff_color") || C.orange;
+  const hasIdentity = !!storedId;
+
+  // If identity known, email = id@mandorons.com.au
+  const [email, setEmail] = useState(hasIdentity ? storedId + STAFF_EMAIL_DOMAIN : "");
+  const [pin, setPin] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  function clearIdentity() {
+    ["mdn_staff_id", "mdn_staff_name", "mdn_staff_initial", "mdn_staff_color"].forEach(k => sessionStorage.removeItem(k));
+    window.location.href = "/staff.html";
+  }
+  async function go() {
+    if (!email.trim() || !pin) return;
+    setErr("");
+    setBusy(true);
+    try {
+      const d = await sb.signIn(email.trim(), pin);
+      setBusy(false);
+      if (d.access_token) {
+        sessionStorage.removeItem("mdn_staff_id");
+        sessionStorage.removeItem("mdn_staff_name");
+        sessionStorage.removeItem("mdn_staff_initial");
+        sessionStorage.removeItem("mdn_staff_color");
+        onLogin(d.user);
+      } else {
+        const raw = d.msg || d.error_description || d.error || "";
+        if (raw.toLowerCase().includes("invalid") || raw.toLowerCase().includes("credentials")) setErr("Wrong PIN. Try again, or ask Doron to reset it.");else if (raw.toLowerCase().includes("confirm") || raw.toLowerCase().includes("not confirmed")) setErr("Account not activated yet — ask Doron.");else if (raw) setErr(raw);else setErr("Login failed. Ask Doron to check your account.");
+      }
+    } catch (e) {
+      setBusy(false);
+      setErr("Connection error — check your internet and try again.");
+    }
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100dvh",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      background: `radial-gradient(ellipse at 20% 10%,#1E3A1E 0%,${C.bg} 65%)`,
+      padding: "24px 20px"
+    }
+  }, /*#__PURE__*/React.createElement("style", null, CSS), /*#__PURE__*/React.createElement("div", {
+    className: "su",
+    style: {
+      width: "100%",
+      maxWidth: 360
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      marginBottom: 28
+    }
+  }, hasIdentity ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 80,
+      height: 80,
+      background: storedColor,
+      borderRadius: "50%",
+      margin: "0 auto 14px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 32,
+      fontWeight: 900,
+      color: "#fff",
+      boxShadow: `0 8px 32px ${storedColor}80`
+    }
+  }, storedInitial), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 26,
+      fontWeight: 900,
+      letterSpacing: "-0.03em"
+    }
+  }, "Hi, ", storedName, "! \uD83D\uDC4B"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: C.muted,
+      fontSize: 13,
+      marginTop: 4,
+      fontWeight: 600
+    }
+  }, "Enter your PIN to sign in")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 80,
+      height: 80,
+      background: `radial-gradient(circle at 35% 30%,#F5A020,#C05010)`,
+      borderRadius: 24,
+      margin: "0 auto 14px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 40,
+      boxShadow: `0 8px 32px ${C.orange}50`
+    }
+  }, "\uD83C\uDF4A"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 26,
+      fontWeight: 900,
+      letterSpacing: "-0.03em"
+    }
+  }, "Mandorons"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: C.muted,
+      fontSize: 13,
+      marginTop: 4,
+      fontWeight: 600
+    }
+  }, "Field Sales \xB7 Staff Login"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.card,
+      borderRadius: C.radius,
+      border: `1px solid ${C.border}`,
+      padding: "24px 20px"
+    }
+  }, !hasIdentity && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Lbl, null, "Email"), /*#__PURE__*/React.createElement(Inp, {
+    type: "email",
+    placeholder: "name@mandorons.com.au",
+    value: email,
+    onChange: e => setEmail(e.target.value),
+    icon: "\u2709\uFE0F"
+  })), /*#__PURE__*/React.createElement(Lbl, null, "PIN"), /*#__PURE__*/React.createElement(Inp, {
+    type: "password",
+    inputMode: "numeric",
+    placeholder: "\u2022\u2022\u2022\u2022",
+    value: pin,
+    onChange: e => setPin(e.target.value),
+    onKeyDown: e => e.key === "Enter" && go(),
+    icon: "\uD83D\uDD12"
+  }), err && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.red}15`,
+      border: `1px solid ${C.red}40`,
+      borderRadius: 10,
+      padding: "10px 14px",
+      color: C.red,
+      fontWeight: 700,
+      fontSize: 13,
+      marginBottom: 12
+    }
+  }, err), /*#__PURE__*/React.createElement("button", {
+    onClick: go,
+    disabled: busy || !pin,
+    style: {
+      width: "100%",
+      padding: "15px",
+      borderRadius: 14,
+      background: busy || !pin ? C.border : C.orange,
+      border: "none",
+      color: "#fff",
+      fontWeight: 900,
+      fontSize: 16,
+      cursor: busy || !pin ? "not-allowed" : "pointer",
+      marginBottom: 12
+    }
+  }, busy ? "Signing in…" : "Sign In →"), hasIdentity && /*#__PURE__*/React.createElement("button", {
+    onClick: clearIdentity,
+    style: {
+      width: "100%",
+      padding: "10px",
+      borderRadius: 12,
+      background: "transparent",
+      border: `1px solid ${C.border}`,
+      color: C.muted,
+      fontWeight: 700,
+      fontSize: 13,
+      cursor: "pointer"
+    }
+  }, "\u2190 Not ", storedName, "? Go back"))));
+}
+
+// ── Staff App Root ────────────────────────────────────────────────────────────
+function StaffApp() {
+  const [user, setUser] = useState(null);
+  const [tab, setTab] = useState("entry");
+  const [saved, setSaved] = useState([]);
+  if (!user) return /*#__PURE__*/React.createElement(Login, {
+    onLogin: setUser
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100dvh",
+      background: C.bg
+    }
+  }, /*#__PURE__*/React.createElement("style", null, CSS), /*#__PURE__*/React.createElement("header", {
+    style: {
+      background: C.surface,
+      borderBottom: `1px solid ${C.border}`,
+      padding: "13px 16px",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      position: "sticky",
+      top: 0,
+      zIndex: 100,
+      boxShadow: "0 2px 16px rgba(0,0,0,0.4)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 22
+    }
+  }, "\uD83C\uDF4A"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 16,
+      fontWeight: 900,
+      letterSpacing: "-0.02em"
+    }
+  }, "Mandorons")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      fontWeight: 600
+    }
+  }, user.email?.split("@")[0]), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      sb.signOut();
+      setUser(null);
+    },
+    style: {
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      color: C.muted,
+      padding: "7px 12px",
+      borderRadius: 10,
+      cursor: "pointer",
+      fontSize: 12,
+      fontWeight: 700
+    }
+  }, "Out"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.surface,
+      borderBottom: `1px solid ${C.border}`,
+      display: "flex",
+      padding: "0 16px"
+    }
+  }, [["entry", "📋 Log Entry"], ["stats", "📊 My Stats"]].map(([id, label]) => /*#__PURE__*/React.createElement("button", {
+    key: id,
+    onClick: () => setTab(id),
+    style: {
+      padding: "12px 16px",
+      border: "none",
+      background: "none",
+      fontWeight: 700,
+      fontSize: 13,
+      cursor: "pointer",
+      color: tab === id ? C.orange : C.muted,
+      borderBottom: `2.5px solid ${tab === id ? C.orange : "transparent"}`,
+      transition: "all 0.2s"
+    }
+  }, label)), saved.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginLeft: "auto",
+      display: "flex",
+      alignItems: "center",
+      fontSize: 12,
+      color: C.green,
+      fontWeight: 700
+    }
+  }, "\u2713 ", saved.length, " logged today")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      maxWidth: 480,
+      margin: "0 auto",
+      padding: "20px 14px 20px"
+    }
+  }, tab === "entry" && /*#__PURE__*/React.createElement(EntryWizard, {
+    user: user,
+    onSaved: e => {
+      setSaved(p => [...p, e]);
+    }
+  }), tab === "stats" && /*#__PURE__*/React.createElement(MyStats, {
+    user: user
+  })));
+}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(StaffApp));
+}
+</script>
+</body>
+</html>
