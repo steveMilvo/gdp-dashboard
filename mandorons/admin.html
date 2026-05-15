@@ -512,10 +512,10 @@ function TypeBadge({
 
 // ── XLSX export helpers ───────────────────────────────────────────────────────
 function sheetRaw(rows) {
-  const data = [["Date", "Location", "Type", "Staff", "Float $", "Boxing Total", "Boxing Detail", "Boxes Start", "Boxes Added", "Boxes Sold", "Samples Used", "Boxes End", "Time Start", "Time End", "Cash $", "Card $", "Total $", "Notes", "POS URL"], ...rows.map(r => {
+  const data = [["Date", "Location", "Type", "Staff", "Float $", "Boxing Total", "Boxing Detail", "Boxes Carried", "Boxes Start", "Boxes Added", "Boxes Sold", "Samples Used", "Boxes End", "Time Start", "Time End", "Hours Worked", "Hours Extra", "Cash $", "Card $", "Total $", "Notes", "POS URL"], ...rows.map(r => {
     const bt = r.boxing_tally || {};
     const btDetail = Object.entries(bt).map(([n, v]) => `${n}:${v}`).join(", ");
-    return [r.entry_date, r.location, locType(r.location), (r.staff || []).join(", "), num(r.float_start), num(r.boxing_total) || 0, btDetail, num(r.boxes_start), num(r.boxes_added), num(r.boxes_sold), num(r.samples_used), num(r.boxes_end), r.time_start || "", r.time_end || "", num(r.cash_sales), num(r.card_sales), num(r.total_sales), r.notes || "", r.pos_receipt_url || ""];
+    return [r.entry_date, r.location, locType(r.location), (r.staff || []).join(", "), num(r.float_start), num(r.boxing_total) || 0, btDetail, num(r.boxes_carried), num(r.boxes_start), num(r.boxes_added), num(r.boxes_sold), num(r.samples_used), num(r.boxes_end), r.time_start || "", r.time_end || "", num(r.hours_worked), num(r.hours_additional), num(r.cash_sales), num(r.card_sales), num(r.total_sales), r.notes || "", r.pos_receipt_url || ""];
   })];
   return XLSX.utils.aoa_to_sheet(data);
 }
@@ -5477,6 +5477,7 @@ function ManualEntryTab({
     staff: [],
     cash_sales: "",
     card_sales: "",
+    boxes_carried: "",
     boxes_start: "",
     boxes_added: "0",
     boxes_end: "",
@@ -5484,6 +5485,7 @@ function ManualEntryTab({
     time_start: "",
     time_end: "",
     hours_worked: "",
+    hours_additional: "",
     boxes_packed_solo: "0",
     boxes_packed_shared: "0",
     packing_partners: "1",
@@ -5531,7 +5533,7 @@ function ManualEntryTab({
       packing_partners: String(num(ref.packing_partners) || 1)
     }));
   }, [f.entry_date]);
-  const boxesSold = Math.max(0, num(f.boxes_start) + num(f.boxes_added) - num(f.boxes_end) - num(f.samples_used));
+  const boxesSold = Math.max(0, num(f.boxes_carried) + num(f.boxes_start) + num(f.boxes_added) - num(f.boxes_end) - num(f.samples_used));
   const totalSales = num(f.cash_sales) + num(f.card_sales);
   const totalCosts = num(f.fuel) + num(f.pickers_wages) + num(f.equipment) + num(f.misc_costs);
   const isFarmMisc = ["Farm", "Misc"].includes(f.location);
@@ -5591,6 +5593,7 @@ function ManualEntryTab({
         staff: f.staff,
         float_start: 0,
         boxing_tally: {},
+        boxes_carried: num(f.boxes_carried) || 0,
         boxes_start: num(f.boxes_start) || 0,
         boxes_added: num(f.boxes_added) || 0,
         boxes_end: num(f.boxes_end) || 0,
@@ -5604,6 +5607,7 @@ function ManualEntryTab({
         cash_sales: num(f.cash_sales),
         card_sales: num(f.card_sales),
         hours_worked: num(f.hours_worked) || null,
+        hours_additional: num(f.hours_additional) || 0,
         notes: f.notes || "[Admin manual entry]"
       };
       const r = await sb.insert("daily_sales", row);
@@ -5963,7 +5967,7 @@ function ManualEntryTab({
       gap: 12,
       marginBottom: 10
     }
-  }, [["Boxes at Start", f.boxes_start, "boxes_start", C.amber], ["Boxes Added", f.boxes_added, "boxes_added", C.muted], ["Boxes Remaining", f.boxes_end, "boxes_end", C.muted], ["Samples Given", f.samples_used, "samples_used", C.muted]].map(([lbl2, val, key, col]) => /*#__PURE__*/React.createElement("div", {
+  }, [["Boxes Carried", f.boxes_carried, "boxes_carried", C.blue], ["Boxes at Start", f.boxes_start, "boxes_start", C.amber], ["Boxes Added", f.boxes_added, "boxes_added", C.muted], ["Boxes Remaining", f.boxes_end, "boxes_end", C.muted], ["Samples Given", f.samples_used, "samples_used", C.muted]].map(([lbl2, val, key, col]) => /*#__PURE__*/React.createElement("div", {
     key: key
   }, /*#__PURE__*/React.createElement("div", {
     style: lbl
@@ -6001,7 +6005,7 @@ function ManualEntryTab({
       fontWeight: 400,
       marginLeft: 8
     }
-  }, "(", num(f.boxes_start), " start + ", num(f.boxes_added), " added \u2212 ", num(f.boxes_end), " remaining \u2212 ", num(f.samples_used), " samples)"))), /*#__PURE__*/React.createElement("div", {
+  }, "(", num(f.boxes_carried), " carried + ", num(f.boxes_start), " start + ", num(f.boxes_added), " added \u2212 ", num(f.boxes_end), " remaining \u2212 ", num(f.samples_used), " samples)"))), /*#__PURE__*/React.createElement("div", {
     style: secHdr
   }, "Trading Hours"), /*#__PURE__*/React.createElement(Card, {
     style: {
@@ -6011,7 +6015,7 @@ function ManualEntryTab({
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       display: "grid",
-      gridTemplateColumns: "1fr 1fr 1fr",
+      gridTemplateColumns: "1fr 1fr 1fr 1fr",
       gap: 12
     }
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
@@ -6046,6 +6050,23 @@ function ManualEntryTab({
       fontSize: 18,
       textAlign: "center",
       border: `1.5px solid ${f.hours_worked ? C.blue : C.border}`
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: lbl
+  }, "Hours Extra"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "0",
+    step: "0.5",
+    placeholder: "0",
+    value: f.hours_additional,
+    onChange: setV("hours_additional"),
+    style: {
+      ...inp,
+      fontWeight: 800,
+      color: C.green,
+      fontSize: 18,
+      textAlign: "center",
+      border: `1.5px solid ${f.hours_additional ? C.green : C.border}`
     }
   })))), /*#__PURE__*/React.createElement("div", {
     style: secHdr
