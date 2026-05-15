@@ -649,12 +649,14 @@ const EMPTY = {
   entry_date: "",
   location: "",
   staff: [],
+  boxes_carried: 0,
   boxes_start: 0,
   samples_used: 0,
   boxes_end: 0,
   time_start: "",
   time_end: "",
   hours_worked: "",
+  hours_additional: "",
   boxes_packed_solo: 0,
   boxes_packed_shared: 0,
   packing_partners: 1,
@@ -711,6 +713,28 @@ function EntryWizard({
       hours_worked: String(Math.round(mins / 60 * 10) / 10)
     }));
   }, [f.time_start, f.time_end]);
+
+  // Carry-forward: prefill boxes_carried from yesterday's boxes_end at this location.
+  // Fetches the most recent prior entry for the selected location whenever
+  // location or entry_date changes. Editable afterwards.
+  useEffect(() => {
+    if (!f.location || !f.entry_date) return;
+    let cancelled = false;
+    (async () => {
+      const qs = `location=eq.${encodeURIComponent(f.location)}&entry_date=lt.${encodeURIComponent(f.entry_date)}&order=entry_date.desc&limit=1&select=boxes_end,entry_date`;
+      let res;
+      try {
+        res = await sb.select("daily_sales", qs);
+      } catch (_) {
+        return;
+      }
+      if (cancelled) return;
+      const prev = Array.isArray(res) ? res[0] : null;
+      setF(p => ({ ...p, boxes_carried: prev ? num(prev.boxes_end) : 0 }));
+    })();
+    return () => { cancelled = true; };
+  }, [f.location, f.entry_date]);
+
   function next() {
     if (step === 0 && !f.location) {
       setErr("Select or enter a location.");
@@ -764,11 +788,12 @@ function EntryWizard({
       boxing_tally: myName ? {
         [myName]: num(f.boxes_packed_solo) + num(f.boxes_packed_shared)
       } : {},
+      boxes_carried: num(f.boxes_carried),
       boxes_start: num(f.boxes_start),
       boxes_added: 0,
       boxes_end: num(f.boxes_end),
       samples_used: num(f.samples_used),
-      boxes_sold: Math.max(0, num(f.boxes_start) + 0 - num(f.boxes_end) - num(f.samples_used)),
+      boxes_sold: Math.max(0, num(f.boxes_carried) + num(f.boxes_start) - num(f.boxes_end) - num(f.samples_used)),
       boxes_packed_solo: num(f.boxes_packed_solo) || 0,
       boxes_packed_shared: num(f.boxes_packed_shared) || 0,
       packing_partners: num(f.packing_partners) || 1,
@@ -777,6 +802,7 @@ function EntryWizard({
       cash_sales: num(f.cash_sales),
       card_sales: num(f.card_sales),
       hours_worked: num(f.hours_worked) || null,
+      hours_additional: num(f.hours_additional) || 0,
       notes: f.notes,
       pos_receipt_url
     };
@@ -1008,8 +1034,39 @@ function EntryWizard({
   }))), step === 1 && /*#__PURE__*/React.createElement("div", {
     className: "su"
   }, /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDCC5",
+    title: "Boxes Carried from Yesterday",
+    color: C.blue
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 10
+    }
+  }, "Auto-filled from yesterday's remaining stock at this location. Edit if needed."), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "decimal",
+    min: "0",
+    step: "0.5",
+    placeholder: "0",
+    value: f.boxes_carried || "",
+    onChange: e => set("boxes_carried")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${C.border}`,
+      background: C.surface,
+      color: C.blue,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  })), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
     emoji: "\uD83D\uDCE6",
-    title: "Boxes at Start of Day",
+    title: "Boxes at Start of Day (new stock)",
     color: C.amber
   }), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1017,10 +1074,11 @@ function EntryWizard({
       color: C.muted,
       marginBottom: 10
     }
-  }, "How many boxes did you arrive with?"), /*#__PURE__*/React.createElement("input", {
+  }, "New boxes you arrived with today (in addition to anything carried over)."), /*#__PURE__*/React.createElement("input", {
     type: "number",
-    inputMode: "numeric",
+    inputMode: "decimal",
     min: "0",
+    step: "0.5",
     placeholder: "0",
     value: f.boxes_start || "",
     onChange: e => set("boxes_start")(e.target.value),
@@ -1049,8 +1107,9 @@ function EntryWizard({
     }
   }, "Boxes opened for customer tastings"), /*#__PURE__*/React.createElement("input", {
     type: "number",
-    inputMode: "numeric",
+    inputMode: "decimal",
     min: "0",
+    step: "0.5",
     placeholder: "0",
     value: f.samples_used || "",
     onChange: e => set("samples_used")(e.target.value),
@@ -1084,8 +1143,9 @@ function EntryWizard({
     color: C.muted
   }), /*#__PURE__*/React.createElement("input", {
     type: "number",
-    inputMode: "numeric",
+    inputMode: "decimal",
     min: "0",
+    step: "0.5",
     placeholder: "0",
     value: f.boxes_end || "",
     onChange: e => set("boxes_end")(e.target.value),
@@ -1204,6 +1264,46 @@ function EntryWizard({
       marginTop: 6
     }
   }, f.time_start, " \u2192 ", f.time_end))), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
+    emoji: "\uD83D\uDE97",
+    title: "Additional Hours",
+    color: C.green
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted,
+      marginBottom: 10
+    }
+  }, "Hours outside trading time \u2014 driving to collect fruit, rostering, set-up, etc. Decimals OK (e.g. 1.5)."), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    inputMode: "decimal",
+    min: "0",
+    max: "24",
+    step: "0.5",
+    placeholder: "0",
+    value: f.hours_additional || "",
+    onChange: e => set("hours_additional")(e.target.value),
+    style: {
+      width: "100%",
+      padding: "16px",
+      borderRadius: 14,
+      border: `2px solid ${f.hours_additional ? C.green : C.border}`,
+      background: C.surface,
+      color: C.green,
+      fontSize: 36,
+      fontWeight: 900,
+      textAlign: "center",
+      outline: "none",
+      boxSizing: "border-box"
+    }
+  }), num(f.hours_worked) > 0 && num(f.hours_additional) > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.green,
+      textAlign: "center",
+      marginTop: 8,
+      fontWeight: 700
+    }
+  }, "Total today: ", (num(f.hours_worked) + num(f.hours_additional)).toFixed(1), " hrs")), /*#__PURE__*/React.createElement(Card, null, /*#__PURE__*/React.createElement(STitle, {
     emoji: "\uD83D\uDCE6",
     title: "Boxing Tally",
     color: C.amber
@@ -1422,7 +1522,7 @@ function EntryWizard({
       color: C.muted,
       marginTop: 2
     }
-  }, getLocType(f.location))), [["📅 Date", fmtDate(f.entry_date)], ["👥 Staff", f.staff.join(", ") || "—"], ["⏱ Trading", f.time_start ? `${f.time_start}–${f.time_end}` : "—"], ["⏳ Hours Total", f.hours_worked ? `${f.hours_worked} hrs` : "—"], ["📦 Boxes Start", f.boxes_start], ["🧪 Samples", f.samples_used], ["📦 Boxes End", f.boxes_end], ["📦 Solo Packed", num(f.boxes_packed_solo) || "—"], ["📦 Shared Packed", num(f.boxes_packed_shared) > 0 ? `${num(f.boxes_packed_shared)} (÷${num(f.packing_partners) || 1})` : "—"], ["💵 Cash", aud(f.cash_sales)], ["💳 Card", aud(f.card_sales)]].map(([lbl, val]) => /*#__PURE__*/React.createElement("div", {
+  }, getLocType(f.location))), [["📅 Date", fmtDate(f.entry_date)], ["👥 Staff", f.staff.join(", ") || "—"], ["⏱ Trading", f.time_start ? `${f.time_start}–${f.time_end}` : "—"], ["⏳ Hours Total", (num(f.hours_worked) + num(f.hours_additional)) > 0 ? `${(num(f.hours_worked) + num(f.hours_additional)).toFixed(1)} hrs${num(f.hours_additional) > 0 ? ` (${f.hours_worked || 0} trading + ${f.hours_additional} extra)` : ''}` : "—"], ["📅 Boxes Carried", f.boxes_carried || 0], ["📦 Boxes Start", f.boxes_start], ["🧪 Samples", f.samples_used], ["📦 Boxes End", f.boxes_end], ["📦 Solo Packed", num(f.boxes_packed_solo) || "—"], ["📦 Shared Packed", num(f.boxes_packed_shared) > 0 ? `${num(f.boxes_packed_shared)} (÷${num(f.packing_partners) || 1})` : "—"], ["💵 Cash", aud(f.cash_sales)], ["💳 Card", aud(f.card_sales)]].map(([lbl, val]) => /*#__PURE__*/React.createElement("div", {
     key: lbl,
     style: {
       display: "flex",
