@@ -4259,12 +4259,11 @@ function IntegrityTab({
   // Only rows where we have meaningful data
   const valid = sourceRows.filter(r => num(r.boxes_sold) > 0 || num(r.total_sales) > 0);
 
-  // Value per box = total_sales / max(1, boxes_sold - samples_used)
-  // This is $/box actually sold for money (excluding free samples)
+  // Value per box = total_sales / max(1, boxes_sold)
+  // boxes_sold is already stored net of samples (start − end − samples), so no further deduction needed
   const enriched = valid.map(r => {
     const sold = num(r.boxes_sold);
-    const sampled = num(r.samples_used);
-    const paidBoxes = Math.max(1, sold - sampled);
+    const paidBoxes = Math.max(1, sold);
     const vpb = num(r.total_sales) / paidBoxes;
     const staffList = Array.isArray(r.staff) ? r.staff : r.staff ? [r.staff] : [];
     return {
