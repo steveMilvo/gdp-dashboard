@@ -734,7 +734,8 @@ function exportFull(rows, filename) {
 
 // ── Data table ────────────────────────────────────────────────────────────────
 function DataTable({
-  rows
+  rows,
+  onDelete
 }) {
   if (!rows.length) return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -744,11 +745,13 @@ function DataTable({
       fontSize: 14
     }
   }, "No entries for this period.");
+  const headerCols = ["Date", "Location", "Type", "Rep", "Cash", "Card", "Total", "Sold", "Sampled", "End", "Receipt"];
+  if (onDelete) headerCols.push("");
   return /*#__PURE__*/React.createElement("div", {
     style: {
       overflowX: "auto"
     }
-  }, /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, ["Date", "Location", "Type", "Rep", "Cash", "Card", "Total", "Sold", "Sampled", "End", "Receipt"].map(h => /*#__PURE__*/React.createElement("th", {
+  }, /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, headerCols.map(h => /*#__PURE__*/React.createElement("th", {
     key: h,
     style: {
       padding: "9px 12px",
@@ -850,7 +853,25 @@ function DataTable({
     style: {
       color: C.border
     }
-  }, "\u2014")))))));
+  }, "\u2014")), onDelete && /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: "8px 12px",
+      textAlign: "right"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => onDelete(r),
+    title: "Delete this entry",
+    style: {
+      background: "transparent",
+      border: `1px solid ${C.red}40`,
+      color: C.red,
+      borderRadius: 6,
+      padding: "4px 8px",
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer"
+    }
+  }, "\ud83d\uddd1 Delete")))))));
 }
 
 // ── KPI row ───────────────────────────────────────────────────────────────────
@@ -1364,15 +1385,33 @@ function MonthlyTab({
 // ── ALL DATA TAB ──────────────────────────────────────────────────────────────
 function AllDataTab({
   rows,
-  discrepancies = []
+  discrepancies = [],
+  onChange
 }) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
+  const [busy, setBusy] = useState(false);
   const filtered = rows.filter(r => {
     const matchSearch = (r.location || "").toLowerCase().includes(search.toLowerCase()) || (r.user_email || "").toLowerCase().includes(search.toLowerCase()) || (r.entry_date || "").includes(search);
     const matchType = typeFilter === "All" || locType(r.location) === typeFilter;
     return matchSearch && matchType;
   });
+  async function handleDelete(row) {
+    if (!row?.id) {
+      alert("This entry has no id — cannot delete.");
+      return;
+    }
+    const who = row.user_email ? row.user_email.split("@")[0] : "unknown";
+    if (!confirm(`Delete this entry?\n\n${row.entry_date} · ${row.location}\nRep: ${who} · Total: ${aud(row.total_sales)}\n\nThis cannot be undone.`)) return;
+    setBusy(true);
+    const res = await sb.del("daily_sales", `id=eq.${row.id}`);
+    setBusy(false);
+    if (res && res.ok) {
+      onChange && onChange();
+    } else {
+      alert("Delete failed: " + ((res && res._error) || "unknown error"));
+    }
+  }
 
   // Count duplicates in the raw set
   const dupMap = {};
@@ -1451,7 +1490,8 @@ function AllDataTab({
       overflow: "hidden"
     }
   }, /*#__PURE__*/React.createElement(DataTable, {
-    rows: filtered
+    rows: filtered,
+    onDelete: onChange ? handleDelete : undefined
   })));
 }
 
@@ -5532,6 +5572,20 @@ function ManualEntryTab({
       packing_partners: String(num(ref.packing_partners) || 1)
     }));
   }, [f.entry_date]);
+
+  // Carry-forward: prefill boxes_carried from the most recent prior entry's
+  // boxes_end at this location. Editable if staff need to override.
+  useEffect(() => {
+    if (!f.location || !f.entry_date) return;
+    const priors = rows
+      .filter(r => r.location === f.location && r.entry_date < f.entry_date)
+      .sort((a, b) => (b.entry_date || "").localeCompare(a.entry_date || ""));
+    const prev = priors[0];
+    setF(p => ({
+      ...p,
+      boxes_carried: prev ? String(num(prev.boxes_end) || 0) : ""
+    }));
+  }, [f.location, f.entry_date]);
   const boxesSold = Math.max(0, num(f.boxes_carried) + num(f.boxes_start) + num(f.boxes_added) - num(f.boxes_end) - num(f.samples_used));
   const totalSales = num(f.cash_sales) + num(f.card_sales);
   const totalCosts = num(f.fuel) + num(f.pickers_wages) + num(f.equipment) + num(f.misc_costs);
@@ -6268,6 +6322,296 @@ function ManualEntryTab({
   }, num(r.boxes_sold) || "—")))))))));
 }
 
+// ── WEEKLY WAGES TAB ─────────────────────────────────────────────────────────
+function WeeklyWagesTab({
+  rows
+}) {
+  const [hourlyRate, setHourlyRate] = useState(35);
+  const [rateInput, setRateInput] = useState("35");
+  function handleRate(v) {
+    setRateInput(v);
+    const n = parseFloat(v);
+    if (!isNaN(n) && n > 0) setHourlyRate(n);
+  }
+
+  // Group rows by week (Mon–Sun)
+  const byWeek = {};
+  rows.forEach(r => {
+    if (!r.entry_date) return;
+    const w = weekOf(r.entry_date);
+    if (!byWeek[w]) byWeek[w] = [];
+    byWeek[w].push(r);
+  });
+  const weeks = Object.keys(byWeek).sort().reverse();
+
+  function weekRange(wStart) {
+    const s = new Date(wStart + "T00:00:00");
+    const e = new Date(s);
+    e.setDate(e.getDate() + 6);
+    const fmt = d => d.toLocaleDateString("en-AU", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+    return `${fmt(s)} – ${fmt(e)}`;
+  }
+
+  function buildWeekTable(weekRows) {
+    const byStaff = {};
+    weekRows.forEach(r => {
+      const email = r.user_email || "unknown";
+      if (!byStaff[email]) byStaff[email] = [];
+      byStaff[email].push(r);
+    });
+    const workers = Object.keys(byStaff).map(email => {
+      const entries = byStaff[email];
+      const hours = entries.reduce((s, e) => s + num(e.hours_worked), 0);
+      const hoursExtra = entries.reduce((s, e) => s + num(e.hours_additional), 0);
+      const base = (hours + hoursExtra) * hourlyRate;
+      const salesBonus = entries.reduce((s, e) => s + calcBonus(num(e.total_sales), (e.staff || []).length), 0);
+      const boxingBonus = entries.reduce((s, e) => s + calcBoxingBonus(e), 0);
+      return {
+        email,
+        name: email.split("@")[0],
+        hours,
+        hoursExtra,
+        base,
+        salesBonus,
+        boxingBonus,
+        total: base + salesBonus + boxingBonus,
+        entries: entries.length
+      };
+    }).sort((a, b) => b.total - a.total);
+    const tot = workers.reduce((a, w) => ({
+      hours: a.hours + w.hours,
+      hoursExtra: a.hoursExtra + w.hoursExtra,
+      base: a.base + w.base,
+      salesBonus: a.salesBonus + w.salesBonus,
+      boxingBonus: a.boxingBonus + w.boxingBonus,
+      total: a.total + w.total
+    }), {
+      hours: 0,
+      hoursExtra: 0,
+      base: 0,
+      salesBonus: 0,
+      boxingBonus: 0,
+      total: 0
+    });
+    return {
+      workers,
+      tot
+    };
+  }
+
+  const th = {
+    padding: "8px 10px",
+    textAlign: "left",
+    fontSize: 10,
+    fontWeight: 700,
+    color: C.muted,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    borderBottom: `1px solid ${C.border}`,
+    whiteSpace: "nowrap"
+  };
+  const td = {
+    padding: "7px 10px",
+    fontSize: 13,
+    borderBottom: `1px solid ${C.border}`
+  };
+
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 12,
+      alignItems: "center",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      color: C.muted,
+      textTransform: "uppercase",
+      letterSpacing: "0.06em"
+    }
+  }, "Hourly Rate"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      background: C.surface,
+      border: `2px solid ${C.amber}`,
+      borderRadius: 10,
+      padding: "6px 12px"
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.amber,
+      fontWeight: 800
+    }
+  }, "$"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "1",
+    value: rateInput,
+    onChange: e => handleRate(e.target.value),
+    style: {
+      width: 64,
+      background: "transparent",
+      border: "none",
+      color: C.text,
+      fontSize: 15,
+      fontWeight: 700,
+      outline: "none"
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.muted,
+      fontSize: 12
+    }
+  }, "/hr")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.muted
+    }
+  }, weeks.length, " week", weeks.length === 1 ? "" : "s", " of data")), weeks.length === 0 && /*#__PURE__*/React.createElement(Card, {
+    style: {
+      padding: 40,
+      textAlign: "center",
+      color: C.muted
+    }
+  }, "No entries yet."), weeks.map(w => {
+    const {
+      workers,
+      tot
+    } = buildWeekTable(byWeek[w]);
+    return /*#__PURE__*/React.createElement(Card, {
+      key: w,
+      style: {
+        marginBottom: 14,
+        padding: "14px 16px"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "baseline",
+        marginBottom: 10,
+        flexWrap: "wrap",
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Syne',sans-serif",
+        fontWeight: 800,
+        fontSize: 16,
+        color: C.text
+      }
+    }, "Week of ", weekRange(w)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C.muted,
+        marginTop: 2
+      }
+    }, "Mon ", w, " → Sun")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 18,
+        fontWeight: 800,
+        color: C.green
+      }
+    }, aud(tot.total))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        overflowX: "auto"
+      }
+    }, /*#__PURE__*/React.createElement("table", {
+      style: {
+        width: "100%",
+        borderCollapse: "collapse"
+      }
+    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, ["Worker", "Hours", "Extra", "Base", "Sales Bonus", "Boxing Bonus", "Total"].map(h => /*#__PURE__*/React.createElement("th", {
+      key: h,
+      style: th
+    }, h)))), /*#__PURE__*/React.createElement("tbody", null, workers.map(wk => /*#__PURE__*/React.createElement("tr", {
+      key: wk.email
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        ...td,
+        fontWeight: 700
+      }
+    }, wk.name), /*#__PURE__*/React.createElement("td", {
+      style: td
+    }, wk.hours.toFixed(1)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        ...td,
+        color: C.muted
+      }
+    }, wk.hoursExtra > 0 ? wk.hoursExtra.toFixed(1) : "—"), /*#__PURE__*/React.createElement("td", {
+      style: td
+    }, aud(wk.base)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        ...td,
+        color: wk.salesBonus > 0 ? C.amber : C.muted
+      }
+    }, wk.salesBonus > 0 ? aud(wk.salesBonus) : "—"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        ...td,
+        color: wk.boxingBonus > 0 ? C.blue : C.muted
+      }
+    }, wk.boxingBonus > 0 ? aud(wk.boxingBonus) : "—"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        ...td,
+        fontWeight: 800,
+        color: C.green
+      }
+    }, aud(wk.total)))), /*#__PURE__*/React.createElement("tr", {
+      style: {
+        background: C.surface
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        ...td,
+        fontWeight: 800,
+        color: C.muted
+      }
+    }, "TOTAL"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        ...td,
+        fontWeight: 800
+      }
+    }, tot.hours.toFixed(1)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        ...td,
+        fontWeight: 800
+      }
+    }, tot.hoursExtra > 0 ? tot.hoursExtra.toFixed(1) : "—"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        ...td,
+        fontWeight: 800
+      }
+    }, aud(tot.base)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        ...td,
+        fontWeight: 800,
+        color: C.amber
+      }
+    }, aud(tot.salesBonus)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        ...td,
+        fontWeight: 800,
+        color: C.blue
+      }
+    }, aud(tot.boxingBonus)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        ...td,
+        fontWeight: 900,
+        color: C.green,
+        fontSize: 14
+      }
+    }, aud(tot.total)))))));
+  }));
+}
+
 // ── ROOT ──────────────────────────────────────────────────────────────────────
 const TABS = [{
   id: "overview",
@@ -6290,6 +6634,9 @@ const TABS = [{
 }, {
   id: "bonuses",
   label: "💵 Bonuses"
+}, {
+  id: "wages",
+  label: "💰 Weekly Wages"
 }, {
   id: "locations",
   label: "📍 Locations"
@@ -6472,7 +6819,8 @@ function AdminApp() {
     rows: salesRows
   }), tab === "all" && /*#__PURE__*/React.createElement(AllDataTab, {
     rows: rows,
-    discrepancies: salesDisc
+    discrepancies: salesDisc,
+    onChange: load
   }), tab === "entry" && /*#__PURE__*/React.createElement(ManualEntryTab, {
     rows: rows,
     user: user,
@@ -6483,6 +6831,8 @@ function AdminApp() {
     rows: rows,
     salesRows: salesRows,
     user: user
+  }), tab === "wages" && /*#__PURE__*/React.createElement(WeeklyWagesTab, {
+    rows: rows
   }), tab === "locations" && /*#__PURE__*/React.createElement(LocationsTab, {
     user: user
   }), tab === "integrity" && /*#__PURE__*/React.createElement(IntegrityTab, {
