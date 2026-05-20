@@ -4317,6 +4317,12 @@ function IntegrityTab({
   const [threshold, setThreshold] = useState(20);
   const [selWorker, setSelWorker] = useState("All");
 
+  // Wholesale floor: you cannot sell a 4.5kg box for less than $30
+  // (that's the whole-box price). Anything below this is mathematically suspect.
+  const BOX_FLOOR = 30;
+  // Expected average when mostly selling by the small basket (6–7 pieces) ≈ $41/box
+  const BOX_BASKET_AVG = 41;
+
   // Use deduplicated salesRows for value-per-box analysis (avoids counting same stall twice)
   const sourceRows = salesRows || rows;
   // Only rows where we have meaningful data
@@ -4333,6 +4339,7 @@ function IntegrityTab({
       ...r,
       _vpb: vpb,
       _paidBoxes: paidBoxes,
+      _belowFloor: vpb < BOX_FLOOR,
       _staff: staffList
     };
   });
@@ -4380,22 +4387,105 @@ function IntegrityTab({
     });
   });
   const workerList = Object.keys(byWorker);
-  const flagged = withDev.filter(r => r._dev < -threshold).sort((a, b) => a._dev - b._dev);
+
+  // An entry is flagged if it deviates negatively from its location's avg
+  // OR if it falls below the wholesale floor ($30/box) regardless of deviation.
+  const flagged = withDev.filter(r => r._dev < -threshold || r._belowFloor)
+    .sort((a, b) => a._vpb - b._vpb);
   const allWorkers = ["All", ...workerList.slice().sort()];
   const filteredFlagged = selWorker === "All" ? flagged : flagged.filter(r => r._staff.includes(selWorker));
+
+  // Re-count flagged per worker including below-floor entries
+  Object.keys(byWorker).forEach(k => {
+    byWorker[k].belowFloor = byWorker[k].entries.filter(r => r._belowFloor).length;
+    byWorker[k].flagged = byWorker[k].entries.filter(r => r._dev < -threshold || r._belowFloor).length;
+  });
+
   const devColor = dev => {
     if (dev < -threshold * 1.5) return C.red;
     if (dev < -threshold) return C.orange;
     if (dev > threshold * 0.5) return C.green;
     return C.muted;
   };
+  // vpb colour: red if below wholesale floor, orange if below 80% of basket avg,
+  // green if at or above basket avg
+  const vpbColor = vpb => {
+    if (vpb < BOX_FLOOR) return C.red;
+    if (vpb < BOX_BASKET_AVG * 0.8) return C.orange;
+    if (vpb >= BOX_BASKET_AVG) return C.green;
+    return C.muted;
+  };
   const riskOf = w => {
     const avgDev = w.devSum / w.entries.length;
+    const avgVpb = w.vpbSum / w.entries.length;
+    // High: 2+ below-floor entries, OR avg below floor, OR 3+ flagged with neg deviation
+    if (w.belowFloor >= 2 || avgVpb < BOX_FLOOR) return "HIGH";
     if (w.flagged >= 3 && avgDev < -threshold) return "HIGH";
-    if (w.flagged >= 1 && avgDev < -(threshold * 0.5)) return "MEDIUM";
+    if (w.belowFloor >= 1 || (w.flagged >= 1 && avgDev < -(threshold * 0.5))) return "MEDIUM";
     return "LOW";
   };
   const riskColor = r => r === "HIGH" ? C.red : r === "MEDIUM" ? C.orange : C.green;
+
+  // Location-level analysis: average vpb per location, compared to floor and basket avg
+  const locStats = Object.keys(byLoc).map(loc => {
+    const rs = byLoc[loc];
+    const avg = locAvg[loc] || 0;
+    const below = rs.filter(r => r._belowFloor).length;
+    return {
+      location: loc,
+      n: rs.length,
+      avg: avg,
+      below: below,
+      belowPct: rs.length > 0 ? (below / rs.length) * 100 : 0,
+      vsFloor: avg - BOX_FLOOR,
+      vsBasket: avg - BOX_BASKET_AVG
+    };
+  }).sort((a, b) => a.avg - b.avg);
+
+  // Staff at the same location: who's underselling vs their peers?
+  // For each (location, staff), compute avg vpb. Then group by location and
+  // keep only locations where 2+ different staff have entries — that's where
+  // peer comparison is meaningful.
+  const locStaffAcc = {};
+  enriched.forEach(r => {
+    if (!r.location) return;
+    r._staff.forEach(name => {
+      const n = (name || "").trim();
+      if (!n) return;
+      const k = r.location + "||" + n;
+      if (!locStaffAcc[k]) locStaffAcc[k] = {
+        location: r.location,
+        staff: n,
+        entries: [],
+        vpbSum: 0,
+        belowFloor: 0
+      };
+      locStaffAcc[k].entries.push(r);
+      locStaffAcc[k].vpbSum += r._vpb;
+      if (r._belowFloor) locStaffAcc[k].belowFloor++;
+    });
+  });
+  const staffByLoc = {};
+  Object.values(locStaffAcc).forEach(s => {
+    s.avg = s.vpbSum / s.entries.length;
+    if (!staffByLoc[s.location]) staffByLoc[s.location] = [];
+    staffByLoc[s.location].push(s);
+  });
+  const staffCompare = Object.keys(staffByLoc)
+    .filter(loc => staffByLoc[loc].length > 1)
+    .map(loc => {
+      const list = staffByLoc[loc].slice().sort((a, b) => a.avg - b.avg);
+      const lowest = list[0];
+      const highest = list[list.length - 1];
+      const spread = highest.avg - lowest.avg;
+      return {
+        location: loc,
+        staff: list,
+        spread,
+        locAvg: locAvg[loc] || 0
+      };
+    })
+    .sort((a, b) => b.spread - a.spread);
   const secHdr = {
     fontFamily: "'Syne',sans-serif",
     fontWeight: 800,
@@ -4641,7 +4731,195 @@ function IntegrityTab({
         }
       }, "Revenue uses the highest total (", aud(Math.max(...tots)), "). Confirm with staff which figure is correct."));
     })));
-  })(), /*#__PURE__*/React.createElement("div", {
+  })(),
+
+  // ── PRICING REFERENCE BANNER ─────────────────────────────────────────
+  /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: `${C.blue}10`,
+      border: `1px solid ${C.blue}40`,
+      borderRadius: C.radius,
+      padding: "12px 16px",
+      marginBottom: 14,
+      fontSize: 13,
+      color: C.muted,
+      lineHeight: 1.6
+    }
+  }, /*#__PURE__*/React.createElement("strong", {
+    style: { color: C.blue }
+  }, "Pricing reference"), " — Wholesale floor ", /*#__PURE__*/React.createElement("strong", {
+    style: { color: C.text }
+  }, aud(BOX_FLOOR), "/box"), " (whole 4.5 kg). Expected average when selling by small basket (6–7 pieces) ≈ ", /*#__PURE__*/React.createElement("strong", {
+    style: { color: C.text }
+  }, aud(BOX_BASKET_AVG), "/box"), ". Anything below the floor is mathematically suspect — you can't sell a box for less than the whole-box price."),
+
+  // ── BELOW-FLOOR ENTRIES ──────────────────────────────────────────────
+  /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: enriched.filter(r => r._belowFloor).length > 0 ? `${C.red}10` : `${C.green}08`,
+      border: `1px solid ${enriched.filter(r => r._belowFloor).length > 0 ? C.red + "40" : C.green + "40"}`,
+      borderRadius: C.radius,
+      padding: "14px 18px",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 14,
+      color: enriched.filter(r => r._belowFloor).length > 0 ? C.red : C.green,
+      marginBottom: 8
+    }
+  }, enriched.filter(r => r._belowFloor).length > 0
+    ? `🚨 ${enriched.filter(r => r._belowFloor).length} entr${enriched.filter(r => r._belowFloor).length === 1 ? "y" : "ies"} below the $${BOX_FLOOR} wholesale floor`
+    : `✓ No entries below the $${BOX_FLOOR} wholesale floor`),
+  enriched.filter(r => r._belowFloor).length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: { overflowX: "auto" }
+  }, /*#__PURE__*/React.createElement("table", { style: { width: "100%", borderCollapse: "collapse" } },
+    /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null,
+      ["Date", "Location", "Rep", "$/Box", "Boxes Sold", "Total"].map(h => /*#__PURE__*/React.createElement("th", {
+        key: h,
+        style: {
+          padding: "6px 10px",
+          textAlign: "left",
+          fontSize: 10,
+          fontWeight: 700,
+          color: C.muted,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          borderBottom: `1px solid ${C.border}`
+        }
+      }, h)))),
+    /*#__PURE__*/React.createElement("tbody", null,
+      enriched.filter(r => r._belowFloor).sort((a, b) => a._vpb - b._vpb).map((r, i) =>
+        /*#__PURE__*/React.createElement("tr", {
+          key: r.id || i,
+          style: { borderBottom: `1px solid ${C.border}` }
+        },
+          /*#__PURE__*/React.createElement("td", { style: { padding: "6px 10px", fontSize: 12, fontWeight: 600 } }, r.entry_date),
+          /*#__PURE__*/React.createElement("td", { style: { padding: "6px 10px", fontSize: 12 } }, r.location),
+          /*#__PURE__*/React.createElement("td", { style: { padding: "6px 10px", fontSize: 12, color: C.muted } }, (r._staff || []).join(", ") || (r.user_email ? r.user_email.split("@")[0] : "—")),
+          /*#__PURE__*/React.createElement("td", { style: { padding: "6px 10px", fontSize: 13, fontWeight: 800, color: C.red } }, audf(r._vpb)),
+          /*#__PURE__*/React.createElement("td", { style: { padding: "6px 10px", fontSize: 12 } }, num(r.boxes_sold)),
+          /*#__PURE__*/React.createElement("td", { style: { padding: "6px 10px", fontSize: 12 } }, aud(r.total_sales))
+        )
+      )
+    )
+  ))),
+
+  // ── LOCATION COMPARISON ─────────────────────────────────────────────
+  /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      borderRadius: C.radius,
+      padding: "14px 18px",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 14,
+      color: C.text,
+      marginBottom: 10
+    }
+  }, "📍 Location comparison — avg $/box"),
+  /*#__PURE__*/React.createElement("div", { style: { overflowX: "auto" } },
+    /*#__PURE__*/React.createElement("table", { style: { width: "100%", borderCollapse: "collapse" } },
+      /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null,
+        ["Location", "Avg $/box", "Entries", "Below floor", "vs Floor", "vs Basket avg"].map(h => /*#__PURE__*/React.createElement("th", {
+          key: h,
+          style: {
+            padding: "6px 10px",
+            textAlign: "left",
+            fontSize: 10,
+            fontWeight: 700,
+            color: C.muted,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            borderBottom: `1px solid ${C.border}`
+          }
+        }, h)))),
+      /*#__PURE__*/React.createElement("tbody", null,
+        locStats.map(s => /*#__PURE__*/React.createElement("tr", {
+          key: s.location,
+          style: { borderBottom: `1px solid ${C.border}` }
+        },
+          /*#__PURE__*/React.createElement("td", { style: { padding: "7px 10px", fontSize: 13, fontWeight: 700 } }, s.location),
+          /*#__PURE__*/React.createElement("td", { style: { padding: "7px 10px", fontSize: 13, fontWeight: 800, color: vpbColor(s.avg) } }, audf(s.avg)),
+          /*#__PURE__*/React.createElement("td", { style: { padding: "7px 10px", fontSize: 12, color: C.muted } }, s.n),
+          /*#__PURE__*/React.createElement("td", { style: { padding: "7px 10px", fontSize: 12, color: s.below > 0 ? C.red : C.muted, fontWeight: s.below > 0 ? 800 : 400 } }, s.below > 0 ? `${s.below} (${s.belowPct.toFixed(0)}%)` : "—"),
+          /*#__PURE__*/React.createElement("td", { style: { padding: "7px 10px", fontSize: 12, color: s.vsFloor < 0 ? C.red : C.muted, fontWeight: s.vsFloor < 0 ? 800 : 400 } }, (s.vsFloor >= 0 ? "+" : "") + audf(s.vsFloor)),
+          /*#__PURE__*/React.createElement("td", { style: { padding: "7px 10px", fontSize: 12, color: s.vsBasket < -5 ? C.orange : s.vsBasket >= 0 ? C.green : C.muted } }, (s.vsBasket >= 0 ? "+" : "") + audf(s.vsBasket))
+        ))
+      )
+    )
+  )),
+
+  // ── STAFF AT SAME LOCATION ──────────────────────────────────────────
+  staffCompare.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.surface,
+      border: `1px solid ${C.border}`,
+      borderRadius: C.radius,
+      padding: "14px 18px",
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Syne',sans-serif",
+      fontWeight: 800,
+      fontSize: 14,
+      color: C.text,
+      marginBottom: 4
+    }
+  }, "👥 Same location, different staff — $/box comparison"),
+  /*#__PURE__*/React.createElement("div", {
+    style: { fontSize: 12, color: C.muted, marginBottom: 10 }
+  }, "Locations where multiple staff have submitted, sorted by widest spread between highest and lowest seller."),
+  staffCompare.map(group => /*#__PURE__*/React.createElement("div", {
+    key: group.location,
+    style: {
+      borderTop: `1px solid ${C.border}`,
+      padding: "10px 0"
+    }
+  },
+    /*#__PURE__*/React.createElement("div", {
+      style: { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6, flexWrap: "wrap", gap: 8 }
+    },
+      /*#__PURE__*/React.createElement("div", { style: { fontSize: 13, fontWeight: 700 } }, group.location),
+      /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: C.muted } },
+        "spread ", /*#__PURE__*/React.createElement("strong", { style: { color: group.spread > 10 ? C.orange : C.text } }, audf(group.spread)),
+        " · loc avg ", audf(group.locAvg)
+      )
+    ),
+    /*#__PURE__*/React.createElement("div", {
+      style: { display: "flex", flexWrap: "wrap", gap: 8 }
+    },
+      group.staff.map(s => /*#__PURE__*/React.createElement("div", {
+        key: s.staff,
+        style: {
+          background: C.bg,
+          border: `1px solid ${vpbColor(s.avg)}40`,
+          borderRadius: 8,
+          padding: "6px 12px",
+          minWidth: 120
+        }
+      },
+        /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: C.muted, fontWeight: 700 } }, s.staff),
+        /*#__PURE__*/React.createElement("div", {
+          style: { fontSize: 16, fontWeight: 800, color: vpbColor(s.avg) }
+        }, audf(s.avg)),
+        /*#__PURE__*/React.createElement("div", { style: { fontSize: 10, color: C.muted } },
+          s.entries.length, " entr", s.entries.length === 1 ? "y" : "ies",
+          s.belowFloor > 0 ? ` · ${s.belowFloor} below floor` : ""
+        )
+      ))
+    )
+  ))),
+
+  /*#__PURE__*/React.createElement("div", {
     style: {
       background: `${C.red}10`,
       border: `1px solid ${C.red}30`,
