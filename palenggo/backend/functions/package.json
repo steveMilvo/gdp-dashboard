@@ -1,0 +1,23 @@
+{
+  "name": "@palenggo/functions",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Firebase Cloud Functions for PalengGo (event-driven per spec §5.5).",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": "22"
+  }
+}

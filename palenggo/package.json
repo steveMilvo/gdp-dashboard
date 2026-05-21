@@ -1,0 +1,14 @@
+{
+  "name": "palenggo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "PalengGo monorepo (Node/TypeScript workspaces).",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "api:dev": "pnpm --filter @palenggo/api dev",
+    "functions:build": "pnpm --filter @palenggo/functions build",
+    "admin:dev": "pnpm --filter palenggo-admin dev"
+  }
+}

@@ -1,0 +1,93 @@
+rules_version = '2';
+
+// Phase 1 rules: authenticated reads, role-gated writes.
+// Tighten in Phase 2 when full role enforcement is wired up.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSelf(userId);
+      allow update: if isSelf(userId);
+      allow delete: if false;
+    }
+
+    match /markets/{marketId} {
+      allow read: if true;
+      allow write: if isSignedIn() && userRole() == 'admin';
+    }
+
+    match /stalls/{stallId} {
+      allow read: if true;
+      allow create: if isSignedIn() && userRole() == 'merchant';
+      allow update: if isSignedIn()
+        && (resource.data.user_id == request.auth.uid || userRole() == 'admin');
+      allow delete: if isSignedIn() && userRole() == 'admin';
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isSignedIn() && userRole() in ['merchant', 'admin'];
+    }
+
+    match /orders/{orderId} {
+      allow read: if isSignedIn() && (
+        resource.data.customer_id == request.auth.uid ||
+        resource.data.rider_id == request.auth.uid ||
+        userRole() in ['merchant', 'admin']
+      );
+      allow create: if isSignedIn() && userRole() == 'customer';
+      allow update: if isSignedIn();
+    }
+
+    match /riders/{riderId} {
+      allow read: if isSignedIn();
+      allow create: if isSelf(riderId);
+      allow update: if isSelf(riderId) || (isSignedIn() && userRole() == 'admin');
+    }
+
+    match /farmers/{farmerId} {
+      allow read: if isSignedIn();
+      allow create: if isSelf(farmerId);
+      allow update: if isSelf(farmerId) || (isSignedIn() && userRole() == 'admin');
+    }
+
+    match /farmer_listings/{listingId} {
+      allow read: if true;
+      allow write: if isSignedIn() && userRole() in ['farmer', 'admin'];
+    }
+
+    match /daily_prices/{priceId} {
+      allow read: if true;
+      allow write: if false; // server-side only
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isSignedIn() && userRole() == 'admin';
+      allow write: if false; // server-side only
+    }
+
+    match /complaints/{complaintId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && userRole() == 'admin';
+    }
+
+    match /cold_chain_records/{recordId} {
+      allow read: if isSignedIn();
+      allow write: if false; // server-side only
+    }
+  }
+}

@@ -1,0 +1,4 @@
+packages:
+  - "backend/api"
+  - "backend/functions"
+  - "admin"
