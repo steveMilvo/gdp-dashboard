@@ -248,8 +248,14 @@ def resident_detail():
     mc[0].metric("Care minutes today", total, f"target {presence.CARE_MINUTE_TARGET}",
                  delta_color="off")
     mc[1].metric("RN minutes", rn, f"target {presence.RN_MINUTE_TARGET}", delta_color="off")
-    st.dataframe(sub[["start", "staff", "role", "minutes"]],
-                 use_container_width=True, hide_index=True)
+    log = sub[["start", "end", "activity", "staff", "role", "minutes"]].rename(
+        columns={"start": "Start", "end": "End", "activity": "Activity",
+                 "staff": "Staff", "role": "Role", "minutes": "Mins"})
+    st.dataframe(log, use_container_width=True, hide_index=True)
+    by_act = (sub.groupby("activity")["minutes"].sum().sort_values(ascending=False)
+              .rename("minutes"))
+    st.caption("Minutes by activity")
+    st.bar_chart(by_act, height=180)
 
     st.subheader("Trends vs baseline (14 days)")
     st.caption("Shaded band = this resident's own normal (±2σ). Red points breach it; "

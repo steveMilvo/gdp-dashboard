@@ -19,6 +19,12 @@ HISTORY_DAYS = 14
 TODAY = date(2026, 5, 31)
 SHIFT_START = datetime(2026, 5, 31, 7, 0)  # for today's staff-interaction log
 
+# Care activity types inferred from location/duration/staff role (logged per interaction).
+ACTIVITIES = [
+    "Personal care / bathing", "Medication round", "Meal assistance", "Toileting assist",
+    "Mobility / transfer", "Welfare check", "Wound care", "Social / wellbeing",
+]
+
 # Staff who carry a BLE badge (read by the same nodes). RN/EN count as RN minutes.
 STAFF = [
     ("S-1", "Jane Okafor", "RN"),
@@ -127,13 +133,19 @@ def interactions() -> pd.DataFrame:
         rng = _seed(r.id + "visits")
         t = SHIFT_START
         for _ in range(int(rng.integers(8, 16))):
-            t = t + timedelta(minutes=int(rng.integers(15, 70)))
+            t = t + timedelta(minutes=int(rng.integers(10, 60)))  # gap until next visit
+            start_dt = t
+            mins = int(rng.integers(6, 30))
+            end_dt = start_dt + timedelta(minutes=mins)
             staff = STAFF[int(rng.integers(0, len(STAFF)))]
             rows.append({
                 "resident_id": r.id, "resident": r.name,
                 "staff_id": staff[0], "staff": staff[1], "role": staff[2],
-                "start": t.strftime("%H:%M"), "minutes": int(rng.integers(6, 30)),
+                "activity": ACTIVITIES[int(rng.integers(0, len(ACTIVITIES)))],
+                "start": start_dt.strftime("%H:%M"), "end": end_dt.strftime("%H:%M"),
+                "minutes": mins,
             })
+            t = end_dt  # next gap starts after this visit ends (no overlaps)
     return pd.DataFrame(rows)
 
 
