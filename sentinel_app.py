@@ -180,7 +180,8 @@ def live_board():
                 f"**{r.name}**, {r.age}  \n"
                 f"HR {rt['heart_rate']} · {rt['breathing_rate']}/min  \n"
                 f"{rt['presence']} · {rt['motion']}"
-                + ("  \n👥 2+ in room" if rt["occupancy"]["count"] > 1 else ""))
+                + ("  \n👥 2+ in room"
+                   if rt.get("occupancy", {}).get("count", 1) > 1 else ""))
 
     st.subheader("Co-presence / security")
     any_cp = False
