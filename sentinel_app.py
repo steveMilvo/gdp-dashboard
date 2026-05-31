@@ -457,7 +457,7 @@ def portfolio_view():
     port.loc[mask, "Open RED"] = live_red
     port.loc[mask, "Open AMBER"] = live_amber
 
-    port.insert(0, "", port.apply(_facility_status, axis=1))
+    port.insert(0, "Status", port.apply(_facility_status, axis=1))
     total_beds = int(port["Beds"].sum())
     occupied = int((port["Beds"] * port["Occupancy %"] / 100).sum())
     wavg_compliance = int(round(
@@ -486,7 +486,8 @@ def portfolio_view():
         color=alt.Color("band:N", title="Compliance",
                         scale=alt.Scale(domain=["<70%", "70–84%", "≥85%"],
                                         range=["#d23c3c", "#e08e2b", "#3ba55d"])),
-        tooltip=list(port.columns))
+        tooltip=["Facility", "Care-min compliance %", "Beds", "Falls (30d)",
+                 "Open RED", "Open AMBER"])
     # Target rule uses the SAME x field name as the bars so the layered axis resolves
     # cleanly (Altair v6 errors on a mismatched/empty shared field).
     target = alt.Chart(pd.DataFrame({"Care-min compliance %": [85]})).mark_rule(
