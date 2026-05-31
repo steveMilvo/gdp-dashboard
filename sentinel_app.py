@@ -17,7 +17,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from sentinel import alerts, analytics, data, presence, reports, signals, simulator
+from sentinel import alerts, analytics, data, nodes, presence, reports, signals, simulator
 from sentinel.baseline import BASELINE_DAYS
 from sentinel.signals import TIER_EMOJI, TIER_RANK
 
@@ -75,6 +75,9 @@ if _stale:
 
 st.session_state.setdefault("feedback", [])   # self-improving loop: outcome labels
 st.session_state.setdefault("acks", set())    # acknowledged alerts
+st.session_state.setdefault("node_registry", nodes.seed_registry())
+st.session_state.setdefault("node_discovered", nodes.seed_discovered())
+st.session_state.setdefault("claim_mac", None)  # node being bound right now
 
 
 # ----------------------------------------------------------------------- charts
@@ -652,6 +655,87 @@ def compliance_view():
                            file_name="sentinel_sirs_pack.md", mime="text/markdown")
 
 
+def node_admin_view():
+    st.title("🛰️ Nodes — registration & commissioning")
+    st.caption("Turn a box of identical sensor nodes into a bound room mesh: discover → "
+               "claim → bind to a room + position → activate. A room needs at least "
+               f"{nodes.MIN_NODES_PER_ROOM} bound nodes to self-survey and localise.")
+
+    registry = st.session_state.node_registry
+    discovered = st.session_state.node_discovered
+    rooms = [r.room for r in data.roster()]
+
+    # --- Discover / claim ---------------------------------------------------
+    st.subheader(f"Discovered nodes ({len(discovered)})")
+    st.caption("Unregistered nodes broadcasting on first boot. Claim one to bind it.")
+    if not discovered:
+        st.info("No new nodes broadcasting. Power on a node to have it appear here.")
+    for d in list(discovered):
+        c = st.columns([4, 2, 2])
+        c[0].markdown(f"🆕 `{d['mac']}` · signal {d['rssi']} dBm")
+        if c[1].button("Identify (blink LED)", key=f"blink-{d['mac']}"):
+            st.toast(f"Node {d['mac']} blinking — confirm its location.")
+        if c[2].button("Claim →", key=f"claim-{d['mac']}"):
+            st.session_state.claim_mac = d["mac"]
+
+    # --- Bind form (appears after claiming) ---------------------------------
+    if st.session_state.claim_mac:
+        mac = st.session_state.claim_mac
+        st.subheader(f"Bind node `{mac}`")
+        with st.form("bind"):
+            col = st.columns(2)
+            room = col[0].selectbox("Room", rooms)
+            position = col[1].selectbox("Position in room", nodes.ROOM_POSITIONS)
+            calibrate = st.checkbox("Capture empty-room calibration (≈30s)", value=True)
+            ok = st.form_submit_button("Bind & activate")
+        if ok:
+            st.session_state.node_discovered = [x for x in discovered if x["mac"] != mac]
+            registry.append({"mac": mac, "room": room, "position": position,
+                             "status": "online", "rssi": -55, "firmware": "v0.6.5",
+                             "last_seen_s": 0})
+            st.session_state.claim_mac = None
+            msg = f"Node {mac} bound to {room} · {position}."
+            if nodes.room_ready(registry, room):
+                msg += " Room has enough nodes — mesh self-surveyed and localising."
+            st.success(msg)
+            st.rerun()
+
+    # --- Registry -----------------------------------------------------------
+    st.subheader(f"Registered nodes ({len(registry)})")
+    counts = nodes.room_counts(registry)
+    cov = st.columns(len(rooms) or 1)
+    for i, rm in enumerate(rooms):
+        n = counts.get(rm, 0)
+        cov[i % len(cov)].metric(rm, f"{n} node{'s' if n != 1 else ''}",
+                                 "ready" if n >= nodes.MIN_NODES_PER_ROOM else "needs nodes",
+                                 delta_color="normal" if n >= nodes.MIN_NODES_PER_ROOM else "inverse")
+    st.dataframe(
+        [{"MAC": n["mac"], "Room": n["room"], "Position": n["position"],
+          "Status": ("🟢 " if n["status"] == "online" else "⚪ ") + n["status"],
+          "Signal (dBm)": n["rssi"], "Firmware": n["firmware"],
+          "Last seen (s)": n["last_seen_s"]} for n in registry],
+        use_container_width=True, hide_index=True)
+
+    # --- Re-bind / decommission --------------------------------------------
+    if registry:
+        st.subheader("Manage a node")
+        macs = {f"{n['mac']} ({n['room']} · {n['position']})": n["mac"] for n in registry}
+        sel = macs[st.selectbox("Node", list(macs))]
+        mc = st.columns(3)
+        new_room = mc[0].selectbox("Re-bind to room", rooms, key="rebind-room")
+        new_pos = mc[1].selectbox("Position", nodes.ROOM_POSITIONS, key="rebind-pos")
+        mc[2].markdown("&nbsp;")
+        b = st.columns(2)
+        if b[0].button("Re-bind"):
+            for n in registry:
+                if n["mac"] == sel:
+                    n["room"], n["position"] = new_room, new_pos
+            st.success(f"{sel} re-bound to {new_room} · {new_pos}."); st.rerun()
+        if b[1].button("Decommission", type="secondary"):
+            st.session_state.node_registry = [n for n in registry if n["mac"] != sel]
+            st.warning(f"{sel} decommissioned (history retained)."); st.rerun()
+
+
 def about_view():
     st.title("How Sentinel works")
     st.markdown(
@@ -682,6 +766,7 @@ VIEWS = {
     "📋 Compliance (NQI/SIRS)": compliance_view,
     "📄 Reports": reports_view,
     "➕ Onboarding": onboarding_view,
+    "🛰️ Nodes": node_admin_view,
     "ℹ️ How it works": about_view,
 }
 choice = st.sidebar.radio("View", list(VIEWS))
