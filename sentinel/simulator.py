@@ -8,7 +8,7 @@ is deterministic (seeded per resident) so the demo is reproducible.
 from __future__ import annotations
 
 import hashlib
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -17,6 +17,16 @@ from . import data
 
 HISTORY_DAYS = 14
 TODAY = date(2026, 5, 31)
+SHIFT_START = datetime(2026, 5, 31, 7, 0)  # for today's staff-interaction log
+
+# Staff who carry a BLE badge (read by the same nodes). RN/EN count as RN minutes.
+STAFF = [
+    ("S-1", "Jane Okafor", "RN"),
+    ("S-2", "Tom Reilly", "EN"),
+    ("S-3", "Mai Tran", "Carer"),
+    ("S-4", "Carlos Diaz", "Carer"),
+    ("S-5", "Priya Shah", "Allied"),
+]
 
 # Population-level "normal" daily values: (mean, day-to-day noise std).
 _NORMAL = {
@@ -87,6 +97,8 @@ def _realtime(resident: data.Resident, history: pd.DataFrame) -> dict:
         "event": None,
         "event_minutes_ago": None,
     }
+    # Co-presence ("who else is in the room now"), resolved via staff badges.
+    rt["occupancy"] = {"count": 1, "others": [], "after_hours": False}
     if resident.scenario == "fall":
         rt.update(
             presence="bathroom",
@@ -96,7 +108,33 @@ def _realtime(resident: data.Resident, history: pd.DataFrame) -> dict:
             event="Fall detected",
             event_minutes_ago=3,
         )
+        rt["occupancy"] = {"count": 2, "after_hours": False,
+                           "others": [{"name": "Jane Okafor (RN)", "identified": True}]}
+    if resident.id == "R-107":  # demo: unidentified person after hours -> alert
+        rt["occupancy"] = {"count": 2, "after_hours": True,
+                           "others": [{"name": "Unidentified person", "identified": False}]}
     return rt
+
+
+def interactions() -> pd.DataFrame:
+    """Today's staff–resident interactions, auto-logged from staff badges.
+
+    Each row is one badge-detected visit (who, when, how long). Durations sum into
+    AN-ACC care minutes. Deterministic per resident.
+    """
+    rows = []
+    for r in data.roster():
+        rng = _seed(r.id + "visits")
+        t = SHIFT_START
+        for _ in range(int(rng.integers(8, 16))):
+            t = t + timedelta(minutes=int(rng.integers(15, 70)))
+            staff = STAFF[int(rng.integers(0, len(STAFF)))]
+            rows.append({
+                "resident_id": r.id, "resident": r.name,
+                "staff_id": staff[0], "staff": staff[1], "role": staff[2],
+                "start": t.strftime("%H:%M"), "minutes": int(rng.integers(6, 30)),
+            })
+    return pd.DataFrame(rows)
 
 
 def vitals_trace(resident_id: str, now: float, hr: float, br: float,

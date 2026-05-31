@@ -17,7 +17,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from sentinel import alerts, data, reports, signals, simulator
+from sentinel import alerts, data, presence, reports, signals, simulator
 from sentinel.baseline import BASELINE_DAYS
 from sentinel.signals import TIER_EMOJI, TIER_RANK
 
@@ -40,7 +40,13 @@ def load_state():
     return snap, assessments
 
 
+@st.cache_data
+def load_interactions():
+    return simulator.interactions()
+
+
 snap, assessments = load_state()
+interactions = load_interactions()
 st.session_state.setdefault("feedback", [])   # self-improving loop: outcome labels
 st.session_state.setdefault("acks", set())    # acknowledged alerts
 
@@ -173,7 +179,19 @@ def live_board():
                 f"### {TIER_EMOJI[a.status]} {r.room}\n"
                 f"**{r.name}**, {r.age}  \n"
                 f"HR {rt['heart_rate']} · {rt['breathing_rate']}/min  \n"
-                f"{rt['presence']} · {rt['motion']}")
+                f"{rt['presence']} · {rt['motion']}"
+                + ("  \n👥 2+ in room" if rt["occupancy"]["count"] > 1 else ""))
+
+    st.subheader("Co-presence / security")
+    any_cp = False
+    for r in data.roster():
+        ca = presence.copresence_alert(snap[r.id]["realtime"])
+        if ca:
+            any_cp = True
+            st.warning(f"{TIER_EMOJI[ca['tier']]} **{r.room} {r.name}** — {ca['title']}: {ca['action']}")
+    if not any_cp:
+        st.caption("All co-presence accounted for (staff badges identified). "
+                   "Interactions are logged for care-minute evidence.")
 
     st.subheader("Node / mesh health")
     _node_health()
@@ -212,7 +230,25 @@ def resident_detail():
     rc[1].metric("Breathing", f"{rt['breathing_rate']} /min")
     rc[2].metric("Presence", rt["presence"])
     rc[3].metric("Motion", rt["motion"])
+    occ_label = presence.occupants_label(rt)
+    if occ_label:
+        st.info(f"👥 {occ_label}")
+    cp = presence.copresence_alert(rt)
+    if cp:
+        st.warning(f"⚠️ {cp['title']} — {cp['action']}")
     _live_vitals(rid, rt["heart_rate"], rt["breathing_rate"])
+
+    st.subheader("Today's care interactions")
+    st.caption("Auto-logged from staff badges — evidences AN-ACC care minutes.")
+    sub = interactions[interactions["resident_id"] == rid]
+    total = int(sub["minutes"].sum())
+    rn = int(sub[sub["role"].isin({"RN", "EN"})]["minutes"].sum())
+    mc = st.columns(2)
+    mc[0].metric("Care minutes today", total, f"target {presence.CARE_MINUTE_TARGET}",
+                 delta_color="off")
+    mc[1].metric("RN minutes", rn, f"target {presence.RN_MINUTE_TARGET}", delta_color="off")
+    st.dataframe(sub[["start", "staff", "role", "minutes"]],
+                 use_container_width=True, hide_index=True)
 
     st.subheader("Trends vs baseline (14 days)")
     st.caption("Shaded band = this resident's own normal (±2σ). Red points breach it; "
@@ -299,6 +335,21 @@ def onboarding_view():
             st.caption("(Prototype — not persisted to the demo roster.)")
 
 
+def care_minutes_view():
+    st.title("Care minutes — AN-ACC evidence")
+    st.caption(f"Auto-tallied from staff-badge interactions. Target "
+               f"{presence.CARE_MINUTE_TARGET} min/resident/day, including "
+               f"{presence.RN_MINUTE_TARGET} RN minutes.")
+    summ = presence.care_minutes_summary(interactions)
+    under = int((summ["Status"] == "⚠️ under").sum())
+    m = st.columns(2)
+    m[0].metric("Residents at/above target", len(summ) - under)
+    m[1].metric("Residents below target", under)
+    st.dataframe(summ, use_container_width=True, hide_index=True)
+    st.caption("Staff tracking is consent-based and framed for care-minute evidence and "
+               "lone-worker safety — not surveillance. Access is role-scoped.")
+
+
 def about_view():
     st.title("How Sentinel works")
     st.markdown(
@@ -321,6 +372,7 @@ def about_view():
 VIEWS = {
     "🛰️ Live board": live_board,
     "👤 Resident detail": resident_detail,
+    "🧑‍⚕️ Care minutes": care_minutes_view,
     "📄 Reports": reports_view,
     "➕ Onboarding": onboarding_view,
     "ℹ️ How it works": about_view,

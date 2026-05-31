@@ -10,6 +10,7 @@ __all__ = [
     "baseline",
     "signals",
     "alerts",
+    "presence",
     "narrator",
     "reports",
 ]

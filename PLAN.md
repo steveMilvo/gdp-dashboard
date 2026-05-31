@@ -98,6 +98,13 @@ room moves (common in facilities).
   clinical, management/operational.
 - **Incident reports** — auto-drafted on a RED event, structured + compliance-ready,
   carer-verified.
+- **Staff badges, co-presence & care minutes** — staff carry a cheap BLE badge (read by
+  the same room nodes), so the system resolves "who is the second person" (staff vs
+  unknown), suppresses false falls, **auto-logs every staff–resident interaction**, and
+  tallies **AN-ACC care minutes** per resident (the headline AU compliance feature).
+  Policy: log all co-presence; alert only on an *unidentified* person *after hours*.
+  Staff tracking is consent-based and framed as care-minute evidence + lone-worker
+  safety, not surveillance; access is role-scoped.
 
 ---
 
