@@ -21,6 +21,24 @@ Save your image there (PNG or JPG — if you use `.jpg`, update the `<img src>` 
 `index.html`). If the file is missing, the page shows a placeholder box instead of
 breaking.
 
+## "Book a pilot" lead-capture form
+
+The page has a validated info-capture form (name, work email, role, facility, beds,
+priority + consent). Out of the box it works with **no backend**: on submit it opens a
+pre-filled email to `hello@sentinel.care` and shows a thank-you state.
+
+To actually collect submissions in a database/inbox, set a form endpoint:
+
+1. Create an endpoint (quickest: a free [Formspree](https://formspree.io) form, or your
+   own backend that accepts a JSON `POST`).
+2. In `index.html`, find `var FORM_ENDPOINT = "";` (in the `<script>` near the bottom)
+   and paste your URL between the quotes, e.g.
+   `var FORM_ENDPOINT = "https://formspree.io/f/abcdwxyz";`
+
+With an endpoint set, submissions POST as JSON and the user sees the in-page thank-you;
+on a network error they're prompted to email instead. Change the contact address by
+find/replacing `hello@sentinel.care`.
+
 ## Honesty notes (kept in the page on purpose)
 - The hero is labelled an **artist's concept**.
 - Sentinel is described as a **wellbeing / early-warning aid, not a medical or

@@ -122,6 +122,39 @@
   .cta p{color:#0e2a33;max-width:46ch;margin:0 auto 26px;font-size:1.05rem}
   .cta .btn{background:var(--ink);color:#fff}.cta .btn:hover{background:#000}
 
+  /* cta + form */
+  .cta{background:linear-gradient(135deg,#1bb8cb,#36c5d6);padding:72px 0}
+  .cta-grid{display:grid;grid-template-columns:1fr 1.05fr;gap:48px;align-items:center}
+  .cta-copy h2{font-size:2.1rem;color:var(--ink);margin-bottom:12px}
+  .cta-copy p{color:#0c2a32;font-size:1.06rem;margin-bottom:20px}
+  .cta-points{list-style:none;display:grid;gap:11px}
+  .cta-points li{display:flex;gap:10px;align-items:flex-start;color:#0a232a;font-weight:500}
+  .cta-points .t{color:var(--ink);font-weight:800}
+  .formcard{background:#fff;border-radius:var(--radius);padding:30px;box-shadow:0 20px 50px rgba(8,40,48,.25)}
+  .formcard h3{font-size:1.3rem;color:var(--ink);margin-bottom:4px}
+  .formcard .sub{color:var(--muted);font-size:.92rem;margin-bottom:20px}
+  .frm{display:grid;gap:14px}
+  .frm .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .field label{display:block;font-size:.82rem;font-weight:600;color:var(--ink);margin-bottom:5px}
+  .field label .req{color:var(--red)}
+  .field input,.field select,.field textarea{width:100%;padding:11px 13px;border:1px solid #d8e0e7;border-radius:10px;font-family:inherit;font-size:.95rem;color:var(--ink);background:#fbfcfd;transition:border .15s ease,box-shadow .15s ease}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(54,197,214,.18)}
+  .field textarea{resize:vertical;min-height:64px}
+  .field .err{display:none;color:var(--red);font-size:.78rem;margin-top:4px}
+  .field.invalid input,.field.invalid select{border-color:var(--red);background:#fff6f6}
+  .field.invalid .err{display:block}
+  .formcard .submit{background:var(--ink);color:#fff;border:none;font-family:var(--sans);font-weight:600;font-size:1rem;padding:13px;border-radius:10px;cursor:pointer;transition:background .15s ease}
+  .formcard .submit:hover{background:#000}
+  .formcard .submit:disabled{opacity:.6;cursor:default}
+  .consent{display:flex;gap:9px;align-items:flex-start;font-size:.82rem;color:var(--muted)}
+  .consent input{width:auto;margin-top:3px}
+  .form-note{font-size:.76rem;color:var(--muted-light);text-align:center;margin-top:4px}
+  .form-success{display:none;text-align:center;padding:24px 8px}
+  .form-success .big{font-size:2.4rem}
+  .form-success h3{color:var(--green);margin:8px 0}
+  .form-success p{color:var(--muted);font-size:.95rem}
+  @media(max-width:860px){.cta-grid{grid-template-columns:1fr;gap:32px}.frm .row2{grid-template-columns:1fr}}
+
   /* footer */
   footer{background:var(--ink);color:#9fb0bf;padding:40px 0;font-size:.88rem}
   footer .frow{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center}
@@ -295,12 +328,79 @@
   </div>
 </section>
 
-<!-- CTA -->
+<!-- CTA + LEAD CAPTURE -->
 <section class="cta" id="contact">
-  <div class="wrap">
-    <h2>See it in your facility</h2>
-    <p>Start with a free 60–90 day pilot on one wing. We prove reliability on your floor, give you a real falls and care-minute outcome, and you decide from there.</p>
-    <a href="mailto:hello@sentinel.care?subject=Sentinel%20pilot%20enquiry" class="btn">Book a pilot</a>
+  <div class="wrap cta-grid">
+    <div class="cta-copy">
+      <h2>See it in your facility</h2>
+      <p>Start with a free 60–90 day pilot on one wing. We prove reliability on your floor and give you a real falls and care-minute outcome — then you decide.</p>
+      <ul class="cta-points">
+        <li><span class="t">✓</span> No upfront cost — hardware included in the pilot</li>
+        <li><span class="t">✓</span> One wing, fully supported, ~2 week setup</li>
+        <li><span class="t">✓</span> A measured falls &amp; care-minute result you keep</li>
+      </ul>
+    </div>
+
+    <div class="formcard">
+      <form class="frm" id="pilotForm" novalidate>
+        <h3>Book a pilot</h3>
+        <p class="sub">Tell us about your facility and we'll be in touch within one business day.</p>
+
+        <div class="row2">
+          <div class="field"><label>First name <span class="req">*</span></label>
+            <input name="first_name" required /><div class="err">Please enter your first name.</div></div>
+          <div class="field"><label>Last name <span class="req">*</span></label>
+            <input name="last_name" required /><div class="err">Please enter your last name.</div></div>
+        </div>
+
+        <div class="field"><label>Work email <span class="req">*</span></label>
+          <input name="email" type="email" required /><div class="err">Please enter a valid email address.</div></div>
+
+        <div class="row2">
+          <div class="field"><label>Phone</label>
+            <input name="phone" type="tel" /></div>
+          <div class="field"><label>Role <span class="req">*</span></label>
+            <select name="role" required>
+              <option value="">Select…</option>
+              <option>Director of Nursing</option>
+              <option>Facility / Care Manager</option>
+              <option>Clinical Governance</option>
+              <option>Operations / Executive</option>
+              <option>Owner / Provider</option>
+              <option>Other</option>
+            </select><div class="err">Please select your role.</div></div>
+        </div>
+
+        <div class="row2">
+          <div class="field"><label>Facility / organisation <span class="req">*</span></label>
+            <input name="facility" required /><div class="err">Please enter your facility name.</div></div>
+          <div class="field"><label>Number of beds</label>
+            <select name="beds">
+              <option value="">Select…</option>
+              <option>Under 40</option><option>40–80</option><option>80–150</option>
+              <option>150+</option><option>Multiple sites</option>
+            </select></div>
+        </div>
+
+        <div class="field"><label>What would you like to solve first?</label>
+          <textarea name="message" placeholder="e.g. overnight falls, care-minute evidence, after-hours security…"></textarea></div>
+
+        <label class="consent">
+          <input type="checkbox" name="consent" required />
+          <span>I'd like Sentinel to contact me about a pilot. We'll only use these details to respond to this enquiry.</span>
+        </label>
+        <div class="field" style="margin-top:-6px"><div class="err" id="consentErr">Please tick to continue.</div></div>
+
+        <button type="submit" class="submit" id="pilotSubmit">Request my pilot</button>
+        <p class="form-note">Prefer email? <a href="mailto:hello@sentinel.care?subject=Sentinel%20pilot%20enquiry" style="color:var(--cyan-deep);font-weight:600">hello@sentinel.care</a></p>
+      </form>
+
+      <div class="form-success" id="formSuccess">
+        <div class="big">✅</div>
+        <h3>Thank you — request received</h3>
+        <p>We'll be in touch within one business day to arrange your pilot. If it's urgent, email <a href="mailto:hello@sentinel.care" style="color:var(--cyan-deep)">hello@sentinel.care</a>.</p>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -314,5 +414,84 @@
   Sentinel is a wellbeing and early-warning aid — not a medical or emergency device, and not a diagnosis. All alerts warrant clinical judgement. Monitoring is consent-based and privacy-preserving; gait identification supports, and does not replace, staff judgement. Hero image is an artist's concept.
 </div></div>
 
+<script>
+(function(){
+  // ---- CONFIG --------------------------------------------------------------
+  // To collect submissions, paste a form-endpoint URL below (e.g. a Formspree
+  // endpoint like https://formspree.io/f/xxxx, or your own backend). Leave it
+  // empty and the form falls back to opening a pre-filled email — so it works
+  // immediately even before a backend exists.
+  var FORM_ENDPOINT = "";
+  // --------------------------------------------------------------------------
+
+  var form = document.getElementById("pilotForm");
+  if(!form) return;
+  var btn = document.getElementById("pilotSubmit");
+  var emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function fieldOf(el){ return el.closest(".field"); }
+  function setInvalid(el, bad){
+    var f = fieldOf(el); if(f) f.classList.toggle("invalid", bad);
+  }
+  function validate(){
+    var ok = true;
+    form.querySelectorAll("[required]").forEach(function(el){
+      if(el.type === "checkbox") return; // consent handled below
+      var bad = !el.value.trim() || (el.type === "email" && !emailRe.test(el.value.trim()));
+      setInvalid(el, bad); if(bad) ok = false;
+    });
+    var consent = form.querySelector('[name="consent"]');
+    var cErr = document.getElementById("consentErr");
+    if(!consent.checked){ cErr.style.display = "block"; ok = false; }
+    else { cErr.style.display = "none"; }
+    return ok;
+  }
+  // clear error as the user fixes a field
+  form.querySelectorAll("input,select,textarea").forEach(function(el){
+    el.addEventListener("input", function(){ setInvalid(el, false); });
+    el.addEventListener("change", function(){ setInvalid(el, false); });
+  });
+
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    if(!validate()) return;
+    var data = Object.fromEntries(new FormData(form).entries());
+
+    function showSuccess(){
+      form.style.display = "none";
+      document.getElementById("formSuccess").style.display = "block";
+    }
+
+    if(FORM_ENDPOINT){
+      btn.disabled = true; btn.textContent = "Sending…";
+      fetch(FORM_ENDPOINT, {
+        method: "POST",
+        headers: {"Accept":"application/json","Content-Type":"application/json"},
+        body: JSON.stringify(data)
+      }).then(function(r){
+        if(r.ok){ showSuccess(); }
+        else { throw new Error("bad status"); }
+      }).catch(function(){
+        btn.disabled = false; btn.textContent = "Request my pilot";
+        alert("Sorry — something went wrong sending your request. Please email hello@sentinel.care and we'll sort it out.");
+      });
+    } else {
+      // No backend configured yet: open a pre-filled email as a graceful fallback.
+      var body = encodeURIComponent(
+        "Pilot enquiry\n\n" +
+        "Name: " + (data.first_name||"") + " " + (data.last_name||"") + "\n" +
+        "Email: " + (data.email||"") + "\n" +
+        "Phone: " + (data.phone||"") + "\n" +
+        "Role: " + (data.role||"") + "\n" +
+        "Facility: " + (data.facility||"") + "\n" +
+        "Beds: " + (data.beds||"") + "\n" +
+        "Priority: " + (data.message||"") + "\n");
+      window.location.href = "mailto:hello@sentinel.care?subject=" +
+        encodeURIComponent("Sentinel pilot enquiry — " + (data.facility||"")) + "&body=" + body;
+      showSuccess();
+    }
+  });
+})();
+</script>
 </body>
 </html>
