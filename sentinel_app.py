@@ -465,13 +465,17 @@ def portfolio_view():
     st.dataframe(ranked, use_container_width=True, hide_index=True)
 
     st.subheader("Care-minute compliance by home")
+    # Discrete colour band per home (avoids nested alt.condition, unsupported in
+    # Altair v6 where the inner condition collides with the outer 'condition' kwarg).
+    port = port.copy()
+    port["band"] = pd.cut(port["Care-min compliance %"], bins=[-1, 69, 84, 200],
+                          labels=["<70%", "70–84%", "≥85%"])
     chart = alt.Chart(port).mark_bar().encode(
         x=alt.X("Care-min compliance %:Q", scale=alt.Scale(domain=[0, 100])),
         y=alt.Y("Facility:N", sort="-x", title=None),
-        color=alt.condition(
-            "datum['Care-min compliance %'] >= 85", alt.value("#3ba55d"),
-            alt.condition("datum['Care-min compliance %'] >= 70",
-                          alt.value("#e08e2b"), alt.value("#d23c3c"))),
+        color=alt.Color("band:N", title="Compliance",
+                        scale=alt.Scale(domain=["<70%", "70–84%", "≥85%"],
+                                        range=["#d23c3c", "#e08e2b", "#3ba55d"])),
         tooltip=list(port.columns))
     target = alt.Chart(pd.DataFrame({"t": [85]})).mark_rule(
         color="#666", strokeDash=[4, 4]).encode(x="t:Q")
