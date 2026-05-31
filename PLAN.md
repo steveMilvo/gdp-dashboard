@@ -212,3 +212,37 @@ export SENTINEL_MODEL=claude-sonnet-4-6
 
 Without an API key the narrator falls back to a built-in deterministic template so
 the demo always runs.
+
+---
+
+## 12. Research basis & sensing roadmap
+
+The core thesis — RF/WiFi as a spatial sensing modality for the home — is grounded in
+published work, not speculation. These references both validate the approach and define
+the later-phase sensing upgrades.
+
+**Validating the approach (today):**
+- **DensePose-from-WiFi (Carnegie Mellon, arXiv 2301.00250)** — full human body-pose
+  reconstruction through walls from commodity WiFi. Upstream of our fall/gait sensing.
+- **Sub-meter RF positioning (e.g. ZaiNar)** — confirms the localization/geofencing we
+  rely on for cross-room attribution is a funded, proven field.
+- **Commodity WiFi sensing already shipping** (e.g. carrier "WiFi motion" features) —
+  the hardware and base capability already exist in homes.
+
+**Roadmap upgrades (later phases, not MVP):**
+- **Pose-based fall classification (from DensePose-from-WiFi)** — move from
+  "impact + no motion" to posture-aware detection (on-floor vs in-bed vs slumped),
+  plus richer gait/mobility-decline signals. *Phase 4 sensing upgrade.*
+- **Tag-free identity (WhoFi, arXiv 2507.12869)** — re-identify individuals from their
+  WiFi biometric signature, potentially removing the locator tag. Treat as a research
+  track behind the tag, **gated on hard guardrails**: it is lab-grade (degrades with
+  layout change, crowds, signature drift over time), needs an enrollment step, and is an
+  **ethical escalation** — covert through-wall biometric ID is exactly the capability
+  that makes WiFi-sensing legally contentious, and is especially sensitive for staff.
+  The explicit, consent-clear **tag remains the default identity anchor**; tag-free ID is
+  opt-in only, and never at the cost of the camera-free / consent-first positioning.
+
+**Out of scope (macro context only):** military electromagnetic-warfare and satellite
+RF-geolocation platforms (Anduril, HawkEye 360, Spire) show RF sensing is a large,
+well-capitalised wave, but have no aged-care application — useful as investor context,
+not a scope driver.
