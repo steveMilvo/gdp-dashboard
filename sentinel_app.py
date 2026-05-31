@@ -487,8 +487,10 @@ def portfolio_view():
                         scale=alt.Scale(domain=["<70%", "70–84%", "≥85%"],
                                         range=["#d23c3c", "#e08e2b", "#3ba55d"])),
         tooltip=list(port.columns))
-    target = alt.Chart(pd.DataFrame({"t": [85]})).mark_rule(
-        color="#666", strokeDash=[4, 4]).encode(x="t:Q")
+    # Target rule uses the SAME x field name as the bars so the layered axis resolves
+    # cleanly (Altair v6 errors on a mismatched/empty shared field).
+    target = alt.Chart(pd.DataFrame({"Care-min compliance %": [85]})).mark_rule(
+        color="#444", strokeDash=[4, 4]).encode(x="Care-min compliance %:Q")
     st.altair_chart(chart + target, use_container_width=True)
 
 
