@@ -59,3 +59,27 @@ def care_minutes_summary(inter: pd.DataFrame) -> pd.DataFrame:
             "Visits": len(sub), "Status": "✅ met" if met else "⚠️ under",
         })
     return pd.DataFrame(rows)
+
+
+def staff_summary(inter: pd.DataFrame) -> pd.DataFrame:
+    """Per-staff workload across the shift — the managerial view of the same log."""
+    rows = []
+    for (sid, name, role), sub in inter.groupby(["staff_id", "staff", "role"], sort=False):
+        span = f"{sub['start'].min()}–{sub['end'].max()}"
+        rows.append({
+            "Staff": name, "Role": role,
+            "Interactions": len(sub),
+            "Active mins": int(sub["minutes"].sum()),
+            "Residents seen": sub["resident_id"].nunique(),
+            "Rooms": sub["room"].nunique(),
+            "Shift span": span,
+        })
+    return pd.DataFrame(rows).sort_values("Active mins", ascending=False)
+
+
+def staff_shift_log(inter: pd.DataFrame, staff_id: str) -> pd.DataFrame:
+    """One staff member's chronological movement trail across the shift."""
+    sub = inter[inter["staff_id"] == staff_id].copy()
+    sub = sub.sort_values("start")
+    return sub[["start", "end", "room", "resident", "activity", "minutes"]]
+

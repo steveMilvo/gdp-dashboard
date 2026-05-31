@@ -139,7 +139,7 @@ def interactions() -> pd.DataFrame:
             end_dt = start_dt + timedelta(minutes=mins)
             staff = STAFF[int(rng.integers(0, len(STAFF)))]
             rows.append({
-                "resident_id": r.id, "resident": r.name,
+                "resident_id": r.id, "resident": r.name, "room": r.room,
                 "staff_id": staff[0], "staff": staff[1], "role": staff[2],
                 "activity": ACTIVITIES[int(rng.integers(0, len(ACTIVITIES)))],
                 "start": start_dt.strftime("%H:%M"), "end": end_dt.strftime("%H:%M"),

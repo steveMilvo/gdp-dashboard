@@ -357,6 +357,47 @@ def care_minutes_view():
                "lone-worker safety — not surveillance. Access is role-scoped.")
 
 
+def _shift_timeline(log):
+    d = log.copy()
+    d["start_dt"] = pd.to_datetime("2026-05-31 " + d["start"])
+    d["end_dt"] = pd.to_datetime("2026-05-31 " + d["end"])
+    return alt.Chart(d).mark_bar(cornerRadius=3, height=18).encode(
+        x=alt.X("start_dt:T", title="Time of day"),
+        x2="end_dt:T",
+        y=alt.Y("room:N", title="Room", sort="-x"),
+        color=alt.Color("activity:N", title="Activity"),
+        tooltip=["start", "end", "room", "resident", "activity", "minutes"],
+    ).properties(height=260)
+
+
+def staff_view():
+    st.title("Staff & shifts — manager view")
+    st.caption("Per-staff movement and interaction trail across the shift, from staff "
+               "badges. Consent-based and role-scoped — framed as care-minute evidence "
+               "and lone-worker safety, not surveillance.")
+
+    st.subheader("Shift summary (all staff)")
+    st.dataframe(presence.staff_summary(interactions),
+                 use_container_width=True, hide_index=True)
+
+    st.subheader("Staff movement trail")
+    staff_map = interactions[["staff_id", "staff", "role"]].drop_duplicates()
+    opts = {f"{row.staff} ({row.role})": row.staff_id for row in staff_map.itertuples()}
+    sid = opts[st.selectbox("Staff member", list(opts))]
+    log = presence.staff_shift_log(interactions, sid)
+
+    mc = st.columns(3)
+    mc[0].metric("Active minutes", int(log["minutes"].sum()))
+    mc[1].metric("Rooms visited", log["room"].nunique())
+    mc[2].metric("Residents seen", log["resident"].nunique())
+    st.altair_chart(_shift_timeline(log), use_container_width=True)
+    st.dataframe(
+        log.rename(columns={"start": "Start", "end": "End", "room": "Room",
+                            "resident": "Resident", "activity": "Activity",
+                            "minutes": "Mins"}),
+        use_container_width=True, hide_index=True)
+
+
 def about_view():
     st.title("How Sentinel works")
     st.markdown(
@@ -380,6 +421,7 @@ VIEWS = {
     "🛰️ Live board": live_board,
     "👤 Resident detail": resident_detail,
     "🧑‍⚕️ Care minutes": care_minutes_view,
+    "🧑‍💼 Staff & shifts": staff_view,
     "📄 Reports": reports_view,
     "➕ Onboarding": onboarding_view,
     "ℹ️ How it works": about_view,
