@@ -21,6 +21,18 @@ Save your image there (PNG or JPG — if you use `.jpg`, update the `<img src>` 
 `index.html`). If the file is missing, the page shows a placeholder box instead of
 breaking.
 
+## "See the live dashboard" → the app
+
+The nav "Live demo" link and the hero "See the live dashboard" button open the running
+Sentinel app. The target is set in one place — `var APP_URL` in the `<script>` near the
+bottom of `index.html`:
+
+- **Local:** defaults to `http://localhost:8501`. Start the app with
+  `python -m streamlit run sentinel_app.py` first, then the buttons open it in a new tab.
+- **Deployed:** after hosting the app (e.g. free Streamlit Community Cloud → connect this
+  repo, main file `sentinel_app.py`), paste the public URL into `APP_URL`. That's the
+  full funnel: landing page → live demo → book-a-pilot form.
+
 ## "Book a pilot" lead-capture form
 
 The page has a validated info-capture form (name, work email, role, facility, beds,

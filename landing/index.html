@@ -171,6 +171,7 @@
       <a href="#safety">Safety</a>
       <a href="#security">Security</a>
       <a href="#gait">Gait ID</a>
+      <a id="liveDemoNav" href="#how">Live demo</a>
       <a href="#contact" class="btn">Book a pilot</a>
     </div>
   </nav></div>
@@ -185,7 +186,7 @@
       <p class="lede">Sentinel reads the radio signals already in every room to sense movement, breathing and presence. No cameras. No wearables. Just earlier warnings, calmer nights, and a facility that knows who's there.</p>
       <div class="hero-cta">
         <a href="#contact" class="btn">Book a pilot</a>
-        <a href="#how" class="btn btn-ghost">See how it works</a>
+        <a id="liveDemoHero" href="#how" class="btn btn-ghost">See the live dashboard</a>
       </div>
       <div class="trust">
         <div><span class="tick">✓</span> Camera-free</div>
@@ -417,12 +418,21 @@
 <script>
 (function(){
   // ---- CONFIG --------------------------------------------------------------
-  // To collect submissions, paste a form-endpoint URL below (e.g. a Formspree
-  // endpoint like https://formspree.io/f/xxxx, or your own backend). Leave it
-  // empty and the form falls back to opening a pre-filled email — so it works
-  // immediately even before a backend exists.
+  // 1) Live dashboard URL — where the "See the live dashboard" buttons point.
+  //    Local default is the Streamlit port. After deploying the app (e.g. to
+  //    Streamlit Community Cloud) paste the public URL here instead.
+  var APP_URL = "http://localhost:8501";
+  // 2) Lead-capture endpoint — paste a Formspree URL (https://formspree.io/f/xxxx)
+  //    or your own backend. Empty = falls back to a pre-filled email, so the form
+  //    works immediately even before a backend exists.
   var FORM_ENDPOINT = "";
   // --------------------------------------------------------------------------
+
+  // Wire the live-dashboard buttons (nav + hero) to APP_URL, open in a new tab.
+  ["liveDemoHero", "liveDemoNav"].forEach(function(id){
+    var a = document.getElementById(id);
+    if(a && APP_URL){ a.href = APP_URL; a.target = "_blank"; a.rel = "noopener"; }
+  });
 
   var form = document.getElementById("pilotForm");
   if(!form) return;
