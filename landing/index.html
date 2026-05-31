@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sentinel — Camera-free safety & wellbeing for aged care</title>
+<meta name="description" content="Sentinel uses ambient radio sensing to protect residents and detect intruders — no cameras, no wearables. Early-warning wellbeing monitoring and gait-based identification for aged care facilities." />
+<style>
+  :root{
+    --navy:#0e1b2b; --navy-2:#13263b; --ink:#0b1622;
+    --cyan:#36c5d6; --cyan-deep:#1f93b8; --signal:#5fd0e0;
+    --sand:#f4efe6; --sand-line:#e6ddcd;
+    --text:#1c2733; --muted:#5c6b7a; --muted-light:#9fb0bf;
+    --white:#ffffff; --amber:#e08e2b; --red:#d23c3c; --green:#3ba55d;
+    --radius:18px; --maxw:1140px;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --sans:"Avenir Next","Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);color:var(--text);background:var(--white);line-height:1.6;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.15;letter-spacing:-.01em}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  .accent{color:var(--cyan-deep)}
+
+  /* ---------- nav ---------- */
+  header{position:sticky;top:0;z-index:50;background:rgba(14,27,43,.85);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08)}
+  nav{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:10px;color:#fff;font-family:var(--serif);font-size:1.25rem;font-weight:600}
+  .brand .dot{width:11px;height:11px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 4px rgba(95,208,224,.25);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(95,208,224,.25)}50%{box-shadow:0 0 0 9px rgba(95,208,224,0)}}
+  .navlinks{display:flex;gap:28px;align-items:center}
+  .navlinks a{color:#c7d4e0;font-size:.93rem;font-weight:500}
+  .navlinks a:hover{color:#fff}
+  .btn{display:inline-block;background:var(--cyan);color:var(--ink);font-weight:600;padding:11px 20px;border-radius:999px;font-size:.92rem;transition:transform .15s ease,background .15s ease}
+  .btn:hover{background:var(--signal);transform:translateY(-1px)}
+  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.25);color:#fff}
+  .btn-ghost:hover{background:rgba(255,255,255,.08)}
+  @media(max-width:760px){.navlinks a:not(.btn){display:none}}
+
+  /* ---------- hero ---------- */
+  .hero{background:radial-gradient(1200px 500px at 70% -10%,rgba(54,197,214,.22),transparent 60%),linear-gradient(180deg,var(--navy),var(--navy-2));color:#fff;padding:72px 0 88px;overflow:hidden}
+  .hero-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:center}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--signal);font-weight:600;margin-bottom:18px}
+  .eyebrow::before{content:"";width:22px;height:1px;background:var(--signal)}
+  .hero h1{font-size:3.15rem;color:#fff}
+  .hero h1 em{font-style:normal;color:var(--signal)}
+  .hero p.lede{margin-top:20px;font-size:1.18rem;color:#c4d2de;max-width:34ch}
+  .hero-cta{margin-top:32px;display:flex;gap:14px;flex-wrap:wrap}
+  .hero-figure{position:relative;border-radius:var(--radius);overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.1)}
+  .hero-figure img{display:block;width:100%;height:auto}
+  .hero-figure .ph{aspect-ratio:3/2;display:flex;align-items:center;justify-content:center;text-align:center;padding:32px;background:linear-gradient(135deg,#16314a,#0c1b2a);color:var(--muted-light);font-size:.9rem}
+  .figcap{font-size:.78rem;color:var(--muted-light);margin-top:10px;text-align:right}
+  .trust{margin-top:54px;display:flex;gap:30px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,.1);padding-top:26px}
+  .trust div{display:flex;align-items:center;gap:9px;color:#aebecd;font-size:.92rem;font-weight:500}
+  .trust .tick{color:var(--signal);font-weight:700}
+  @media(max-width:900px){.hero-grid{grid-template-columns:1fr;gap:36px}.hero h1{font-size:2.5rem}}
+
+  /* ---------- sections ---------- */
+  section.block{padding:84px 0}
+  .section-head{max-width:620px;margin-bottom:48px}
+  .section-head .eyebrow{color:var(--cyan-deep)}
+  .section-head .eyebrow::before{background:var(--cyan-deep)}
+  .section-head h2{font-size:2.25rem;margin-bottom:14px;color:var(--ink)}
+  .section-head p{color:var(--muted);font-size:1.08rem}
+
+  /* feature cards */
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+  .card{background:var(--white);border:1px solid #eef1f4;border-radius:var(--radius);padding:30px;transition:transform .18s ease,box-shadow .18s ease}
+  .card:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(14,27,43,.08)}
+  .card .ico{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;background:linear-gradient(135deg,#e8f8fb,#d2eef4);margin-bottom:18px}
+  .card h3{font-size:1.2rem;margin-bottom:9px;color:var(--ink)}
+  .card p{color:var(--muted);font-size:.97rem}
+  @media(max-width:860px){.cards{grid-template-columns:1fr}}
+
+  /* how it works */
+  .how{background:var(--sand);border-top:1px solid var(--sand-line);border-bottom:1px solid var(--sand-line)}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;counter-reset:step}
+  .step{position:relative;background:#fff;border:1px solid var(--sand-line);border-radius:var(--radius);padding:28px 24px}
+  .step::before{counter-increment:step;content:counter(step);position:absolute;top:-16px;left:24px;width:34px;height:34px;border-radius:50%;background:var(--navy);color:var(--signal);font-family:var(--serif);font-weight:600;display:flex;align-items:center;justify-content:center;font-size:1rem}
+  .step h3{font-size:1.08rem;margin:8px 0;color:var(--ink)}
+  .step p{font-size:.93rem;color:var(--muted)}
+  @media(max-width:860px){.steps{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.steps{grid-template-columns:1fr}}
+
+  /* security split */
+  .security{background:linear-gradient(180deg,var(--navy-2),var(--navy));color:#fff}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+  .security .eyebrow{color:var(--signal)}.security .eyebrow::before{background:var(--signal)}
+  .security h2{font-size:2.25rem;color:#fff;margin-bottom:16px}
+  .security p.lede{color:#bccbd8;font-size:1.08rem;margin-bottom:24px}
+  .seclist{list-style:none;display:grid;gap:16px}
+  .seclist li{display:flex;gap:14px;align-items:flex-start}
+  .seclist .b{flex:0 0 auto;width:30px;height:30px;border-radius:8px;background:rgba(95,208,224,.15);color:var(--signal);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.95rem}
+  .seclist h4{font-size:1.02rem;color:#fff;margin-bottom:2px}
+  .seclist span{color:#a9bacb;font-size:.93rem}
+  .compare{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:var(--radius);padding:28px}
+  .compare h3{color:#fff;font-size:1.15rem;margin-bottom:18px}
+  .crow{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:13px 0;border-top:1px solid rgba(255,255,255,.08);font-size:.92rem}
+  .crow:first-of-type{border-top:none}
+  .crow .cam{color:#e79b9b}.crow .sen{color:#9fe6c4}
+  .crow .lab{grid-column:1/3;color:var(--muted-light);font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:-4px}
+  @media(max-width:860px){.split{grid-template-columns:1fr;gap:34px}}
+
+  /* gait highlight */
+  .gait .wrap{display:grid;grid-template-columns:1.1fr 1fr;gap:48px;align-items:center}
+  .gait-card{background:linear-gradient(135deg,#0e1b2b,#16344a);border-radius:var(--radius);padding:34px;color:#fff;border:1px solid rgba(255,255,255,.08)}
+  .gait-card .wave{height:64px;margin:18px 0;background:
+    repeating-linear-gradient(90deg,transparent 0 7px,rgba(95,208,224,.0) 7px 8px);
+    position:relative;border-bottom:1px dashed rgba(255,255,255,.15)}
+  .gait-card .wave svg{position:absolute;inset:0;width:100%;height:100%}
+  .badge-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .pill{font-size:.8rem;padding:6px 12px;border-radius:999px;background:rgba(95,208,224,.14);color:var(--signal);font-weight:600}
+  .pill.match{background:rgba(59,165,93,.16);color:#7fe0a6}
+  .pill.unknown{background:rgba(210,60,60,.16);color:#f0a3a3}
+  @media(max-width:860px){.gait .wrap{grid-template-columns:1fr;gap:30px}}
+
+  /* cta */
+  .cta{background:var(--cyan);text-align:center;padding:72px 0}
+  .cta h2{font-size:2.1rem;color:var(--ink);margin-bottom:12px}
+  .cta p{color:#0e2a33;max-width:46ch;margin:0 auto 26px;font-size:1.05rem}
+  .cta .btn{background:var(--ink);color:#fff}.cta .btn:hover{background:#000}
+
+  /* footer */
+  footer{background:var(--ink);color:#9fb0bf;padding:40px 0;font-size:.88rem}
+  footer .frow{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center}
+  .disclaimer{background:#0a121c;color:#7d8d9c;font-size:.8rem;padding:18px 0;border-top:1px solid rgba(255,255,255,.06)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap"><nav>
+    <div class="brand"><span class="dot"></span> Sentinel</div>
+    <div class="navlinks">
+      <a href="#how">How it works</a>
+      <a href="#safety">Safety</a>
+      <a href="#security">Security</a>
+      <a href="#gait">Gait ID</a>
+      <a href="#contact" class="btn">Book a pilot</a>
+    </div>
+  </nav></div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">Ambient sensing for aged care</span>
+      <h1>Safety that watches over residents — <em>without watching them.</em></h1>
+      <p class="lede">Sentinel reads the radio signals already in every room to sense movement, breathing and presence. No cameras. No wearables. Just earlier warnings, calmer nights, and a facility that knows who's there.</p>
+      <div class="hero-cta">
+        <a href="#contact" class="btn">Book a pilot</a>
+        <a href="#how" class="btn btn-ghost">See how it works</a>
+      </div>
+      <div class="trust">
+        <div><span class="tick">✓</span> Camera-free</div>
+        <div><span class="tick">✓</span> No wearable to charge</div>
+        <div><span class="tick">✓</span> Works in the dark &amp; through walls</div>
+      </div>
+    </div>
+    <div>
+      <figure class="hero-figure">
+        <!-- Save your concept render as landing/assets/hero.png -->
+        <img src="assets/hero.png" alt="Sentinel ceiling sensor monitoring a resident's vitals while detecting a person through the wall in the corridor"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" />
+        <div class="ph" style="display:none">Place your concept render at<br><code>landing/assets/hero.png</code></div>
+      </figure>
+      <div class="figcap">Artist's concept. See capabilities &amp; roadmap below.</div>
+    </div>
+  </div>
+</section>
+
+<!-- SAFETY / WELLBEING -->
+<section class="block" id="safety">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Safety &amp; wellbeing</span>
+      <h2>From reactive alarms to early warning</h2>
+      <p>Most systems wait for a crisis. Sentinel learns each resident's own normal — then flags the quiet drift that comes <em>days before</em> a fall or a hospital transfer.</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="ico">🩺</div>
+        <h3>Continuous vitals &amp; sleep</h3>
+        <p>Heart rate, breathing and rest are sensed from across the room — no chest strap, no watch. Overnight wellbeing, captured passively.</p>
+      </div>
+      <div class="card">
+        <div class="ico">📈</div>
+        <h3>Predict the slide, early</h3>
+        <p>A personal baseline catches the signs of a brewing UTI, dehydration or decline — restless nights, more bathroom trips, a rising resting heart rate — while there's still time to act.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🤸</div>
+        <h3>Falls &amp; calls for help</h3>
+        <p>Falls are detected with no button pressed. And a resident can summon help with a simple deliberate arm-wave — for those who can't reach a call bell.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🛌</div>
+        <h3>Calmer, dignified nights</h3>
+        <p>No cameras in bedrooms or bathrooms. Residents keep their privacy; families keep their peace of mind.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🧑‍⚕️</div>
+        <h3>Care-minute evidence</h3>
+        <p>Every staff visit is logged automatically, tallying care minutes for compliance — and proving responsiveness when it matters.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🔔</div>
+        <h3>Right alert, right person</h3>
+        <p>Tiered alerts page on-shift carers for emergencies and route quieter concerns to the nurse's queue — tuned so red alerts stay rare and trusted.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="block how" id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">The technology</span>
+      <h2>How it works</h2>
+      <p>Your WiFi is constantly painting a spatial picture of every room. Sentinel reads it. A person's body subtly disturbs the radio waves passing through it — and those disturbances encode movement, breathing, and where someone is.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <h3>Sense</h3>
+        <p>Small ceiling/wall nodes read the radio-signal disturbance (WiFi Channel State Information) caused by people moving and breathing — through walls, in the dark, no line of sight.</p>
+      </div>
+      <div class="step">
+        <h3>Locate</h3>
+        <p>A mesh of nodes triangulates <em>where</em> motion is, so each signal is attributed to the right room and the right person — backed by a tiny coin-cell tag where certainty matters.</p>
+      </div>
+      <div class="step">
+        <h3>Learn</h3>
+        <p>The system learns each resident's personal baseline — vitals, sleep rhythm, and the unique signature of their gait — getting more accurate the longer it runs.</p>
+      </div>
+      <div class="step">
+        <h3>Act</h3>
+        <p>Drift from normal, a fall, a help gesture, or an unidentified person triggers the right response — paged to staff, logged for compliance, narrated in plain language.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECURITY -->
+<section class="block security" id="security">
+  <div class="wrap split">
+    <div>
+      <span class="eyebrow">Security &amp; intruder detection</span>
+      <h2>You can't hide from a signal the way you hide from a camera</h2>
+      <p class="lede">Cameras have blind spots, dark corners, and angles to duck. Radio sensing fills the whole volume of a room — there is no frame to step out of. An unrecognised presence is seen the moment it moves.</p>
+      <ul class="seclist">
+        <li><span class="b">1</span><div><h4>Unidentified presence, flagged</h4><span>A person whose gait the system doesn't recognise — and who carries no staff badge — is flagged as unidentified, located to a room in real time.</span></div></li>
+        <li><span class="b">2</span><div><h4>After-hours intrusion alerts</h4><span>An unknown person in a resident's room out of hours raises an immediate security alert, with the location pinpointed for responding staff.</span></div></li>
+        <li><span class="b">3</span><div><h4>Nowhere to hide</h4><span>Through walls, in total darkness, around corners — the sensing field doesn't depend on light or line of sight. There's no blind spot to exploit.</span></div></li>
+      </ul>
+    </div>
+    <div class="compare">
+      <h3>Cameras vs. ambient sensing</h3>
+      <div class="crow"><span class="lab">In the dark</span><span class="cam">📷 Needs light / IR</span><span class="sen">📡 Unaffected</span></div>
+      <div class="crow"><span class="lab">Blind spots</span><span class="cam">📷 Angles &amp; corners</span><span class="sen">📡 Fills the room</span></div>
+      <div class="crow"><span class="lab">Through walls</span><span class="cam">📷 No</span><span class="sen">📡 Yes</span></div>
+      <div class="crow"><span class="lab">Resident privacy</span><span class="cam">📷 Records images</span><span class="sen">📡 No images, ever</span></div>
+      <div class="crow"><span class="lab">Hiding from it</span><span class="cam">📷 Step out of frame</span><span class="sen">📡 No frame to leave</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- GAIT ID -->
+<section class="block gait" id="gait">
+  <div class="wrap">
+    <div class="gait-card-wrap">
+    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:48px;align-items:center" class="gaitgrid">
+      <div>
+        <span class="eyebrow" style="color:var(--cyan-deep)"><span></span>Identity by movement</span>
+        <h2 style="font-size:2.25rem;color:var(--ink);margin:6px 0 14px">It learns how each resident moves</h2>
+        <p style="color:var(--muted);font-size:1.08rem">Everyone walks differently. Sentinel learns each resident's gait — their pace, stride, and rhythm — and builds a movement signature unique to them. Over time it can identify residents fairly accurately from how they move, with no tag, no camera, and nothing to wear.</p>
+        <p style="color:var(--muted);font-size:1.08rem;margin-top:14px">That signature does two jobs at once: it keeps the right vitals and history attached to the right person — and it makes anyone whose gait <em>isn't</em> recognised stand out instantly.</p>
+      </div>
+      <div class="gait-card">
+        <div style="font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-light)">Gait signature</div>
+        <div class="wave">
+          <svg viewBox="0 0 300 64" preserveAspectRatio="none"><path d="M0,40 Q15,10 30,40 T60,40 T90,40 T120,40 T150,40 T180,40 T210,40 T240,40 T270,40 T300,40" fill="none" stroke="#5fd0e0" stroke-width="2.5"/></svg>
+        </div>
+        <div class="badge-row">
+          <span class="pill match">✓ Margaret W. — 96% match</span>
+          <span class="pill match">✓ Henry O. — identified</span>
+          <span class="pill unknown">⚠ Unidentified — alert</span>
+        </div>
+        <p style="color:#a9bacb;font-size:.86rem;margin-top:16px">Accuracy improves the longer the system runs. Used to support care and security — never as the sole basis for a clinical or access decision.</p>
+      </div>
+    </div></div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta" id="contact">
+  <div class="wrap">
+    <h2>See it in your facility</h2>
+    <p>Start with a free 60–90 day pilot on one wing. We prove reliability on your floor, give you a real falls and care-minute outcome, and you decide from there.</p>
+    <a href="mailto:hello@sentinel.care?subject=Sentinel%20pilot%20enquiry" class="btn">Book a pilot</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap frow">
+    <div class="brand"><span class="dot"></span> Sentinel</div>
+    <div>Camera-free safety &amp; wellbeing monitoring for residential aged care.</div>
+  </div>
+</footer>
+<div class="disclaimer"><div class="wrap">
+  Sentinel is a wellbeing and early-warning aid — not a medical or emergency device, and not a diagnosis. All alerts warrant clinical judgement. Monitoring is consent-based and privacy-preserving; gait identification supports, and does not replace, staff judgement. Hero image is an artist's concept.
+</div></div>
+
+</body>
+</html>
