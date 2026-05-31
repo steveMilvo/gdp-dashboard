@@ -166,6 +166,37 @@ def vitals_trace(resident_id: str, now: float, hr: float, br: float,
     return pd.DataFrame({"seconds_ago": t - now, "chest displacement": chest})
 
 
+# Portfolio of homes for the group/executive rollup. The first is this dashboard's
+# live facility (its compliance/alert columns are overridden with real data in the UI);
+# the rest are simulated aggregates so the exec view is realistic and drills down.
+FACILITIES = [
+    ("Riverside Lodge — Wing A", 7),   # live drill-down facility
+    ("Riverside Lodge — Wing B", 34),
+    ("Hillcrest Gardens", 60),
+    ("Bayview Manor", 88),
+    ("Parkside Court", 46),
+    ("Meadowbrook House", 72),
+]
+
+
+def portfolio() -> pd.DataFrame:
+    """Aggregate KPIs per facility for the group/executive rollup."""
+    rows = []
+    for name, beds in FACILITIES:
+        r = _seed("fac-" + name)
+        rows.append({
+            "Facility": name,
+            "Beds": beds,
+            "Occupancy %": int(round(float(r.uniform(0.86, 0.99)) * 100)),
+            "Care-min compliance %": int(r.integers(58, 99)),
+            "Falls (30d)": int(r.integers(0, 10)),
+            "Incidents (30d)": int(r.integers(1, 16)),
+            "Open RED": int(r.integers(0, 2)),
+            "Open AMBER": int(r.integers(0, 6)),
+        })
+    return pd.DataFrame(rows)
+
+
 def node_health() -> pd.DataFrame:
     """Simulated per-room mesh telemetry — the real-world 'is it alive' proof.
 

@@ -414,6 +414,62 @@ def staff_view():
         use_container_width=True, hide_index=True)
 
 
+def _facility_status(row):
+    if row["Open RED"] > 0 or row["Care-min compliance %"] < 70:
+        return "🔴"
+    if row["Open AMBER"] >= 3 or row["Care-min compliance %"] < 85:
+        return "🟠"
+    return "🟢"
+
+
+def portfolio_view():
+    st.title("🏢 Group portfolio — executive rollup")
+    st.caption("Cross-facility view for provider/group management. 'Riverside Lodge — "
+               "Wing A' is this dashboard's live facility; the others are portfolio "
+               "aggregates. Click into Wing A's views to drill down.")
+
+    port = simulator.portfolio()
+    # Override the live facility's columns with real numbers from this dashboard.
+    summ = presence.care_minutes_summary(interactions)
+    live_compliance = int(round(100 * (summ["Status"] == "✅ met").mean()))
+    live_red = sum(assessments[r.id].status == "RED" for r in data.roster())
+    live_amber = sum(assessments[r.id].status == "AMBER" for r in data.roster())
+    mask = port["Facility"] == "Riverside Lodge — Wing A"
+    port.loc[mask, "Care-min compliance %"] = live_compliance
+    port.loc[mask, "Open RED"] = live_red
+    port.loc[mask, "Open AMBER"] = live_amber
+
+    port.insert(0, "", port.apply(_facility_status, axis=1))
+    total_beds = int(port["Beds"].sum())
+    occupied = int((port["Beds"] * port["Occupancy %"] / 100).sum())
+    wavg_compliance = int(round(
+        (port["Care-min compliance %"] * port["Beds"]).sum() / total_beds))
+
+    k = st.columns(4)
+    k[0].metric("Homes", len(port))
+    k[1].metric("Beds (occupied)", f"{occupied}/{total_beds}")
+    k[2].metric("Care-min compliance (wtd)", f"{wavg_compliance}%")
+    k[3].metric("Open RED across group", int(port["Open RED"].sum()))
+
+    st.subheader("Facilities — highest risk first")
+    ranked = port.sort_values(
+        ["Open RED", "Care-min compliance %"], ascending=[False, True])
+    st.dataframe(ranked, use_container_width=True, hide_index=True)
+
+    st.subheader("Care-minute compliance by home")
+    chart = alt.Chart(port).mark_bar().encode(
+        x=alt.X("Care-min compliance %:Q", scale=alt.Scale(domain=[0, 100])),
+        y=alt.Y("Facility:N", sort="-x", title=None),
+        color=alt.condition(
+            "datum['Care-min compliance %'] >= 85", alt.value("#3ba55d"),
+            alt.condition("datum['Care-min compliance %'] >= 70",
+                          alt.value("#e08e2b"), alt.value("#d23c3c"))),
+        tooltip=list(port.columns))
+    target = alt.Chart(pd.DataFrame({"t": [85]})).mark_rule(
+        color="#666", strokeDash=[4, 4]).encode(x="t:Q")
+    st.altair_chart(chart + target, use_container_width=True)
+
+
 def about_view():
     st.title("How Sentinel works")
     st.markdown(
@@ -434,6 +490,7 @@ def about_view():
 
 # --------------------------------------------------------------------------- nav
 VIEWS = {
+    "🏢 Group portfolio": portfolio_view,
     "🛰️ Live board": live_board,
     "👤 Resident detail": resident_detail,
     "🧑‍⚕️ Care minutes": care_minutes_view,
