@@ -153,6 +153,69 @@ def _live_vitals(rid, hr, br):
     st.line_chart(df.set_index("seconds_ago")[["chest displacement"]], height=160)
 
 
+def _room_chart(pos):
+    """Top-down room map: zones, mesh nodes, fading movement trail, live position dot."""
+    zones = pd.DataFrame(simulator.ROOM_ZONES,
+                         columns=["x0", "y0", "x1", "y1", "label"])
+    zones["xc"] = (zones.x0 + zones.x1) / 2
+    zones["yc"] = (zones.y0 + zones.y1) / 2
+    nodes = pd.DataFrame(simulator.ROOM_NODES, columns=["x", "y"])
+    trail = pos["trail"]
+    here = pd.DataFrame([{"x": pos["x"], "y": pos["y"]}])
+
+    xsc = alt.Scale(domain=[0, simulator.ROOM_W])
+    ysc = alt.Scale(domain=[0, simulator.ROOM_H])
+    xax = alt.X("x:Q", scale=xsc, axis=None)
+    yax = alt.Y("y:Q", scale=ysc, axis=None)
+
+    zone_rect = alt.Chart(zones).mark_rect(
+        fill="#eaf4f8", stroke="#cfe3ea", opacity=.7).encode(
+        x=alt.X("x0:Q", scale=xsc, axis=None), x2="x1:Q",
+        y=alt.Y("y0:Q", scale=ysc, axis=None), y2="y1:Q")
+    zone_txt = alt.Chart(zones).mark_text(color="#6a8693", fontSize=12, fontWeight="bold").encode(
+        x=alt.X("xc:Q", scale=xsc, axis=None), y=alt.Y("yc:Q", scale=ysc, axis=None), text="label")
+    node_pts = alt.Chart(nodes).mark_point(
+        shape="square", size=130, filled=True, color="#1f93b8", opacity=.8).encode(x=xax, y=yax)
+    trail_pts = alt.Chart(trail).mark_circle(color="#36c5d6").encode(
+        x=xax, y=yax,
+        size=alt.Size("age:Q", scale=alt.Scale(range=[160, 8]), legend=None),
+        opacity=alt.Opacity("age:Q", scale=alt.Scale(range=[.65, .05]), legend=None))
+    dot_halo = alt.Chart(here).mark_point(
+        size=900, color="#d23c3c", opacity=.18, filled=True).encode(x=xax, y=yax)
+    dot = alt.Chart(here).mark_point(
+        size=240, color="#d23c3c", filled=True, stroke="#fff", strokeWidth=2).encode(x=xax, y=yax)
+    return (zone_rect + zone_txt + node_pts + trail_pts + dot_halo + dot).properties(
+        height=420).configure_view(strokeWidth=1, stroke="#cfd8df")
+
+
+@st.fragment(run_every="1s")
+def _live_room(name):
+    pos = simulator.live_position(time.time())
+    st.markdown(
+        f"<span style='color:#3ba55d;font-weight:bold'>● LIVE</span> "
+        f"tracking <b>{name}</b> · zone: <b>{pos['zone']}</b> · "
+        f"{datetime.now():%H:%M:%S}", unsafe_allow_html=True)
+    st.altair_chart(_room_chart(pos), use_container_width=True)
+    c = st.columns(3)
+    c[0].metric("Current zone", pos["zone"])
+    c[1].metric("Movement", "Walking" if pos["speed"] > 0.15 else "Still")
+    c[2].metric("Mesh nodes", len(simulator.ROOM_NODES))
+
+
+def live_room_view():
+    st.title("📍 Live room — real-time movement")
+    st.caption("Camera-free position tracking from a node-rich room. A mesh of sensor "
+               "nodes (blue squares) triangulates the resident's location; the dot moves "
+               "live with a fading trail. Drives off simulated multilateration here — the "
+               "same data shape a real node mesh produces.")
+    names = {f"{r.name} — {r.room}": r for r in data.roster()}
+    label = st.selectbox("Resident / room", list(names))
+    _live_room(names[label].name)
+    st.caption("Precision in practice: ~0.3–1 m from passive sensing, ~10–30 cm with a "
+               "UWB tag. Single-occupant tracking is reliable; multiple people in one "
+               "room is the hard case the locator tag resolves.")
+
+
 def live_board():
     st.title("🛰️ Sentinel — Wing A live board")
     st.caption("Camera-free ambient monitoring · per-resident early warning · simulated feed")
@@ -611,6 +674,7 @@ def about_view():
 VIEWS = {
     "🏢 Group portfolio": portfolio_view,
     "🛰️ Live board": live_board,
+    "📍 Live room": live_room_view,
     "👤 Resident detail": resident_detail,
     "🧑‍⚕️ Care minutes": care_minutes_view,
     "🧑‍💼 Staff & shifts": staff_view,

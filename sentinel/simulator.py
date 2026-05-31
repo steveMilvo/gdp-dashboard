@@ -182,6 +182,66 @@ def vitals_trace(resident_id: str, now: float, hr: float, br: float,
     return pd.DataFrame({"seconds_ago": t - now, "chest displacement": chest})
 
 
+# Room layout for the live-tracking view: a 10×8 grid. Zones are (x0,y0,x1,y1,label).
+ROOM_W, ROOM_H = 10.0, 8.0
+ROOM_ZONES = [
+    (0.3, 5.2, 4.0, 7.7, "Bed"),
+    (5.0, 5.5, 7.2, 7.5, "Chair"),
+    (7.6, 5.0, 9.7, 7.7, "Bathroom"),
+    (8.8, 0.3, 9.7, 2.2, "Door"),
+]
+# Node positions (corners + mid-walls) — drawn on the map to show the mesh.
+ROOM_NODES = [(0.3, 0.3), (9.7, 0.3), (0.3, 7.7), (9.7, 7.7), (5.0, 0.3)]
+
+# A looping waypoint path: bed → chair → bathroom → door → back. (x, y) in room units.
+_PATH = [(2.0, 6.5), (3.5, 6.3), (5.8, 6.2), (6.0, 4.0), (8.5, 6.0),
+         (8.6, 6.4), (6.0, 3.5), (4.0, 2.0), (9.2, 1.2), (5.0, 3.0), (2.2, 6.0)]
+
+
+def _zone_at(x: float, y: float) -> str:
+    for x0, y0, x1, y1, label in ROOM_ZONES:
+        if x0 <= x <= x1 and y0 <= y <= y1:
+            return label
+    return "Open floor"
+
+
+def live_position(now: float, period: float = 44.0, trail_secs: float = 9.0,
+                  fs: int = 4) -> dict:
+    """Real-time resident position + recent trail, driven by wall-clock ``now``.
+
+    Walks the waypoint loop once per ``period`` seconds with light sensing jitter, so
+    re-rendering each second animates a moving dot. Stands in for live multilateration
+    output from a node mesh — same shape a real tracker would produce.
+    """
+    rng = np.random.default_rng(int(now))  # per-second jitter, stable within a frame
+
+    def pos_at(t: float):
+        u = (t % period) / period * len(_PATH)
+        i = int(u) % len(_PATH)
+        j = (i + 1) % len(_PATH)
+        f = u - int(u)
+        x = _PATH[i][0] + (_PATH[j][0] - _PATH[i][0]) * f
+        y = _PATH[i][1] + (_PATH[j][1] - _PATH[i][1]) * f
+        return x, y
+
+    jx, jy = rng.normal(0, 0.08), rng.normal(0, 0.08)
+    cx, cy = pos_at(now)
+    cx, cy = float(np.clip(cx + jx, 0.2, ROOM_W - 0.2)), float(np.clip(cy + jy, 0.2, ROOM_H - 0.2))
+
+    n = int(trail_secs * fs)
+    trail = []
+    for k in range(n):
+        t = now - trail_secs + k / fs
+        tx, ty = pos_at(t)
+        trail.append({"x": tx, "y": ty, "age": (n - k) / n})  # age 1=oldest .. ~0 newest
+
+    # crude speed estimate from last two samples (m/s-ish in room units)
+    px, py = pos_at(now - 0.5)
+    speed = float(np.hypot(cx - px, cy - py) / 0.5)
+    return {"x": cx, "y": cy, "zone": _zone_at(cx, cy), "speed": round(speed, 2),
+            "trail": pd.DataFrame(trail)}
+
+
 # Portfolio of homes for the group/executive rollup. The first is this dashboard's
 # live facility (its compliance/alert columns are overridden with real data in the UI);
 # the rest are simulated aggregates so the exec view is realistic and drills down.
