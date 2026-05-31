@@ -253,6 +253,14 @@ def resident_detail():
     cp = presence.copresence_alert(rt)
     if cp:
         st.warning(f"⚠️ {cp['title']} — {cp['action']}")
+    if rt.get("event") == "Help gesture — assistance requested":
+        st.error("🆘 **Help gesture detected** — deliberate arm-wave, no button needed.")
+        st.markdown(
+            "**Confirm-back loop:** "
+            "① gesture detected → ② in-room chime/light *'Help is on the way — wave again "
+            "to confirm, or it cancels in 10s'* → ③ resident repeated the gesture → "
+            "**✅ confirmed → staff paged (RED).** "
+            "_The confirmation step suppresses accidental triggers before anyone is paged._")
     _live_vitals(rid, rt["heart_rate"], rt["breathing_rate"])
 
     st.subheader("Today's care interactions")

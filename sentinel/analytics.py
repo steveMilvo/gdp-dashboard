@@ -61,22 +61,41 @@ def falls_quarter(beds: int = 132) -> dict:
 
 
 def sirs_pack(events: pd.DataFrame) -> dict | None:
-    """Assemble a SIRS-ready serious-incident pack from an unattended sensed fall."""
-    fall = events[(events["trigger"] == "Fall") & (events["status"] == "unattended")]
-    if fall.empty:
+    """Assemble a SIRS-ready serious-incident pack from the most serious unattended event.
+
+    An unattended *help gesture* (an active, deliberate call for help that no one
+    answered) is the strongest neglect evidence; an unattended fall is next.
+    """
+    unattended = events[events["status"] == "unattended"]
+    gesture = unattended[unattended["trigger"] == "Help gesture"]
+    fall = unattended[unattended["trigger"] == "Fall"]
+    if not gesture.empty:
+        f = gesture.iloc[0]
+        incident = ("Neglect — deliberate call for assistance (help gesture) left "
+                    "unanswered")
+        summary = (f"{f['resident']} ({f['room']}) made a deliberate help gesture — an "
+                   f"active request for assistance — at {f['time']} overnight. No staff "
+                   "badge attended the room. An ignored, conscious call for help is a "
+                   "serious failure of care.")
+        evidence_first = "Sensed deliberate help-gesture event (mesh) with timestamp"
+    elif not fall.empty:
+        f = fall.iloc[0]
+        incident = "Neglect — fall left unattended"
+        summary = (f"A fall was sensed in {f['room']} ({f['resident']}) at {f['time']} "
+                   "overnight. No staff badge attended the room during the surrounding "
+                   "unattended-event cluster, indicating the resident's care need went "
+                   "unmet.")
+        evidence_first = "Sensed fall event (mesh) with timestamp"
+    else:
         return None
-    f = fall.iloc[0]
     return {
         "priority": "Priority 1 — notify the Aged Care Quality & Safety Commission "
                     "within 24 hours",
-        "incident_type": "Unreasonable use of force / neglect — fall left unattended",
+        "incident_type": incident,
         "resident": f["resident"], "room": f["room"], "detected": f["time"],
-        "summary": (f"A fall was sensed in {f['room']} ({f['resident']}) at {f['time']} "
-                    "overnight. No staff badge attended the room during the surrounding "
-                    "unattended-event cluster, indicating the resident's care need went "
-                    "unmet."),
+        "summary": summary,
         "evidence": [
-            "Sensed fall event (mesh) with timestamp",
+            evidence_first,
             "Staff badge movement trail showing no attendance in the window",
             "Cluster of other unattended overnight events in the same period",
         ],
@@ -115,11 +134,18 @@ def accountability_exceptions(events: pd.DataFrame) -> list[dict]:
         responders = night.loc[night["attended_by"] != "—", "attended_by"]
         carer = responders.mode().iat[0] if len(responders) else "the rostered night carer"
         had_fall = (unatt["trigger"] == "Fall").any()
+        had_gesture = (unatt["trigger"] == "Help gesture").any()
+        flags = []
+        if had_gesture:
+            flags.append("an unanswered CALL FOR HELP (gesture)")
+        if had_fall:
+            flags.append("a FALL")
+        emphasis = (" including " + " and ".join(flags)) if flags else ""
         exc.append({
             "severity": "RED",
             "title": "Sensed distress events unattended overnight",
             "detail": (f"{len(unatt)} sensed attention event(s)"
-                       + (" including a FALL" if had_fall else "")
+                       + emphasis
                        + f" went unattended between {unatt['time'].min()} and "
                        f"{unatt['time'].max()} while {carer} was the rostered night carer — a "
                        f"large gap between their logged room visits spans the cluster "

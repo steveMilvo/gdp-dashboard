@@ -125,6 +125,9 @@ def _realtime(resident: data.Resident, history: pd.DataFrame) -> dict:
             motion="deliberate arm-wave (help gesture)",
             event="Help gesture — assistance requested",
             event_minutes_ago=1,
+            # Confirm-back loop: in-room chime/light fired; resident did not cancel and
+            # repeated the gesture -> confirmed -> escalates to a staff page.
+            gesture_confirm="confirmed",
         )
     return rt
 
@@ -203,6 +206,7 @@ _ATTENTION_EVENTS = [
     ("22:48", "A-103", "Dorothy Klein", "Prolonged restlessness", "Carlos Diaz", 4),
     ("00:12", "A-102", "Arthur Bell", "Out of bed (night)", None, None),       # unattended
     ("01:05", "A-107", "Joan Pearce", "Left room (wander)", None, None),       # unattended
+    ("01:30", "A-106", "Stanley Adams", "Help gesture", None, None),           # unattended call for help!
     ("01:48", "A-105", "Vera Lindqvist", "Prolonged restlessness", None, None),  # unattended
     ("02:30", "A-104", "Henry Osei", "Bathroom — extended", "Carlos Diaz", 24),  # late
     ("03:55", "A-101", "Margaret Whitfield", "Fall", None, None),              # unattended fall!

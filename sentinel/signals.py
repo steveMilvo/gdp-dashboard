@@ -111,10 +111,15 @@ def _acute_alerts(realtime: dict) -> list[Alert]:
             realtime.get("event_minutes_ago"),
         ))
     if realtime.get("event") == "Help gesture — assistance requested":
+        confirmed = realtime.get("gesture_confirm") == "confirmed"
+        detail = ("Resident performed a deliberate arm-wave help gesture — an active call "
+                  "for assistance with no button or wearable required. ")
+        detail += ("In-room confirmation prompt was not cancelled and the gesture was "
+                   "repeated → confirmed." if confirmed
+                   else "Awaiting in-room confirmation.")
         alerts.append(Alert(
             "RED", "Assistance requested (help gesture)",
-            "Resident performed a deliberate arm-wave help gesture — an active call for "
-            "assistance with no button or wearable required.",
+            detail,
             "Attend immediately and confirm what assistance is needed.",
             realtime.get("event_minutes_ago"),
         ))
