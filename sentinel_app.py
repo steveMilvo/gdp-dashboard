@@ -29,9 +29,13 @@ TIER_COLOR = {"GREEN": "#3ba55d", "YELLOW": "#e3c037", "AMBER": "#e08e2b", "RED"
 st.set_page_config(page_title="Aged Care Sentinel", page_icon="🛰️", layout="wide")
 
 
-@st.cache_data
 def load_state():
-    """Simulated feed + per-resident assessment for the whole wing (cached)."""
+    """Simulated feed + per-resident assessment for the whole wing.
+
+    Deliberately *not* cached: the data is tiny, and st.cache_data keys only on this
+    function's code (not on simulator.py), which silently serves stale data after the
+    simulator changes. Recomputing each full rerun is cheap and always correct.
+    """
     snap = simulator.snapshot()
     assessments = {
         r.id: signals.assess(r, snap[r.id]["history"], snap[r.id]["realtime"])
@@ -40,7 +44,6 @@ def load_state():
     return snap, assessments
 
 
-@st.cache_data
 def load_interactions():
     return simulator.interactions()
 
