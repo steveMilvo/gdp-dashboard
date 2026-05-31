@@ -110,6 +110,14 @@ def _acute_alerts(realtime: dict) -> list[Alert]:
             "Attend immediately. Assess for injury before moving. Escalate to RN.",
             realtime.get("event_minutes_ago"),
         ))
+    if realtime.get("event") == "Help gesture — assistance requested":
+        alerts.append(Alert(
+            "RED", "Assistance requested (help gesture)",
+            "Resident performed a deliberate arm-wave help gesture — an active call for "
+            "assistance with no button or wearable required.",
+            "Attend immediately and confirm what assistance is needed.",
+            realtime.get("event_minutes_ago"),
+        ))
     return alerts
 
 

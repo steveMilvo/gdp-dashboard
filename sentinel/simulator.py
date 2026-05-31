@@ -120,6 +120,12 @@ def _realtime(resident: data.Resident, history: pd.DataFrame) -> dict:
     if resident.id == "R-107":  # demo: unidentified person after hours -> alert
         rt["occupancy"] = {"count": 2, "after_hours": True,
                            "others": [{"name": "Unidentified person", "identified": False}]}
+    if resident.scenario == "help_gesture":  # able resident deliberately summoning help
+        rt.update(
+            motion="deliberate arm-wave (help gesture)",
+            event="Help gesture — assistance requested",
+            event_minutes_ago=1,
+        )
     return rt
 
 

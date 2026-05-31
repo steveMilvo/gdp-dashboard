@@ -98,6 +98,14 @@ room moves (common in facilities).
   clinical, management/operational.
 - **Incident reports** — auto-drafted on a RED event, structured + compliance-ready,
   carer-verified.
+- **Two-tier help model** — both ways a resident gets help, no button/wearable:
+  - *Active call* — a **deliberate help gesture** (e.g. both arms raised and waved for
+    ~3–5s) is an easy, reliable CSI signature → immediate **RED "assistance requested"**
+    page. Covers conscious residents who can't reach a button (on the floor, bathroom,
+    garden). For able residents; a confirm-back loop is recommended in production to
+    suppress false calls. Not a substitute for passive sensing in advanced dementia.
+  - *Passive call* — sensed distress (fall, prolonged no-motion, vitals) catches the
+    resident who **can't** ask. Together they cover both populations.
 - **Staff badges, co-presence & care minutes** — staff carry a cheap BLE badge (read by
   the same room nodes), so the system resolves "who is the second person" (staff vs
   unknown), suppresses false falls, **auto-logs every staff–resident interaction**, and

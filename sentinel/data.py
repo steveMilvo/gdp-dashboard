@@ -72,7 +72,7 @@ ROSTER: list[Resident] = [
                              ["Sertraline"]), "withdrawal"),
     Resident("R-106", "Stanley Adams", "A-106", 81,
              ResidentProfile("Low", "Independent", "Continent", False, False,
-                             []), "normal"),
+                             []), "help_gesture"),
     Resident("R-107", "Joan Pearce", "A-107", 86,
              ResidentProfile("Medium", "Cane", "Continent", True, False,
                              ["Levothyroxine"]), "normal"),
