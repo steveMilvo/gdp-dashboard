@@ -179,6 +179,33 @@ FACILITIES = [
 ]
 
 
+# Today's assistance calls (call bell / sensed distress) and their response.
+# responder None + minutes None = unanswered. The overnight cluster demonstrates a
+# night-carer responsiveness failure (the headline accountability scenario).
+_ASSIST_CALLS = [
+    ("19:40", "A-104", "Henry Osei", "Call bell", "Tom Reilly", 3),
+    ("20:25", "A-106", "Stanley Adams", "Toileting", "Mai Tran", 5),
+    ("21:15", "A-101", "Margaret Whitfield", "Toileting", "Mai Tran", 7),
+    ("22:48", "A-103", "Dorothy Klein", "Call bell", "Carlos Diaz", 4),
+    ("00:12", "A-102", "Arthur Bell", "Call bell", None, None),     # unanswered
+    ("01:05", "A-107", "Joan Pearce", "Distress", None, None),      # unanswered
+    ("01:48", "A-105", "Vera Lindqvist", "Call bell", None, None),  # unanswered
+    ("02:30", "A-104", "Henry Osei", "Toileting", "Carlos Diaz", 24),  # slow
+    ("03:55", "A-101", "Margaret Whitfield", "Call bell", None, None),  # unanswered
+    ("05:40", "A-103", "Dorothy Klein", "Call bell", "Carlos Diaz", 3),
+    ("06:30", "A-106", "Stanley Adams", "Call bell", "Carlos Diaz", 6),
+]
+
+
+def assistance_calls() -> pd.DataFrame:
+    rows = []
+    for t, room, res, typ, resp, mins in _ASSIST_CALLS:
+        status = "unanswered" if resp is None else ("slow" if mins > 10 else "answered")
+        rows.append({"time": t, "room": room, "resident": res, "type": typ,
+                     "responder": resp or "—", "response_min": mins, "status": status})
+    return pd.DataFrame(rows)
+
+
 def portfolio() -> pd.DataFrame:
     """Aggregate KPIs per facility for the group/executive rollup."""
     rows = []

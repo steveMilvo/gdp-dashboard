@@ -11,6 +11,7 @@ __all__ = [
     "signals",
     "alerts",
     "presence",
+    "analytics",
     "narrator",
     "reports",
 ]

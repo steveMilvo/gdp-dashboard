@@ -17,7 +17,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from sentinel import alerts, data, presence, reports, signals, simulator
+from sentinel import alerts, analytics, data, presence, reports, signals, simulator
 from sentinel.baseline import BASELINE_DAYS
 from sentinel.signals import TIER_EMOJI, TIER_RANK
 
@@ -470,6 +470,53 @@ def portfolio_view():
     st.altair_chart(chart + target, use_container_width=True)
 
 
+def responsiveness_view():
+    st.title("🚨 Responsiveness & accountability")
+    st.caption("Assistance-call response analytics for management and clinical governance. "
+               "Detects genuine safety failures (e.g. unanswered overnight calls). Findings "
+               "must be verified against badge/roster/CCTV before action and may be "
+               "SIRS-reportable as neglect — governed, evidence-based, not punitive surveillance.")
+
+    calls = simulator.assistance_calls()
+    s = analytics.responsiveness_summary(calls)
+    k = st.columns(4)
+    k[0].metric("Assistance calls", s["total"])
+    k[1].metric("Unanswered", s["unanswered"], f"{s['night_unanswered']} overnight",
+                delta_color="inverse")
+    k[2].metric("Avg response (min)", s["avg_response"])
+    k[3].metric("Max response (min)", s["max_response"])
+
+    st.subheader("Exceptions to escalate")
+    exc = analytics.accountability_exceptions(calls)
+    for e in exc:
+        (st.error if e["severity"] == "RED" else st.warning)(
+            f"**{e['title']}** — {e['detail']}\n\nAction: {e['action']}")
+    if not exc:
+        st.success("No responsiveness exceptions this period.")
+
+    st.subheader("Assistance calls across the shift")
+    d = calls.copy()
+    d["t"] = d["time"].map(
+        lambda x: pd.to_datetime(f"2026-05-31 {x}")
+        + (pd.Timedelta(days=1) if int(x[:2]) < 12 else pd.Timedelta(0)))
+    color = alt.Color("status:N", scale=alt.Scale(
+        domain=["answered", "slow", "unanswered"],
+        range=["#3ba55d", "#e08e2b", "#d23c3c"]), title="Status")
+    st.altair_chart(
+        alt.Chart(d).mark_point(size=160, filled=True, opacity=0.9).encode(
+            x=alt.X("t:T", title="Time of day"), y=alt.Y("room:N", title=None),
+            color=color,
+            tooltip=["time", "room", "resident", "type", "responder",
+                     "response_min", "status"]).properties(height=240),
+        use_container_width=True)
+
+    st.subheader("Call log")
+    st.dataframe(calls.rename(columns={
+        "time": "Time", "room": "Room", "resident": "Resident", "type": "Type",
+        "responder": "Responder", "response_min": "Resp (min)", "status": "Status"}),
+        use_container_width=True, hide_index=True)
+
+
 def about_view():
     st.title("How Sentinel works")
     st.markdown(
@@ -495,6 +542,7 @@ VIEWS = {
     "👤 Resident detail": resident_detail,
     "🧑‍⚕️ Care minutes": care_minutes_view,
     "🧑‍💼 Staff & shifts": staff_view,
+    "🚨 Responsiveness": responsiveness_view,
     "📄 Reports": reports_view,
     "➕ Onboarding": onboarding_view,
     "ℹ️ How it works": about_view,
