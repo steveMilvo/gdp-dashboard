@@ -179,30 +179,37 @@ FACILITIES = [
 ]
 
 
-# Today's assistance calls (call bell / sensed distress) and their response.
-# responder None + minutes None = unanswered. The overnight cluster demonstrates a
-# night-carer responsiveness failure (the headline accountability scenario).
-_ASSIST_CALLS = [
-    ("19:40", "A-104", "Henry Osei", "Call bell", "Tom Reilly", 3),
-    ("20:25", "A-106", "Stanley Adams", "Toileting", "Mai Tran", 5),
-    ("21:15", "A-101", "Margaret Whitfield", "Toileting", "Mai Tran", 7),
-    ("22:48", "A-103", "Dorothy Klein", "Call bell", "Carlos Diaz", 4),
-    ("00:12", "A-102", "Arthur Bell", "Call bell", None, None),     # unanswered
-    ("01:05", "A-107", "Joan Pearce", "Distress", None, None),      # unanswered
-    ("01:48", "A-105", "Vera Lindqvist", "Call bell", None, None),  # unanswered
-    ("02:30", "A-104", "Henry Osei", "Toileting", "Carlos Diaz", 24),  # slow
-    ("03:55", "A-101", "Margaret Whitfield", "Call bell", None, None),  # unanswered
-    ("05:40", "A-103", "Dorothy Klein", "Call bell", "Carlos Diaz", 3),
-    ("06:30", "A-106", "Stanley Adams", "Call bell", "Carlos Diaz", 6),
+# Tonight's SENSED attention-needed events (from resident movement — no nurse-call bell
+# required) and whether a staff badge attended. responder/minutes None = unattended.
+# The overnight cluster demonstrates a night-carer responsiveness failure — including an
+# unattended sensed fall — using mesh data alone (bell integration comes later).
+_ATTENTION_EVENTS = [
+    ("19:40", "A-104", "Henry Osei", "Out of bed (night)", "Tom Reilly", 3),
+    ("20:25", "A-106", "Stanley Adams", "Bathroom — extended", "Mai Tran", 5),
+    ("21:15", "A-101", "Margaret Whitfield", "Out of bed (night)", "Mai Tran", 7),
+    ("22:48", "A-103", "Dorothy Klein", "Prolonged restlessness", "Carlos Diaz", 4),
+    ("00:12", "A-102", "Arthur Bell", "Out of bed (night)", None, None),       # unattended
+    ("01:05", "A-107", "Joan Pearce", "Left room (wander)", None, None),       # unattended
+    ("01:48", "A-105", "Vera Lindqvist", "Prolonged restlessness", None, None),  # unattended
+    ("02:30", "A-104", "Henry Osei", "Bathroom — extended", "Carlos Diaz", 24),  # late
+    ("03:55", "A-101", "Margaret Whitfield", "Fall", None, None),              # unattended fall!
+    ("05:40", "A-103", "Dorothy Klein", "Out of bed (night)", "Carlos Diaz", 3),
+    ("06:30", "A-106", "Stanley Adams", "Out of bed (night)", "Carlos Diaz", 6),
 ]
 
 
-def assistance_calls() -> pd.DataFrame:
+def attention_events() -> pd.DataFrame:
+    """Sensed attention-needed events (resident movement) + staff attendance.
+
+    Mesh-native: no nurse-call integration. A future bell feed is just another source
+    flowing into the same pipeline.
+    """
     rows = []
-    for t, room, res, typ, resp, mins in _ASSIST_CALLS:
-        status = "unanswered" if resp is None else ("slow" if mins > 10 else "answered")
-        rows.append({"time": t, "room": room, "resident": res, "type": typ,
-                     "responder": resp or "—", "response_min": mins, "status": status})
+    for t, room, res, typ, resp, mins in _ATTENTION_EVENTS:
+        status = "unattended" if resp is None else ("late" if mins > 10 else "attended")
+        rows.append({"time": t, "room": room, "resident": res, "trigger": typ,
+                     "source": "Sensed", "attended_by": resp or "—",
+                     "response_min": mins, "status": status})
     return pd.DataFrame(rows)
 
 

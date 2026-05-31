@@ -186,6 +186,13 @@ and auditable — essential for a regulated setting.
 
 Compliance, consent, audit, and role-based access are threaded through every phase.
 
+> **MVP data boundary (scope decision):** the prototype runs entirely on **mesh-native
+> data** — sensed resident movement + staff-badge movement/attendance. No nurse-call
+> ("bell") or EHR integration is required to ship. Responsiveness/accountability is
+> derived from *sensed* attention events (out-of-bed, fall, restlessness, wandering)
+> vs staff badge attendance. A nurse-call bell feed is deferred to a later phase and
+> simply becomes one more event source flowing into the same pipeline.
+
 ---
 
 ## 11. Running the Phase 0 prototype

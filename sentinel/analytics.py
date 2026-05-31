@@ -23,43 +23,46 @@ def _is_night(hhmm: str) -> bool:
     return h >= NIGHT_START or h < NIGHT_END
 
 
-def responsiveness_summary(calls: pd.DataFrame) -> dict:
-    answered = calls[calls["status"] != "unanswered"]
-    night_unans = calls[(calls["status"] == "unanswered") & calls["time"].map(_is_night)]
+def responsiveness_summary(events: pd.DataFrame) -> dict:
+    attended = events[events["status"] != "unattended"]
+    night_unatt = events[(events["status"] == "unattended") & events["time"].map(_is_night)]
     return {
-        "total": len(calls),
-        "unanswered": int((calls["status"] == "unanswered").sum()),
-        "slow": int((calls["status"] == "slow").sum()),
-        "avg_response": round(float(answered["response_min"].mean()), 1) if len(answered) else None,
-        "max_response": int(answered["response_min"].max()) if len(answered) else None,
-        "night_unanswered": len(night_unans),
+        "total": len(events),
+        "unattended": int((events["status"] == "unattended").sum()),
+        "late": int((events["status"] == "late").sum()),
+        "avg_response": round(float(attended["response_min"].mean()), 1) if len(attended) else None,
+        "max_response": int(attended["response_min"].max()) if len(attended) else None,
+        "night_unattended": len(night_unatt),
     }
 
 
-def accountability_exceptions(calls: pd.DataFrame) -> list[dict]:
+def accountability_exceptions(events: pd.DataFrame) -> list[dict]:
     """Exception flags to escalate to management / compliance."""
     exc = []
-    night = calls[calls["time"].map(_is_night)]
-    unans = night[night["status"] == "unanswered"]
-    if len(unans) >= 2:
-        responders = night.loc[night["responder"] != "—", "responder"]
+    night = events[events["time"].map(_is_night)]
+    unatt = night[night["status"] == "unattended"]
+    if len(unatt) >= 2:
+        responders = night.loc[night["attended_by"] != "—", "attended_by"]
         carer = responders.mode().iat[0] if len(responders) else "the rostered night carer"
+        had_fall = (unatt["trigger"] == "Fall").any()
         exc.append({
             "severity": "RED",
-            "title": "Unanswered assistance calls overnight",
-            "detail": (f"{len(unans)} assistance call(s) went unanswered between "
-                       f"{unans['time'].min()} and {unans['time'].max()} while {carer} was the "
-                       f"rostered night carer — a large gap between their logged responses spans "
-                       f"the unanswered cluster (possible inactivity)."),
-            "action": ("Review immediately and verify against badge trail, roster, and CCTV. "
-                       "Unmet care needs may be SIRS-reportable as neglect."),
+            "title": "Sensed distress events unattended overnight",
+            "detail": (f"{len(unatt)} sensed attention event(s)"
+                       + (" including a FALL" if had_fall else "")
+                       + f" went unattended between {unatt['time'].min()} and "
+                       f"{unatt['time'].max()} while {carer} was the rostered night carer — a "
+                       f"large gap between their logged room visits spans the cluster "
+                       f"(possible inactivity)."),
+            "action": ("Review immediately and verify against the badge movement trail and "
+                       "roster. Unmet care needs may be SIRS-reportable as neglect."),
         })
-    for _, c in calls[calls["status"] == "slow"].iterrows():
+    for _, c in events[events["status"] == "late"].iterrows():
         exc.append({
             "severity": "AMBER",
-            "title": "Response slower than SLA",
-            "detail": (f"{c['room']} {c['resident']} — {c['type']} answered in "
-                       f"{int(c['response_min'])} min by {c['responder']} (SLA {SLA_MIN} min)."),
+            "title": "Attendance slower than SLA",
+            "detail": (f"{c['room']} {c['resident']} — {c['trigger']} attended after "
+                       f"{int(c['response_min'])} min by {c['attended_by']} (SLA {SLA_MIN} min)."),
             "action": "Review staffing/workload for that period.",
         })
     return exc

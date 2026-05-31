@@ -472,49 +472,51 @@ def portfolio_view():
 
 def responsiveness_view():
     st.title("🚨 Responsiveness & accountability")
-    st.caption("Assistance-call response analytics for management and clinical governance. "
-               "Detects genuine safety failures (e.g. unanswered overnight calls). Findings "
-               "must be verified against badge/roster/CCTV before action and may be "
-               "SIRS-reportable as neglect — governed, evidence-based, not punitive surveillance.")
+    st.caption("Built on sensed resident movement + staff badge attendance — **no "
+               "nurse-call integration required** (a bell feed can be added later as "
+               "another source). Detects genuine safety failures (e.g. a sensed fall "
+               "left unattended overnight). Findings must be verified against the badge "
+               "trail and roster before action and may be SIRS-reportable as neglect — "
+               "governed, evidence-based, not punitive surveillance.")
 
-    calls = simulator.assistance_calls()
-    s = analytics.responsiveness_summary(calls)
+    ev = simulator.attention_events()
+    s = analytics.responsiveness_summary(ev)
     k = st.columns(4)
-    k[0].metric("Assistance calls", s["total"])
-    k[1].metric("Unanswered", s["unanswered"], f"{s['night_unanswered']} overnight",
+    k[0].metric("Sensed attention events", s["total"])
+    k[1].metric("Unattended", s["unattended"], f"{s['night_unattended']} overnight",
                 delta_color="inverse")
-    k[2].metric("Avg response (min)", s["avg_response"])
-    k[3].metric("Max response (min)", s["max_response"])
+    k[2].metric("Avg attendance (min)", s["avg_response"])
+    k[3].metric("Slowest attendance (min)", s["max_response"])
 
     st.subheader("Exceptions to escalate")
-    exc = analytics.accountability_exceptions(calls)
+    exc = analytics.accountability_exceptions(ev)
     for e in exc:
         (st.error if e["severity"] == "RED" else st.warning)(
             f"**{e['title']}** — {e['detail']}\n\nAction: {e['action']}")
     if not exc:
         st.success("No responsiveness exceptions this period.")
 
-    st.subheader("Assistance calls across the shift")
-    d = calls.copy()
+    st.subheader("Sensed attention events across the shift")
+    d = ev.copy()
     d["t"] = d["time"].map(
         lambda x: pd.to_datetime(f"2026-05-31 {x}")
         + (pd.Timedelta(days=1) if int(x[:2]) < 12 else pd.Timedelta(0)))
     color = alt.Color("status:N", scale=alt.Scale(
-        domain=["answered", "slow", "unanswered"],
-        range=["#3ba55d", "#e08e2b", "#d23c3c"]), title="Status")
+        domain=["attended", "late", "unattended"],
+        range=["#3ba55d", "#e08e2b", "#d23c3c"]), title="Outcome")
     st.altair_chart(
         alt.Chart(d).mark_point(size=160, filled=True, opacity=0.9).encode(
             x=alt.X("t:T", title="Time of day"), y=alt.Y("room:N", title=None),
             color=color,
-            tooltip=["time", "room", "resident", "type", "responder",
+            tooltip=["time", "room", "resident", "trigger", "attended_by",
                      "response_min", "status"]).properties(height=240),
         use_container_width=True)
 
-    st.subheader("Call log")
-    st.dataframe(calls.rename(columns={
-        "time": "Time", "room": "Room", "resident": "Resident", "type": "Type",
-        "responder": "Responder", "response_min": "Resp (min)", "status": "Status"}),
-        use_container_width=True, hide_index=True)
+    st.subheader("Event log")
+    st.dataframe(ev.rename(columns={
+        "time": "Time", "room": "Room", "resident": "Resident", "trigger": "Trigger",
+        "source": "Source", "attended_by": "Attended by", "response_min": "Mins",
+        "status": "Outcome"}), use_container_width=True, hide_index=True)
 
 
 def about_view():
