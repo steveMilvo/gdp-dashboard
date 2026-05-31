@@ -99,6 +99,44 @@ def _realtime(resident: data.Resident, history: pd.DataFrame) -> dict:
     return rt
 
 
+def vitals_trace(resident_id: str, now: float, hr: float, br: float,
+                 window: float = 8.0, fs: int = 20) -> pd.DataFrame:
+    """A short rolling chest-displacement waveform ending at ``now`` (wall-clock).
+
+    Respiration sine at ``br`` breaths/min with a faint heartbeat ripple at ``hr`` bpm.
+    Because the window slides with ``now``, re-rendering each second makes it scroll —
+    the visual proof that sensing is live. Fresh noise each call adds realistic jitter.
+    """
+    n = int(window * fs)
+    t = np.linspace(now - window, now, n)
+    rng = np.random.default_rng()
+    chest = (np.sin(2 * np.pi * (br / 60.0) * t)
+             + 0.18 * np.sin(2 * np.pi * (hr / 60.0) * t)
+             + rng.normal(0, 0.03, n))
+    return pd.DataFrame({"seconds_ago": t - now, "chest displacement": chest})
+
+
+def node_health() -> pd.DataFrame:
+    """Simulated per-room mesh telemetry — the real-world 'is it alive' proof.
+
+    Two nodes per room (the cheap install design). Fresh jitter each call so packet
+    ages and RSSI tick on refresh. One node is held offline to show fault visibility.
+    """
+    rng = np.random.default_rng()
+    rows = []
+    for r in data.roster():
+        for k in range(2):
+            offline = (r.room == "A-106" and k == 1)
+            rows.append({
+                "room": r.room,
+                "node": f"{r.room}-N{k}",
+                "status": "🔴 offline" if offline else "🟢 online",
+                "last packet (s)": 47 if offline else int(rng.integers(0, 3)),
+                "RSSI (dBm)": None if offline else int(rng.integers(-68, -42)),
+            })
+    return pd.DataFrame(rows)
+
+
 def snapshot() -> dict[str, dict]:
     """Full simulated state for the whole roster: history + real-time per resident."""
     out = {}

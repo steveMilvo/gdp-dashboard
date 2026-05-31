@@ -10,10 +10,21 @@ Optional LLM reports:   export ANTHROPIC_API_KEY=sk-...   (otherwise templated f
 
 from __future__ import annotations
 
+import time
+from datetime import datetime
+
+import altair as alt
+import pandas as pd
 import streamlit as st
 
 from sentinel import alerts, data, reports, signals, simulator
+from sentinel.baseline import BASELINE_DAYS
 from sentinel.signals import TIER_EMOJI, TIER_RANK
+
+# Wing floor layout (grid coordinates per room) for the floor-plan map.
+COORDS = {"A-101": (0, 1), "A-102": (1, 1), "A-103": (2, 1), "A-104": (3, 1),
+          "A-105": (0, 0), "A-106": (1, 0), "A-107": (2, 0)}
+TIER_COLOR = {"GREEN": "#3ba55d", "YELLOW": "#e3c037", "AMBER": "#e08e2b", "RED": "#d23c3c"}
 
 st.set_page_config(page_title="Aged Care Sentinel", page_icon="🛰️", layout="wide")
 
@@ -34,10 +45,86 @@ st.session_state.setdefault("feedback", [])   # self-improving loop: outcome lab
 st.session_state.setdefault("acks", set())    # acknowledged alerts
 
 
+# ----------------------------------------------------------------------- charts
+def floor_map():
+    """Colour-coded wing map — situational awareness at a glance."""
+    df = pd.DataFrame([
+        {"room": r.room, "x": COORDS[r.room][0], "y": COORDS[r.room][1],
+         "status": assessments[r.id].status, "name": r.name}
+        for r in data.roster()
+    ])
+    color = alt.Color("status:N", scale=alt.Scale(
+        domain=list(TIER_COLOR), range=list(TIER_COLOR.values())), legend=None)
+    base = alt.Chart(df)
+    tiles = base.mark_square(size=5200, stroke="white", strokeWidth=2).encode(
+        x=alt.X("x:Q", axis=None, scale=alt.Scale(domain=[-0.5, 3.5])),
+        y=alt.Y("y:Q", axis=None, scale=alt.Scale(domain=[-0.6, 1.6])),
+        color=color, tooltip=["room", "name", "status"])
+    labels = base.mark_text(color="white", fontSize=13, fontWeight="bold", dy=-6).encode(
+        x="x:Q", y="y:Q", text="room")
+    names = base.mark_text(color="white", fontSize=10, dy=10).encode(
+        x="x:Q", y="y:Q", text="status")
+    return (tiles + labels + names).properties(height=240).configure_view(strokeWidth=0)
+
+
+def baseline_band_chart(hist, metric, meta):
+    """Resident's own baseline as a shaded ±2σ band; recent breaches marked red,
+    with a dashed rule where the drift began ('caught it early')."""
+    base_win = hist.iloc[:BASELINE_DAYS][metric]
+    mean = float(base_win.mean())
+    sd = float(base_win.std(ddof=0)) or 1e-6
+    hi, lo = mean + 2 * sd, mean - 2 * sd
+    d = hist[["date", metric]].rename(columns={metric: "value"}).copy()
+    d["breach"] = d["value"] > hi if meta["bad"] == "high" else d["value"] < lo
+    d["lo"], d["hi"] = lo, hi
+
+    band = alt.Chart(d).mark_area(opacity=0.15, color="#3b82f6").encode(
+        x=alt.X("date:T", title=None), y="lo:Q", y2="hi:Q")
+    line = alt.Chart(d).mark_line(color="#666").encode(
+        x="date:T", y=alt.Y("value:Q", title=meta["unit"]))
+    pts = alt.Chart(d).mark_point(filled=True, size=55).encode(
+        x="date:T", y="value:Q",
+        color=alt.condition("datum.breach", alt.value("#d23c3c"), alt.value("#666")))
+    layers = [band, line, pts]
+    breaches = d[d["breach"]]
+    if not breaches.empty:
+        rule = alt.Chart(pd.DataFrame({"date": [breaches["date"].iloc[0]]})).mark_rule(
+            color="#d23c3c", strokeDash=[4, 4]).encode(x="date:T")
+        layers.append(rule)
+    return alt.layer(*layers).properties(height=180, title=meta["label"])
+
+
 # --------------------------------------------------------------------------- views
+@st.fragment(run_every="2s")
+def _live_banner():
+    st.markdown(
+        f"<span style='color:#3ba55d;font-weight:bold'>● LIVE</span> &nbsp; "
+        f"feed updated {datetime.now():%H:%M:%S} · mesh streaming",
+        unsafe_allow_html=True)
+
+
+@st.fragment(run_every="3s")
+def _node_health():
+    df = simulator.node_health()
+    online = (df["status"] == "🟢 online").sum()
+    st.caption(f"Mesh telemetry — {online}/{len(df)} nodes online (refreshes live)")
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+
+@st.fragment(run_every="1s")
+def _live_vitals(rid, hr, br):
+    df = simulator.vitals_trace(rid, time.time(), hr, br)
+    st.markdown(
+        f"<span style='color:#3ba55d;font-weight:bold'>● LIVE</span> "
+        f"chest-displacement waveform (breathing + heartbeat) · {datetime.now():%H:%M:%S}",
+        unsafe_allow_html=True)
+    st.line_chart(df.set_index("seconds_ago")[["chest displacement"]], height=160)
+
+
 def live_board():
     st.title("🛰️ Sentinel — Wing A live board")
     st.caption("Camera-free ambient monitoring · per-resident early warning · simulated feed")
+    _live_banner()
 
     counts = {"RED": 0, "AMBER": 0, "YELLOW": 0, "GREEN": 0}
     for r in data.roster():
@@ -47,6 +134,9 @@ def live_board():
     c[1].metric("🟠 Amber (clinical)", counts["AMBER"])
     c[2].metric("🟡 Yellow (watch)", counts["YELLOW"])
     c[3].metric("🟢 Green", counts["GREEN"])
+
+    st.subheader("Wing floor map")
+    st.altair_chart(floor_map(), use_container_width=True)
 
     st.subheader("Needs attention this shift")
     ranked = sorted(data.roster(),
@@ -85,6 +175,9 @@ def live_board():
                 f"HR {rt['heart_rate']} · {rt['breathing_rate']}/min  \n"
                 f"{rt['presence']} · {rt['motion']}")
 
+    st.subheader("Node / mesh health")
+    _node_health()
+
 
 def resident_detail():
     st.title("Resident detail")
@@ -119,14 +212,17 @@ def resident_detail():
     rc[1].metric("Breathing", f"{rt['breathing_rate']} /min")
     rc[2].metric("Presence", rt["presence"])
     rc[3].metric("Motion", rt["motion"])
+    _live_vitals(rid, rt["heart_rate"], rt["breathing_rate"])
 
     st.subheader("Trends vs baseline (14 days)")
+    st.caption("Shaded band = this resident's own normal (±2σ). Red points breach it; "
+               "the dashed line marks when the drift began.")
     show = ["night_bathroom_trips", "resting_hr", "sleep_fragmentation", "gait_speed"]
     tc = st.columns(2)
     for i, m in enumerate(show):
         with tc[i % 2]:
-            st.caption(data.METRICS[m]["label"])
-            st.line_chart(hist.set_index("date")[[m]], height=160)
+            st.altair_chart(baseline_band_chart(hist, m, data.METRICS[m]),
+                            use_container_width=True)
 
     if a.flags:
         st.subheader("Trend flags & feedback (self-improving loop)")
