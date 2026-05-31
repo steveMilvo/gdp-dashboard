@@ -50,6 +50,19 @@ def load_interactions():
 
 snap, assessments = load_state()
 interactions = load_interactions()
+
+# Streamlit hot-reload re-runs this script but does NOT re-import changed submodules
+# (they stay cached in sys.modules). If the simulator was updated while the server was
+# running, `interactions` will be missing newer columns — detect that and ask for a
+# clean restart rather than crashing deep in a view.
+_REQUIRED = {"start", "end", "activity", "room", "staff", "role", "minutes", "resident_id"}
+if not _REQUIRED.issubset(interactions.columns):
+    st.error(
+        "⚠️ The app is running stale code. Streamlit doesn't reload imported modules on "
+        "hot-reload — please **fully stop** the server (Ctrl+C) and start it again:\n\n"
+        "```\npython -m streamlit run sentinel_app.py\n```")
+    st.stop()
+
 st.session_state.setdefault("feedback", [])   # self-improving loop: outcome labels
 st.session_state.setdefault("acks", set())    # acknowledged alerts
 
