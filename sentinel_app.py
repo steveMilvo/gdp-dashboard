@@ -52,11 +52,21 @@ snap, assessments = load_state()
 interactions = load_interactions()
 
 # Streamlit hot-reload re-runs this script but does NOT re-import changed submodules
-# (they stay cached in sys.modules). If the simulator was updated while the server was
-# running, `interactions` will be missing newer columns — detect that and ask for a
-# clean restart rather than crashing deep in a view.
-_REQUIRED = {"start", "end", "activity", "room", "staff", "role", "minutes", "resident_id"}
-if not _REQUIRED.issubset(interactions.columns):
+# (they stay cached in sys.modules). After a `git pull` while the server is running, the
+# sentinel.* modules may be stale — missing newer columns OR newer functions — and crash
+# deep in a view. Detect both and ask for a clean restart with a friendly message.
+_REQUIRED_COLS = {"start", "end", "activity", "room", "staff", "role", "minutes", "resident_id"}
+_REQUIRED_FUNCS = [
+    (simulator, ["snapshot", "interactions", "attention_events", "node_health",
+                 "portfolio", "vitals_trace"]),
+    (analytics, ["falls_quarter", "qi_table", "sirs_pack", "responsiveness_summary",
+                 "accountability_exceptions"]),
+    (presence, ["care_minutes_summary", "staff_summary", "staff_shift_log",
+                "copresence_alert"]),
+]
+_stale = not _REQUIRED_COLS.issubset(interactions.columns) or any(
+    not hasattr(mod, fn) for mod, fns in _REQUIRED_FUNCS for fn in fns)
+if _stale:
     st.error(
         "⚠️ The app is running stale code. Streamlit doesn't reload imported modules on "
         "hot-reload — please **fully stop** the server (Ctrl+C) and start it again:\n\n"
