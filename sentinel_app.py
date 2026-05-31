@@ -519,6 +519,51 @@ def responsiveness_view():
         "status": "Outcome"}), use_container_width=True, hide_index=True)
 
 
+def compliance_view():
+    st.title("📋 Compliance — Quality Indicators & SIRS")
+    st.caption("Auto-assembles the National Aged Care Mandatory Quality Indicator (QI) "
+               "submission and SIRS serious-incident packs from sensed data. Sentinel "
+               "fully populates **Falls**, contributes to several others, and flags which "
+               "indicators still need eMAR/EHR/survey data — honest about the boundary.")
+
+    st.subheader("Falls and major injury (auto-populated)")
+    fq = analytics.falls_quarter()
+    k = st.columns(4)
+    k[0].metric("Falls this quarter", fq["falls"], fq["trend_vs_prev"], delta_color="inverse")
+    k[1].metric("Residents who fell", f"{fq['residents_fell']} ({fq['pct_residents_fell']}%)")
+    k[2].metric("Falls w/ major injury", fq["major_injury"])
+    k[3].metric("Per 1,000 bed-days", fq["rate_per_1000_bed_days"])
+    st.caption(f"Computed from the sensed-fall log over the 91-day quarter "
+               f"({fq['beds']} beds, {fq['bed_days']:,} bed-days).")
+
+    st.subheader("QI Program coverage")
+    qi = analytics.qi_table()
+    st.dataframe(qi, use_container_width=True, hide_index=True)
+    st.download_button("⬇ Download QI summary (CSV)", qi.to_csv(index=False),
+                       file_name="sentinel_qi_summary.csv", mime="text/csv")
+
+    st.subheader("SIRS — serious incident pack")
+    pack = analytics.sirs_pack(simulator.attention_events())
+    if not pack:
+        st.success("No serious incidents requiring a SIRS pack this period.")
+    else:
+        md = (
+            f"# SIRS incident pack\n\n"
+            f"**{pack['priority']}**\n\n"
+            f"- **Type:** {pack['incident_type']}\n"
+            f"- **Resident:** {pack['resident']} ({pack['room']})\n"
+            f"- **Detected:** {pack['detected']} (overnight)\n\n"
+            f"## Summary\n{pack['summary']}\n\n"
+            f"## Evidence attached\n" + "\n".join(f"- {e}" for e in pack["evidence"]) +
+            f"\n\n## Required actions\n" + "\n".join(f"- {a}" for a in pack["actions"]) +
+            "\n\n_Verify all evidence before submission. Wellness/early-warning system — "
+            "clinical judgement required._\n")
+        st.error(f"**{pack['priority']}**")
+        st.markdown(md)
+        st.download_button("⬇ Download SIRS pack (Markdown)", md,
+                           file_name="sentinel_sirs_pack.md", mime="text/markdown")
+
+
 def about_view():
     st.title("How Sentinel works")
     st.markdown(
@@ -545,6 +590,7 @@ VIEWS = {
     "🧑‍⚕️ Care minutes": care_minutes_view,
     "🧑‍💼 Staff & shifts": staff_view,
     "🚨 Responsiveness": responsiveness_view,
+    "📋 Compliance (NQI/SIRS)": compliance_view,
     "📄 Reports": reports_view,
     "➕ Onboarding": onboarding_view,
     "ℹ️ How it works": about_view,
