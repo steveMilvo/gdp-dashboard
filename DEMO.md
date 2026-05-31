@@ -62,7 +62,24 @@ Open **👤 Resident detail → Arthur Bell (A-102)**.
   badge, the system already knows the RN is in the room responding — so it won't
   false-alarm on the carer leaning over the bed, and it logs who attended."
 
-## 5. Care minutes — the compliance money (2 min)
+## 5. The help gesture — a call for help with no button (1.5 min)
+
+**Resident detail → Stanley Adams (A-106)**.
+
+- Red **🆘 Assistance requested (help gesture)** alert. "Stanley is able-bodied but
+  there's no button in reach. He **waved both arms** — a deliberate help gesture the
+  sensors pick up easily."
+- Walk the **confirm-back loop** shown on screen: "Gesture detected → the room chimes
+  *'help is on the way — wave again to confirm'* → he repeats it → **confirmed → staff
+  paged.** That confirmation step is what stops an accidental arm movement from crying
+  wolf."
+- The line that lands: "This is the resident who's fallen but conscious, or in the
+  shower, or in the garden — nowhere near a call bell. **Now they can still call for
+  help, with nothing to wear or press.** And for residents who *can't* gesture — advanced
+  dementia — the passive sensing you've already seen is still the safety net. Two ways
+  to get help: ask, or be noticed."
+
+## 6. Care minutes — the compliance money (2 min)
 
 Open **🧑‍⚕️ Care minutes**.
 
@@ -72,28 +89,46 @@ Open **🧑‍⚕️ Care minutes**.
 - Drill to a resident's interaction log: timed activities (e.g. *Personal care /
   bathing 08:03–08:35*) and the minutes-by-activity chart.
 
-## 6. Staff movement (1 min)
+## 7. Staff movement (1 min)
 
 Open **🧑‍💼 Staff & shifts**.
 
 - Shift summary, then pick a carer → their **movement trail** across the shift.
 - "Workforce visibility for managers — coverage, workload, where time goes."
 
-## 7. Responsiveness — the safety gut-punch (2 min)
+## 8. Responsiveness — the safety gut-punch (2 min)
 
 Open **🚨 Responsiveness**.
 
 - "Here's the one that matters most. Overnight, the sensors raised attention events —
-  out of bed, restlessness, **and a fall**. Cross-referenced against staff badge
-  movement:"
-- Read the red exception aloud: *"4 sensed events including a fall went unattended
-  00:12–03:55 while the rostered night carer showed a large gap in room visits."*
+  out of bed, restlessness, a fall, **and Stanley's help gesture again — this time at
+  1:30am.** Cross-referenced against staff badge movement:"
+- Read the red exception aloud: *"5 sensed events including **an unanswered call for
+  help (gesture)** and a fall went unattended 00:12–03:55 while the rostered night carer
+  showed a large gap in room visits."*
+- The gut-punch line: "Earlier we saw the system summon help when Stanley waved. This is
+  the same gesture **ignored**. A conscious resident asked for help overnight and no one
+  came. That's not a missed sensor reading — it's a documented, deliberate, unanswered
+  call for help."
 - "No bell needed. This is the scenario every DON fears — and it's exactly what's
   SIRS-reportable. The system surfaces it with timestamped evidence, to verify against
   the badge trail before you act."
 - Point at the timeline: the cluster of **red unattended** dots overnight.
 
-## 8. Close (1 min)
+## 9. Compliance — the regulator-facing output (1.5 min)
+
+Open **📋 Compliance (NQI/SIRS)**.
+
+- "Falls Quality Indicator — auto-populated from sensed falls, per 1,000 bed-days,
+  quarter trend. The QI table is honest about what we cover and what still needs your
+  eMAR."
+- Scroll to the **SIRS pack**: "And here's last night's incident, already assembled —
+  *'Neglect: a deliberate call for assistance left unanswered'*, Stanley Adams, A-106,
+  1:30am, with the evidence attached. Download it." (Click **⬇ Download SIRS pack**.)
+- "This is what makes Sentinel hard to remove: it doesn't just monitor — it produces the
+  mandatory submissions you already have to file."
+
+## 10. Close (1 min)
 
 - **Self-improving:** "Every flag your staff label trains it to your home."
 - **Reports:** show a generated shift-handoff / clinical / incident report (📄 Reports).
@@ -131,6 +166,10 @@ Open **🚨 Responsiveness**.
 
 - [ ] App runs clean (`python -m streamlit run sentinel_app.py`), no stale-cache banner.
 - [ ] (Optional) `ANTHROPIC_API_KEY` set so 📄 Reports shows real narratives.
-- [ ] Know your three "money" screens cold: **baseline-band (UTI early), care minutes,
-      responsiveness (unattended fall)**.
+- [ ] Know your "money" screens cold: **baseline-band (UTI early), the help gesture
+      (call → confirm → page), care minutes, and responsiveness/SIRS (the same gesture
+      ignored overnight → neglect pack)**.
+- [ ] Have the **Stanley Adams thread** straight: A-106 waves for help *now* (attended)
+      → and at 1:30am the same gesture went *unanswered* (SIRS). The contrast is the
+      emotional core of the demo.
 - [ ] Lead with resident safety + compliance, not the technology.
