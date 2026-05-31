@@ -17,7 +17,8 @@ from . import data
 
 HISTORY_DAYS = 14
 TODAY = date(2026, 5, 31)
-SHIFT_START = datetime(2026, 5, 31, 7, 0)  # for today's staff-interaction log
+SHIFT_START = datetime(2026, 5, 31, 7, 0)   # today's care shift window
+SHIFT_END = datetime(2026, 5, 31, 21, 0)
 
 # Care activity types inferred from location/duration/staff role (logged per interaction).
 ACTIVITIES = [
@@ -125,28 +126,34 @@ def _realtime(resident: data.Resident, history: pd.DataFrame) -> dict:
 def interactions() -> pd.DataFrame:
     """Today's staff–resident interactions, auto-logged from staff badges.
 
-    Each row is one badge-detected visit (who, when, how long). Durations sum into
-    AN-ACC care minutes. Deterministic per resident.
+    Generated as one *coherent timeline per staff member*: each carer moves room to
+    room across the shift with non-overlapping visits, so a badge is never in two
+    rooms at once (physically realistic). Per-resident care minutes are the sum of all
+    visits they received. Deterministic per staff member.
     """
+    residents = data.roster()
     rows = []
-    for r in data.roster():
-        rng = _seed(r.id + "visits")
-        t = SHIFT_START
-        for _ in range(int(rng.integers(8, 16))):
-            t = t + timedelta(minutes=int(rng.integers(10, 60)))  # gap until next visit
-            start_dt = t
+    for sid, name, role in STAFF:
+        rng = _seed("sched-" + sid)
+        t = SHIFT_START + timedelta(minutes=int(rng.integers(0, 40)))  # staggered start
+        ri = int(rng.integers(0, len(residents)))
+        while t < SHIFT_END:
+            t = t + timedelta(minutes=int(rng.integers(12, 52)))  # travel / other duties
+            if t >= SHIFT_END:
+                break
             mins = int(rng.integers(6, 30))
-            end_dt = start_dt + timedelta(minutes=mins)
-            staff = STAFF[int(rng.integers(0, len(STAFF)))]
+            start_dt, end_dt = t, t + timedelta(minutes=mins)
+            ri = (ri + int(rng.integers(1, 4))) % len(residents)  # spread across residents
+            r = residents[ri]
             rows.append({
                 "resident_id": r.id, "resident": r.name, "room": r.room,
-                "staff_id": staff[0], "staff": staff[1], "role": staff[2],
+                "staff_id": sid, "staff": name, "role": role,
                 "activity": ACTIVITIES[int(rng.integers(0, len(ACTIVITIES)))],
                 "start": start_dt.strftime("%H:%M"), "end": end_dt.strftime("%H:%M"),
                 "minutes": mins,
             })
-            t = end_dt  # next gap starts after this visit ends (no overlaps)
-    return pd.DataFrame(rows)
+            t = end_dt  # next visit starts after this one ends -> no per-staff overlap
+    return pd.DataFrame(rows).sort_values(["staff", "start"]).reset_index(drop=True)
 
 
 def vitals_trace(resident_id: str, now: float, hr: float, br: float,
