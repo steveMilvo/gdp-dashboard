@@ -10,6 +10,9 @@ from __future__ import annotations
 import os
 
 # Default to the most capable model; override with SENTINEL_MODEL if desired.
+# For high-volume facility report generation, claude-sonnet-4-6 is a cost-effective
+# choice at near-identical quality for this rewriting task:
+#   export SENTINEL_MODEL=claude-sonnet-4-6
 MODEL = os.getenv("SENTINEL_MODEL", "claude-opus-4-8")
 
 # Stable, reusable system instructions. Kept in its own block with a cache breakpoint
@@ -29,7 +32,8 @@ bathroom trips rose from 1.5 to 5"). Never invent readings.
 trends; management wants operational facts; families want reassurance in warm, \
 non-alarming language.
 - Be concise and skimmable. Lead with what matters. No preamble.
-- Frame deviations as relative to the resident's OWN baseline, not population norms."""
+- Frame deviations as relative to the resident's OWN baseline, not population norms.
+- Output only the finished report — no notes about your process or reasoning."""
 
 
 def _client():
@@ -44,10 +48,13 @@ def narrate(report_type: str, audience: str, facts: str) -> str:
         return _fallback(report_type, audience, facts)
     try:
         client = _client()
+        # Report-writing is rewriting structured facts, not complex reasoning, so
+        # thinking is disabled (faster/cheaper and no risk of it eating the token
+        # budget). The system block carries a cache breakpoint for prefix reuse.
         response = client.messages.create(
             model=MODEL,
-            max_tokens=1500,
-            thinking={"type": "adaptive"},
+            max_tokens=2000,
+            thinking={"type": "disabled"},
             system=[{"type": "text", "text": SYSTEM, "cache_control": {"type": "ephemeral"}}],
             messages=[{
                 "role": "user",
