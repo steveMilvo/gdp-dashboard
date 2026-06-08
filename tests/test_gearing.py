@@ -7,6 +7,7 @@ from depreciation.gearing import (
     GearingInputs,
     is_grandfathered,
     project_gearing,
+    stepped_value,
 )
 
 
@@ -80,6 +81,37 @@ def test_restricted_profit_absorbs_carried_loss_before_tax():
     assert math.isclose(y2.taxable_result, 40_000)
     assert math.isclose(y2.tax_effect, -25_000 * 0.37)
     assert y2.carried_forward_loss == 0.0
+
+
+def test_stepped_value_step_function():
+    points = {2024: 380 * 52, 2026: 900 * 52}
+    assert stepped_value(points, 2023) == 380 * 52   # before first -> earliest
+    assert stepped_value(points, 2024) == 380 * 52
+    assert stepped_value(points, 2025) == 380 * 52    # still in first period
+    assert stepped_value(points, 2026) == 900 * 52    # switches at the boarding-house year
+    assert stepped_value(points, 2030) == 900 * 52    # carries forward
+
+
+def test_stepped_rent_changes_taxable_result_across_years():
+    # $380/wk to 2025, then $900/wk (boarding house) from 2026.
+    inputs = GearingInputs(
+        annual_rent=0,  # ignored when annual_rent_by_year is set
+        loan_interest=30_000,
+        other_cash_expenses=5_000,
+        marginal_tax_rate=0.37,
+        grandfathered=True,
+        mgmt_pct=0.07,
+        annual_rent_by_year={2024: 380 * 52, 2026: 900 * 52},
+    )
+    res = project_gearing(inputs, {2024: 8_000, 2025: 7_000, 2026: 6_000})
+    y2024, y2025, y2026 = res.rows
+    assert math.isclose(y2024.rent, 380 * 52)
+    assert math.isclose(y2025.rent, 380 * 52)
+    assert math.isclose(y2026.rent, 900 * 52)
+    # 2024 loss (low rent) -> tax saving; 2026 with $900/wk should be far better off.
+    assert y2026.aftertax_cashflow > y2024.aftertax_cashflow
+    # Management fee tracks rent: 7% of the higher 2026 rent.
+    assert math.isclose(y2026.cash_expenses, 30_000 + 5_000 + 900 * 52 * 0.07)
 
 
 def test_grandfathered_positive_geared_pays_tax():

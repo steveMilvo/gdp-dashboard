@@ -424,23 +424,60 @@ st.write(
     "to show the after-tax position."
 )
 
+st.markdown(
+    "**Weekly rent over time** — add a row each time the rent changes (e.g. "
+    "switching to a boarding house). Each rate applies from its *From year* "
+    "onward."
+)
+rent_seed = pd.DataFrame(
+    [
+        {"from_year": 2024, "weekly_rent": 380},
+        {"from_year": int(CURRENT_YEAR), "weekly_rent": 900},
+    ]
+)
+rent_df = st.data_editor(
+    rent_seed,
+    num_rows="dynamic",
+    use_container_width=True,
+    key="rent_periods",
+    column_config={
+        "from_year": st.column_config.NumberColumn(
+            "From year", min_value=1990, max_value=CURRENT_YEAR + 40, step=1
+        ),
+        "weekly_rent": st.column_config.NumberColumn("Rent ($/week)", min_value=0, step=10),
+    },
+)
+
+# Build the stepped annual-rent schedule {from_year: annual_rent}.
+annual_rent_by_year: dict[int, float] = {}
+for _, row in rent_df.iterrows():
+    fy = row.get("from_year")
+    wr = row.get("weekly_rent")
+    if pd.isna(fy) or pd.isna(wr):
+        continue
+    annual_rent_by_year[int(fy)] = float(wr) * 52
+# Sensible fallback if the table is emptied.
+current_annual_rent = (
+    annual_rent_by_year[max(k for k in annual_rent_by_year if k <= CURRENT_YEAR)]
+    if any(k <= CURRENT_YEAR for k in annual_rent_by_year)
+    else (min(annual_rent_by_year.values()) if annual_rent_by_year else 0.0)
+)
+
 gcol1, gcol2 = st.columns(2)
 with gcol1:
-    weekly_rent = st.number_input("Rent ($/week)", min_value=0, value=550, step=10)
     loan_balance = st.number_input("Loan balance ($)", min_value=0, value=600_000, step=10_000)
     interest_rate = st.slider("Interest rate (%)", 0.0, 12.0, 6.2, 0.1) / 100.0
+    mgmt_pct = st.slider("Property management (% of rent)", 0.0, 12.0, 7.0, 0.5) / 100.0
 with gcol2:
     council_rates = st.number_input("Council + water rates ($/yr)", min_value=0, value=3_500, step=100)
     insurance = st.number_input("Insurance ($/yr)", min_value=0, value=1_800, step=100)
-    mgmt_pct = st.slider("Property management (% of rent)", 0.0, 12.0, 7.0, 0.5) / 100.0
     other_expenses = st.number_input(
         "Repairs / strata / other ($/yr)", min_value=0, value=2_000, step=100
     )
 
-annual_rent = weekly_rent * 52
 loan_interest = loan_balance * interest_rate
-mgmt_fee = annual_rent * mgmt_pct
-other_cash = council_rates + insurance + mgmt_fee + other_expenses
+# Management fee is applied per-year inside the engine (it tracks each year's rent).
+other_cash = council_rates + insurance + other_expenses
 
 # Negative-gearing regime: default from purchase year, with an override and a
 # new-build exemption.
@@ -470,11 +507,13 @@ if int(purchase_year) <= 2026 and not new_build:
     )
 
 g_inputs = GearingInputs(
-    annual_rent=annual_rent,
+    annual_rent=current_annual_rent,
     loan_interest=loan_interest,
     other_cash_expenses=other_cash,
     marginal_tax_rate=marginal_rate,
     grandfathered=grandfathered,
+    mgmt_pct=mgmt_pct,
+    annual_rent_by_year=annual_rent_by_year or None,
 )
 depr_by_year = {r.year: r.total for r in result.rows}
 g_result = project_gearing(g_inputs, depr_by_year)
@@ -510,6 +549,7 @@ if gy is not None:
     g_chart = pd.DataFrame(
         {
             "Year": [r.year for r in g_result.rows],
+            "Annual rent": [r.rent for r in g_result.rows],
             "Pre-tax cash flow": [r.pretax_cashflow for r in g_result.rows],
             "After-tax cash flow": [r.aftertax_cashflow for r in g_result.rows],
         }

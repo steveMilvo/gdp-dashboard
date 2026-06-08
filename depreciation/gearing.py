@@ -35,11 +35,29 @@ GRANDFATHER_CUTOFF_YEAR = 2026
 class GearingInputs:
     annual_rent: float
     loan_interest: float            # annual deductible interest
-    other_cash_expenses: float      # rates, insurance, mgmt, maintenance, strata...
+    other_cash_expenses: float      # rates, insurance, maintenance, strata... (excl mgmt)
     marginal_tax_rate: float
     grandfathered: bool = True      # full offset against other income when True
     rent_growth: float = 0.0        # optional annual growth (e.g. 0.03)
-    expense_growth: float = 0.0     # optional annual growth applied to cash costs
+    expense_growth: float = 0.0     # optional annual growth applied to fixed costs
+    mgmt_pct: float = 0.0           # property management fee, as a fraction of rent
+    # Optional stepped rent: financial year -> ANNUAL rent applying from that year
+    # onward (a step function). When set, it overrides annual_rent + rent_growth.
+    # Use this to model a rent change, e.g. {2024: 19_760, 2026: 46_800}.
+    annual_rent_by_year: dict[int, float] | None = None
+
+
+def stepped_value(breakpoints: dict[int, float], year: int) -> float:
+    """Resolve a step-function value for `year` from {start_year: value} points.
+
+    The value applying to a year is the one at the most recent start year on or
+    before it. Years before the earliest breakpoint use the earliest value.
+    """
+    if not breakpoints:
+        return 0.0
+    applicable = [y for y in breakpoints if y <= year]
+    key = max(applicable) if applicable else min(breakpoints)
+    return breakpoints[key]
 
 
 @dataclass
@@ -105,10 +123,15 @@ def project_gearing(
 
     years = sorted(depreciation_by_year)
     for i, year in enumerate(years):
-        rent = inputs.annual_rent * ((1 + inputs.rent_growth) ** i)
-        cash_expenses = (inputs.loan_interest + inputs.other_cash_expenses) * (
+        if inputs.annual_rent_by_year:
+            rent = stepped_value(inputs.annual_rent_by_year, year)
+        else:
+            rent = inputs.annual_rent * ((1 + inputs.rent_growth) ** i)
+        fixed_costs = (inputs.loan_interest + inputs.other_cash_expenses) * (
             (1 + inputs.expense_growth) ** i
         )
+        # Management fee tracks each year's rent.
+        cash_expenses = fixed_costs + rent * inputs.mgmt_pct
         depreciation = depreciation_by_year[year]
 
         taxable_result = rent - cash_expenses - depreciation
