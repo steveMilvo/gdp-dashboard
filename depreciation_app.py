@@ -479,32 +479,55 @@ loan_interest = loan_balance * interest_rate
 # Management fee is applied per-year inside the engine (it tracks each year's rent).
 other_cash = council_rates + insurance + other_expenses
 
-# Negative-gearing regime: default from purchase year, with an override and a
-# new-build exemption.
-new_build = st.checkbox(
-    "Eligible new build (exempt — keeps negative gearing)", value=False
-)
-default_grandfathered = is_grandfathered(int(purchase_year), new_build)
-regime = st.radio(
-    "Negative gearing treatment",
-    [
-        "Grandfathered — full offset against other income",
-        "Restricted — losses quarantined (carried forward)",
-    ],
-    index=0 if default_grandfathered else 1,
-    help=(
-        "2026 Budget: negative gearing on established residential property is "
-        "abolished from 1 Jul 2027 for properties bought after 12 May 2026. "
-        "Earlier purchases (and eligible new builds) are grandfathered and keep "
-        "full negative gearing. Default is set from your purchase year above."
-    ),
-)
-grandfathered = regime.startswith("Grandfathered")
-if int(purchase_year) <= 2026 and not new_build:
-    st.caption(
-        f"Your {int(purchase_year)} purchase is **grandfathered** — it keeps full "
-        "negative gearing under current rules (until you sell)."
+# Negative-gearing regime: default from purchase year, with overrides for new
+# builds and commercial / commercial-residential (e.g. boarding house) premises.
+ngc1, ngc2 = st.columns(2)
+with ngc1:
+    new_build = st.checkbox(
+        "Eligible new build (exempt — keeps negative gearing)", value=False
     )
+with ngc2:
+    commercial = st.checkbox(
+        "Commercial residential / boarding house",
+        value=False,
+        help=(
+            "Run as commercial residential premises (e.g. a boarding house). "
+            "Commercial property is outside the 2026 residential negative-gearing "
+            "measure, so it keeps full negative gearing regardless of purchase "
+            "date. (Income-tax gearing only — GST / commercial-residential rules "
+            "are out of scope here.)"
+        ),
+    )
+
+default_grandfathered = is_grandfathered(int(purchase_year), new_build)
+if commercial:
+    st.success(
+        "Commercial residential / boarding house: **exempt** from the 2026 "
+        "residential negative-gearing changes — full offset against other income "
+        "applies regardless of purchase date."
+    )
+    grandfathered = True
+else:
+    regime = st.radio(
+        "Negative gearing treatment",
+        [
+            "Grandfathered — full offset against other income",
+            "Restricted — losses quarantined (carried forward)",
+        ],
+        index=0 if default_grandfathered else 1,
+        help=(
+            "2026 Budget: negative gearing on established residential property is "
+            "abolished from 1 Jul 2027 for properties bought after 12 May 2026. "
+            "Earlier purchases (and eligible new builds) are grandfathered and keep "
+            "full negative gearing. Default is set from your purchase year above."
+        ),
+    )
+    grandfathered = regime.startswith("Grandfathered")
+    if int(purchase_year) <= 2026 and not new_build:
+        st.caption(
+            f"Your {int(purchase_year)} purchase is **grandfathered** — it keeps "
+            "full negative gearing under current rules (until you sell)."
+        )
 
 g_inputs = GearingInputs(
     annual_rent=current_annual_rent,
@@ -512,6 +535,7 @@ g_inputs = GearingInputs(
     other_cash_expenses=other_cash,
     marginal_tax_rate=marginal_rate,
     grandfathered=grandfathered,
+    commercial=commercial,
     mgmt_pct=mgmt_pct,
     annual_rent_by_year=annual_rent_by_year or None,
 )

@@ -5,6 +5,7 @@ import math
 from depreciation.gearing import (
     GRANDFATHER_CUTOFF_YEAR,
     GearingInputs,
+    full_offset_available,
     is_grandfathered,
     project_gearing,
     stepped_value,
@@ -81,6 +82,30 @@ def test_restricted_profit_absorbs_carried_loss_before_tax():
     assert math.isclose(y2.taxable_result, 40_000)
     assert math.isclose(y2.tax_effect, -25_000 * 0.37)
     assert y2.carried_forward_loss == 0.0
+
+
+def test_commercial_is_exempt_from_restriction():
+    # Post-cutoff purchase would normally be restricted...
+    assert full_offset_available(2028, commercial=False) is False
+    # ...but commercial premises keep the full offset regardless of date.
+    assert full_offset_available(2028, commercial=True) is True
+
+
+def test_commercial_loss_offsets_other_income_even_when_not_grandfathered():
+    inputs = GearingInputs(
+        annual_rent=46_800,             # $900/wk boarding house
+        loan_interest=30_000,
+        other_cash_expenses=20_000,
+        marginal_tax_rate=0.37,
+        grandfathered=False,            # would be restricted if residential
+        commercial=True,                # but it's commercial residential -> exempt
+    )
+    res = project_gearing(inputs, {2028: 8_000})
+    yr = res.rows[0]
+    # Taxable: 46.8k - 50k - 8k = -11.2k loss; commercial -> full salary offset.
+    assert math.isclose(yr.taxable_result, -11_200)
+    assert math.isclose(yr.tax_effect, 11_200 * 0.37)
+    assert yr.carried_forward_loss == 0.0
 
 
 def test_stepped_value_step_function():

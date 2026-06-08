@@ -41,6 +41,7 @@ class GearingInputs:
     rent_growth: float = 0.0        # optional annual growth (e.g. 0.03)
     expense_growth: float = 0.0     # optional annual growth applied to fixed costs
     mgmt_pct: float = 0.0           # property management fee, as a fraction of rent
+    commercial: bool = False        # commercial / commercial-residential premises
     # Optional stepped rent: financial year -> ANNUAL rent applying from that year
     # onward (a step function). When set, it overrides annual_rent + rent_growth.
     # Use this to model a rent change, e.g. {2024: 19_760, 2026: 46_800}.
@@ -108,6 +109,22 @@ def is_grandfathered(purchase_year: int, is_new_build: bool = False) -> bool:
     return purchase_year <= GRANDFATHER_CUTOFF_YEAR
 
 
+def full_offset_available(
+    purchase_year: int, is_new_build: bool = False, commercial: bool = False
+) -> bool:
+    """Whether a net loss can be offset against other income (e.g. salary).
+
+    The 2026 negative-gearing restriction applies only to *residential* property.
+    Commercial (and commercial-residential, e.g. a boarding house run as such)
+    premises are outside the measure and keep full negative gearing regardless of
+    purchase date, as do grandfathered residential purchases and eligible new
+    builds.
+    """
+    if commercial:
+        return True
+    return is_grandfathered(purchase_year, is_new_build)
+
+
 def project_gearing(
     inputs: GearingInputs,
     depreciation_by_year: dict[int, float],
@@ -118,7 +135,10 @@ def project_gearing(
     (Division 43 + 40), typically from `calc.build_projection`.
     """
     rate = inputs.marginal_tax_rate
-    result = GearingResult(grandfathered=inputs.grandfathered)
+    # Commercial premises are exempt from the residential negative-gearing
+    # restriction, so they always get the full offset against other income.
+    full_offset = inputs.grandfathered or inputs.commercial
+    result = GearingResult(grandfathered=full_offset)
     carried = 0.0
 
     years = sorted(depreciation_by_year)
@@ -137,7 +157,7 @@ def project_gearing(
         taxable_result = rent - cash_expenses - depreciation
         pretax_cashflow = rent - cash_expenses  # depreciation is non-cash
 
-        if inputs.grandfathered:
+        if full_offset:
             # Loss (or profit) flows straight to/against other income.
             offset = -taxable_result if taxable_result < 0 else 0.0
             tax_effect = -taxable_result * rate  # loss -> +saving; profit -> -tax
