@@ -273,6 +273,57 @@ method = "DV" if method_label.startswith("Diminishing") else "PC"
 
 
 # ---------------------------------------------------------------------------
+# Section 3 — Ongoing expenses while rented
+# ---------------------------------------------------------------------------
+
+st.header("3 · Ongoing expenses while rented", divider="gray")
+st.write(
+    "Log money spent on the property **while it's rented out**. Genuine repairs "
+    "and maintenance are 100 % deductible in the year incurred. Replaced assets "
+    "(hot-water system, oven, etc.) are Division 40 plant — depreciated from the "
+    "year of replacement."
+)
+
+MAINT_LABELS = {
+    "Repair / maintenance (100% this year)": "repair",
+    "Replaced asset — depreciate (Div 40)": "plant",
+}
+
+maint_seed = pd.DataFrame(
+    [
+        {"description": "Plumbing — blocked pipes", "year": CURRENT_YEAR,
+         "cost": 1_200, "treatment": "Repair / maintenance (100% this year)"},
+        {"description": "Hot water system (new)", "year": CURRENT_YEAR,
+         "cost": 2_800, "treatment": "Replaced asset — depreciate (Div 40)"},
+    ]
+)
+maint_df = st.data_editor(
+    maint_seed,
+    num_rows="dynamic",
+    use_container_width=True,
+    key="maintenance",
+    column_config={
+        "description": st.column_config.TextColumn("Description"),
+        "year": st.column_config.NumberColumn(
+            "Year", min_value=1990, max_value=CURRENT_YEAR + 10, step=1
+        ),
+        "cost": st.column_config.NumberColumn("Cost ($)", min_value=0, step=100),
+        "treatment": st.column_config.SelectboxColumn(
+            "Treatment", options=list(MAINT_LABELS), required=True
+        ),
+    },
+)
+st.caption(
+    "**Repair / maintenance** — restores the property to working condition "
+    "(broken pipe, repainting, new tap washer). 100 % deductible the year it's "
+    "done, visible in the Repairs line of the projection. "
+    "**Replaced asset** — a brand-new depreciable item you install (hot-water "
+    "system, oven, air con). Depreciated from the year of replacement; treated "
+    "as new so the 2017 second-hand restriction does *not* apply."
+)
+
+
+# ---------------------------------------------------------------------------
 # Optional — LLM-assisted extraction (Pro), always validated against the law
 # ---------------------------------------------------------------------------
 
@@ -365,15 +416,55 @@ def _build_plant() -> list[PlantAsset]:
     return out
 
 
-capital_works = _build_capital_works()
-plant = _build_plant()
+def _build_maintenance_repairs() -> list[CapitalWorksItem]:
+    """Repair/maintenance rows from Section 3 → immediate deduction items."""
+    out: list[CapitalWorksItem] = []
+    for _, row in maint_df.iterrows():
+        desc = str(row.get("description") or "").strip()
+        year = row.get("year")
+        cost = row.get("cost")
+        treatment = row.get("treatment", "")
+        if not desc or pd.isna(year) or pd.isna(cost):
+            continue
+        if MAINT_LABELS.get(treatment) == "repair":
+            out.append(CapitalWorksItem(desc, int(year), float(cost), kind="repair"))
+    return out
+
+
+def _build_replacement_assets() -> list[PlantAsset]:
+    """Replaced-asset rows from Section 3 → new Div 40 plant from the replacement year."""
+    out: list[PlantAsset] = []
+    for _, row in maint_df.iterrows():
+        desc = str(row.get("description") or "").strip()
+        year = row.get("year")
+        cost = row.get("cost")
+        treatment = row.get("treatment", "")
+        if not desc or pd.isna(year) or pd.isna(cost):
+            continue
+        if MAINT_LABELS.get(treatment) == "plant":
+            life = asset_ref.effective_life_for(desc, basis) or 10.0
+            out.append(
+                PlantAsset(
+                    description=desc,
+                    cost=float(cost),
+                    effective_life=life,
+                    method=method,
+                    start_year=int(year),
+                    is_new=True,  # always new — not subject to the 2017 restriction
+                )
+            )
+    return out
+
+
+capital_works = _build_capital_works() + _build_maintenance_repairs()
+plant = _build_plant() + _build_replacement_assets()
 
 
 # ---------------------------------------------------------------------------
 # Section 3 — Results
 # ---------------------------------------------------------------------------
 
-st.header("3 · Projection", divider="gray")
+st.header("4 · Projection", divider="gray")
 
 inputs = ProjectionInputs(
     capital_works=capital_works,
@@ -446,7 +537,7 @@ else:
 # Section 4 — Negative gearing & cash flow
 # ---------------------------------------------------------------------------
 
-st.header("4 · Negative gearing & cash flow", divider="gray")
+st.header("5 · Negative gearing & cash flow", divider="gray")
 st.write(
     "Depreciation is a **non-cash** deduction, so it can turn a cash-neutral "
     "property into a tax loss. This combines it with your rent and holding costs "
@@ -646,7 +737,7 @@ st.caption(
 # Section 5 — Purchase price, land/building split & CGT cost base
 # ---------------------------------------------------------------------------
 
-st.header("5 · Purchase price, land/building split & CGT", divider="gray")
+st.header("6 · Purchase price, land/building split & CGT", divider="gray")
 st.write(
     "Land is never depreciable. The **building value** (purchase price minus land) "
     "gives an order-of-magnitude check on your Division 43 depreciable base. The "
