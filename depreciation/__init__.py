@@ -7,6 +7,6 @@ Public API:
     llm         -- optional LLM-assisted extraction (always validated)
 """
 
-from . import assets, calc, llm, validation
+from . import assets, calc, gearing, llm, validation
 
-__all__ = ["assets", "calc", "llm", "validation"]
+__all__ = ["assets", "calc", "gearing", "llm", "validation"]

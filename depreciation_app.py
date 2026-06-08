@@ -30,6 +30,7 @@ import streamlit as st
 
 from depreciation import assets as asset_ref
 from depreciation import llm
+from depreciation.gearing import GearingInputs, is_grandfathered, project_gearing
 from depreciation.calc import (
     CapitalWorksItem,
     PlantAsset,
@@ -410,3 +411,139 @@ else:
         "Free plan shows the first 10 years. **Upgrade to Pro** for the full "
         "40-year schedule and CSV export."
     )
+
+
+# ---------------------------------------------------------------------------
+# Section 4 — Negative gearing & cash flow
+# ---------------------------------------------------------------------------
+
+st.header("4 · Negative gearing & cash flow", divider="gray")
+st.write(
+    "Depreciation is a **non-cash** deduction, so it can turn a cash-neutral "
+    "property into a tax loss. This combines it with your rent and holding costs "
+    "to show the after-tax position."
+)
+
+gcol1, gcol2 = st.columns(2)
+with gcol1:
+    weekly_rent = st.number_input("Rent ($/week)", min_value=0, value=550, step=10)
+    loan_balance = st.number_input("Loan balance ($)", min_value=0, value=600_000, step=10_000)
+    interest_rate = st.slider("Interest rate (%)", 0.0, 12.0, 6.2, 0.1) / 100.0
+with gcol2:
+    council_rates = st.number_input("Council + water rates ($/yr)", min_value=0, value=3_500, step=100)
+    insurance = st.number_input("Insurance ($/yr)", min_value=0, value=1_800, step=100)
+    mgmt_pct = st.slider("Property management (% of rent)", 0.0, 12.0, 7.0, 0.5) / 100.0
+    other_expenses = st.number_input(
+        "Repairs / strata / other ($/yr)", min_value=0, value=2_000, step=100
+    )
+
+annual_rent = weekly_rent * 52
+loan_interest = loan_balance * interest_rate
+mgmt_fee = annual_rent * mgmt_pct
+other_cash = council_rates + insurance + mgmt_fee + other_expenses
+
+# Negative-gearing regime: default from purchase year, with an override and a
+# new-build exemption.
+new_build = st.checkbox(
+    "Eligible new build (exempt — keeps negative gearing)", value=False
+)
+default_grandfathered = is_grandfathered(int(purchase_year), new_build)
+regime = st.radio(
+    "Negative gearing treatment",
+    [
+        "Grandfathered — full offset against other income",
+        "Restricted — losses quarantined (carried forward)",
+    ],
+    index=0 if default_grandfathered else 1,
+    help=(
+        "2026 Budget: negative gearing on established residential property is "
+        "abolished from 1 Jul 2027 for properties bought after 12 May 2026. "
+        "Earlier purchases (and eligible new builds) are grandfathered and keep "
+        "full negative gearing. Default is set from your purchase year above."
+    ),
+)
+grandfathered = regime.startswith("Grandfathered")
+if int(purchase_year) <= 2026 and not new_build:
+    st.caption(
+        f"Your {int(purchase_year)} purchase is **grandfathered** — it keeps full "
+        "negative gearing under current rules (until you sell)."
+    )
+
+g_inputs = GearingInputs(
+    annual_rent=annual_rent,
+    loan_interest=loan_interest,
+    other_cash_expenses=other_cash,
+    marginal_tax_rate=marginal_rate,
+    grandfathered=grandfathered,
+)
+depr_by_year = {r.year: r.total for r in result.rows}
+g_result = project_gearing(g_inputs, depr_by_year)
+gy = g_result.year_one
+
+if gy is not None:
+    st.subheader("Year 1 position")
+    gm1, gm2, gm3, gm4 = st.columns(4)
+    gm1.metric(
+        "Taxable result",
+        f"${gy.taxable_result:,.0f}",
+        help="Rent − cash costs − depreciation. Negative = a tax loss.",
+    )
+    gm2.metric(
+        "Tax effect",
+        f"${gy.tax_effect:,.0f}",
+        help="Positive = tax saved this year; under the restricted regime a loss "
+        "is carried forward instead.",
+    )
+    gm3.metric("Pre-tax cash flow", f"${gy.pretax_cashflow:,.0f}")
+    gm4.metric(
+        "After-tax cost", f"${gy.aftertax_weekly:,.0f}/wk",
+        help="After-tax holding cost per week (negative = out of pocket).",
+    )
+
+    if not grandfathered:
+        st.warning(
+            f"Restricted regime: the loss does not reduce your salary tax. "
+            f"${gy.carried_forward_loss:,.0f} is carried forward to offset future "
+            "rental income or a capital gain on sale."
+        )
+
+    g_chart = pd.DataFrame(
+        {
+            "Year": [r.year for r in g_result.rows],
+            "Pre-tax cash flow": [r.pretax_cashflow for r in g_result.rows],
+            "After-tax cash flow": [r.aftertax_cashflow for r in g_result.rows],
+        }
+    ).set_index("Year")
+    st.subheader("Cash flow over time")
+    st.caption(
+        "As depreciation declines over the years, the tax benefit shrinks and "
+        "the after-tax cost typically rises."
+    )
+    st.line_chart(g_chart)
+
+    if is_pro:
+        g_full = pd.DataFrame(
+            {
+                "Year": [r.year for r in g_result.rows],
+                "Rent": [round(r.rent) for r in g_result.rows],
+                "Cash expenses": [round(r.cash_expenses) for r in g_result.rows],
+                "Depreciation": [round(r.depreciation) for r in g_result.rows],
+                "Taxable result": [round(r.taxable_result) for r in g_result.rows],
+                "Tax effect": [round(r.tax_effect) for r in g_result.rows],
+                "Carried-fwd loss": [round(r.carried_forward_loss) for r in g_result.rows],
+                "After-tax cash flow": [round(r.aftertax_cashflow) for r in g_result.rows],
+            }
+        )
+        with st.expander("Full cash-flow schedule"):
+            st.dataframe(g_full, use_container_width=True, hide_index=True)
+            st.download_button(
+                "Download cash-flow schedule (CSV)",
+                g_full.to_csv(index=False).encode("utf-8"),
+                file_name="gearing_schedule.csv",
+                mime="text/csv",
+            )
+
+st.caption(
+    "Negative gearing rules per the 2026 Budget measure. Estimator only — not tax "
+    "advice. Confirm grandfathering and any sale/CGT treatment with your accountant."
+)
