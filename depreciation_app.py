@@ -30,6 +30,7 @@ import streamlit as st
 
 from depreciation import assets as asset_ref
 from depreciation import llm
+from depreciation.costbase import PurchaseDetails, compute_cost_base
 from depreciation.gearing import GearingInputs, is_grandfathered, project_gearing
 from depreciation.calc import (
     CapitalWorksItem,
@@ -638,4 +639,207 @@ if gy is not None:
 st.caption(
     "Negative gearing rules per the 2026 Budget measure. Estimator only — not tax "
     "advice. Confirm grandfathering and any sale/CGT treatment with your accountant."
+)
+
+
+# ---------------------------------------------------------------------------
+# Section 5 — Purchase price, land/building split & CGT cost base
+# ---------------------------------------------------------------------------
+
+st.header("5 · Purchase price, land/building split & CGT", divider="gray")
+st.write(
+    "Land is never depreciable. The **building value** (purchase price minus land) "
+    "gives an order-of-magnitude check on your Division 43 depreciable base. The "
+    "**cost base** accumulates over ownership and reduces your taxable gain when "
+    "you eventually sell. Use a quantity surveyor for actual construction cost."
+)
+
+pc1, pc2 = st.columns(2)
+with pc1:
+    purchase_price = st.number_input(
+        "Purchase price ($)", min_value=0, value=700_000, step=5_000
+    )
+    land_value = st.number_input(
+        "Land value ($)",
+        min_value=0, value=280_000, step=5_000,
+        help="From council valuation, ATO estimate, or your quantity surveyor's report.",
+    )
+with pc2:
+    stamp_duty = st.number_input(
+        "Stamp duty ($)", min_value=0, value=28_000, step=500
+    )
+    legal_fees = st.number_input(
+        "Legal / conveyancing fees ($)", min_value=0, value=2_000, step=100
+    )
+    other_acquisition = st.number_input(
+        "Other acquisition costs ($)", min_value=0, value=0, step=100,
+        help="Building inspection, buyer's agent, etc.",
+    )
+
+purchase = PurchaseDetails(
+    purchase_price=float(purchase_price),
+    land_value=float(land_value),
+    stamp_duty=float(stamp_duty),
+    legal_fees=float(legal_fees),
+    other_acquisition_costs=float(other_acquisition),
+)
+
+# Land / building split metrics.
+sp1, sp2, sp3, sp4 = st.columns(4)
+sp1.metric("Land value", f"${purchase.land_value:,.0f}",
+           f"{purchase.land_pct:.0%} of purchase")
+sp2.metric("Building value", f"${purchase.building_value:,.0f}",
+           f"{purchase.building_pct:.0%} of purchase")
+sp3.metric("Div 43 base (indicative)", f"${purchase.building_value:,.0f}",
+           help="Building value as a proxy — actual construction cost from a QS.")
+sp4.metric("Acquisition cost base", f"${purchase.element1_and_2:,.0f}")
+
+if purchase.building_value > 0 and result.total_div43 == 0:
+    st.info(
+        f"No Division 43 deductions are claimed on your improvements. "
+        f"If post-1987 capital works exist, you could claim 2.5% on ~"
+        f"${purchase.building_value:,.0f} of building value."
+    )
+
+st.divider()
+
+# CGT cost base tracker — accumulates over the projection.
+st.subheader("CGT cost base over time")
+st.caption(
+    "Division 43 deductions reduce your cost base year by year. "
+    "Initial repairs are added as capital. The adjusted cost base determines "
+    "your taxable gain on sale."
+)
+
+cb = compute_cost_base(
+    purchase,
+    capital_works_items=capital_works,
+    div43_deductions_taken=result.total_div43,
+)
+
+cb1, cb2, cb3 = st.columns(3)
+cb1.metric("Purchase + acq. costs", f"${purchase.element1_and_2:,.0f}")
+cb2.metric("+ Initial repairs (capital)", f"${cb.capital_additions:,.0f}")
+cb3.metric(
+    "− Div 43 deductions (40-yr)",
+    f"${result.total_div43:,.0f}",
+    help="Div 43 claimed reduces cost base under s 110-45 ITAA 1997.",
+)
+st.metric(
+    "Adjusted cost base (after 40 yrs)",
+    f"${cb.adjusted_cost_base:,.0f}",
+    help="Estimated cost base after full 40-yr depreciation claim.",
+)
+
+# Year-by-year cost base chart.
+cumulative_div43 = 0.0
+cb_rows = []
+for r in result.rows:
+    cumulative_div43 += r.div43
+    cb_rows.append({
+        "Year": r.year,
+        "Cost base": (
+            purchase.element1_and_2
+            + cb.capital_additions
+            - cumulative_div43
+        ),
+    })
+cb_chart = pd.DataFrame(cb_rows).set_index("Year")
+st.line_chart(cb_chart)
+
+st.divider()
+
+# CGT on sale estimator.
+st.subheader("Estimated CGT on sale")
+st.caption(
+    "Estimates the capital gains tax if you sold at a chosen price at a chosen year, "
+    "using the cost base adjusted to that year's Div 43 deductions taken so far. "
+    "Not a substitute for advice — CGT involves many factors not modelled here."
+)
+
+sale_col1, sale_col2 = st.columns(2)
+with sale_col1:
+    sale_price = st.number_input(
+        "Estimated sale price ($)", min_value=0, value=int(purchase_price * 1.5), step=5_000
+    )
+    sale_year = st.number_input(
+        "Year of sale", min_value=int(income_start_year),
+        max_value=int(income_start_year) + 40,
+        value=min(int(income_start_year) + 10, int(income_start_year) + 40),
+    )
+with sale_col2:
+    held_over_12m = st.checkbox("Held > 12 months (50% CGT discount)", value=True)
+
+# Find cumulative Div 43 up to the sale year.
+div43_to_sale = sum(r.div43 for r in result.rows if r.year <= int(sale_year))
+cb_at_sale = compute_cost_base(
+    purchase,
+    capital_works_items=capital_works,
+    div43_deductions_taken=div43_to_sale,
+)
+gain = cb_at_sale.estimated_gain(float(sale_price))
+cgt = cb_at_sale.cgt_payable(
+    float(sale_price),
+    marginal_rate,
+    held_over_12_months=held_over_12m,
+    is_individual=investor_is_individual,
+)
+
+cgt1, cgt2, cgt3, cgt4 = st.columns(4)
+cgt1.metric("Sale price", f"${sale_price:,.0f}")
+cgt2.metric(f"Cost base at {int(sale_year)}", f"${cb_at_sale.adjusted_cost_base:,.0f}")
+cgt3.metric(
+    "Gross capital gain" if gain >= 0 else "Capital loss",
+    f"${gain:,.0f}",
+)
+discount_note = " (50% discount applied)" if held_over_12m and investor_is_individual and gain > 0 else ""
+cgt4.metric(
+    f"Estimated CGT{discount_note}",
+    f"${cgt:,.0f}",
+    help=f"At {marginal_rate:.0%} marginal rate.",
+)
+
+if gain < 0:
+    st.info(
+        f"At ${sale_price:,.0f} you'd make a **capital loss** of ${-gain:,.0f} — "
+        "this can offset capital gains on other assets."
+    )
+elif held_over_12m and investor_is_individual:
+    discounted_gain = gain * 0.5
+    st.caption(
+        f"Gross gain ${gain:,.0f} × 50% discount = ${discounted_gain:,.0f} taxable "
+        f"× {marginal_rate:.0%} = ${cgt:,.0f} CGT. "
+        f"Net proceeds after CGT ≈ ${sale_price - cgt:,.0f}."
+    )
+
+if is_pro:
+    cgt_df = pd.DataFrame(
+        [
+            {
+                "Year of sale": r.year,
+                "Div 43 claimed to date": round(
+                    sum(rr.div43 for rr in result.rows if rr.year <= r.year)
+                ),
+                "Adjusted cost base": round(
+                    purchase.element1_and_2
+                    + cb.capital_additions
+                    - sum(rr.div43 for rr in result.rows if rr.year <= r.year)
+                ),
+            }
+            for r in result.rows
+        ]
+    )
+    with st.expander("Cost base by year (Pro)"):
+        st.dataframe(cgt_df, use_container_width=True, hide_index=True)
+        st.download_button(
+            "Download cost base table (CSV)",
+            cgt_df.to_csv(index=False).encode("utf-8"),
+            file_name="cost_base.csv",
+            mime="text/csv",
+        )
+
+st.caption(
+    "Estimator only — not tax advice. CGT cost base calculation simplified: "
+    "excludes apportionment for private use, depreciation recapture adjustments, "
+    "and other factors. Confirm with your accountant before any sale decision."
 )
