@@ -79,6 +79,7 @@ def validate_capital_works(
     item: CapitalWorksItem,
     *,
     current_year: int | None = None,
+    purchase_year: int | None = None,
     claimed_deductible: bool | None = None,
     claimed_rate: float | None = None,
 ) -> ValidationReport:
@@ -86,16 +87,14 @@ def validate_capital_works(
 
     `claimed_deductible` / `claimed_rate` are optional assertions made by an LLM
     or user; when supplied they are checked against the statutory position and
-    contradictions are raised as errors.
+    contradictions are raised as errors. `purchase_year` enables the initial-repair
+    guardrail (a "repair" done at/before purchase is really a capital item).
     """
     issues: list[ValidationIssue] = []
     current_year = current_year or date.today().year
 
-    rate, life = div43_rate_and_life(item.completion_year, item.use)
-    is_deductible = rate > 0 and life > 0
-
     if item.cost < 0:
-        issues.append(ValidationIssue("error", "cost", "Construction cost cannot be negative.", 0.0))
+        issues.append(ValidationIssue("error", "cost", "Cost cannot be negative.", 0.0))
 
     if item.completion_year > current_year:
         issues.append(
@@ -105,6 +104,52 @@ def validate_capital_works(
                 f"Completion year {item.completion_year} is in the future.",
             )
         )
+
+    # --- Repairs: immediate deduction, but watch for "initial repairs". ---
+    if item.kind == "repair":
+        if purchase_year is not None and item.completion_year <= purchase_year:
+            issues.append(
+                ValidationIssue(
+                    "warning",
+                    "kind",
+                    (
+                        f"A repair dated {item.completion_year} at/before purchase "
+                        f"({purchase_year}) is likely an INITIAL REPAIR — fixing a "
+                        "pre-existing defect is capital, NOT an immediate deduction. "
+                        "Reclassify as 'initial_repair'."
+                    ),
+                    suggested_value="initial_repair",
+                )
+            )
+        else:
+            issues.append(
+                ValidationIssue(
+                    "info",
+                    "kind",
+                    (
+                        "Treated as a repair: 100% deductible in the year incurred "
+                        "(must genuinely restore original condition, not improve)."
+                    ),
+                )
+            )
+        return ValidationReport(issues)
+
+    # --- Initial repairs: capital, claimed via Div 43 only if structural. ---
+    if item.kind == "initial_repair":
+        issues.append(
+            ValidationIssue(
+                "info",
+                "kind",
+                (
+                    "Initial repair: capital, not an immediate deduction. Modelled "
+                    "as Division 43 (2.5%) on the assumption it is structural; a "
+                    "non-structural initial repair instead goes to the CGT cost base."
+                ),
+            )
+        )
+
+    rate, life = div43_rate_and_life(item.completion_year, item.use)
+    is_deductible = rate > 0 and life > 0
 
     # Core statutory gate: residential construction before 18 Jul 1985 is not
     # deductible at all.
@@ -262,11 +307,16 @@ def validate_all(
     property_is_second_hand: bool = True,
     acquired_after_9may2017: bool = True,
     current_year: int | None = None,
+    purchase_year: int | None = None,
 ) -> ValidationReport:
     """Validate a full proposed dataset (e.g. an LLM extraction) against the law."""
     report = ValidationReport([])
     for item in capital_works:
-        report.extend(validate_capital_works(item, current_year=current_year))
+        report.extend(
+            validate_capital_works(
+                item, current_year=current_year, purchase_year=purchase_year
+            )
+        )
     for asset in plant:
         report.extend(
             validate_plant_asset(

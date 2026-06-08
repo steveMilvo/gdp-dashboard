@@ -68,20 +68,41 @@ def div43_rate_and_life(completion_year: int, use: str = "residential") -> tuple
     return 0.0, 0
 
 
+# How a works item is treated for tax:
+#   "capital_works"  -- structural improvement; Division 43 at 2.5%/40yr.
+#   "repair"         -- restores original condition; 100% deductible in the year
+#                       incurred (a revenue deduction, not depreciation).
+#   "initial_repair" -- fixes a defect that existed at purchase; CAPITAL, not an
+#                       immediate deduction. Structural initial repairs are
+#                       claimed via Division 43; non-structural ones go to the CGT
+#                       cost base (not modelled as a deduction here).
+ItemKind = Literal["capital_works", "repair", "initial_repair"]
+
+
 @dataclass
 class CapitalWorksItem:
-    """A Division 43 capital-works component.
+    """A building works component: capital works, a repair, or an initial repair.
 
     The original building is just one item; each renovation / extension done in a
-    later year is its own item with its own 40-year (or 25-year) clock.
+    later year is its own item with its own 40-year (or 25-year) clock. `kind`
+    selects the tax treatment (see ItemKind above).
     """
 
     description: str
     completion_year: int
     cost: float
     use: str = "residential"
+    kind: ItemKind = "capital_works"
+
+    @property
+    def is_repair(self) -> bool:
+        """An immediate (100% in-year) repair deduction."""
+        return self.kind == "repair"
 
     def rate_and_life(self) -> tuple[float, int]:
+        # Repairs are not a Division 43 capital-works claim.
+        if self.is_repair:
+            return 0.0, 0
         return div43_rate_and_life(self.completion_year, self.use)
 
     def annual_deduction(self) -> float:
@@ -89,11 +110,15 @@ class CapitalWorksItem:
         return self.cost * rate
 
     def eligible(self) -> bool:
+        if self.is_repair:
+            return self.cost > 0
         rate, life = self.rate_and_life()
         return rate > 0 and life > 0
 
     def claim_end_year(self) -> Optional[int]:
         """Last financial year (inclusive) the item can be claimed, or None."""
+        if self.is_repair:
+            return self.completion_year
         _, life = self.rate_and_life()
         if life == 0:
             return None
@@ -103,6 +128,12 @@ class CapitalWorksItem:
         """Deduction available to *this owner* in a given financial year."""
         if not self.eligible():
             return 0.0
+
+        if self.is_repair:
+            # Whole cost deducted in the year incurred, only while income-producing.
+            claim_year = max(self.completion_year, owner_start_year)
+            return self.cost if year == claim_year else 0.0
+
         end = self.claim_end_year()
         if end is None:
             return 0.0
@@ -220,10 +251,11 @@ class YearRow:
     year: int
     div43: float
     div40: float
+    repairs: float = 0.0   # immediate (100% in-year) repair deductions
 
     @property
     def total(self) -> float:
-        return self.div43 + self.div40
+        return self.div43 + self.div40 + self.repairs
 
 
 @dataclass
@@ -241,8 +273,12 @@ class ProjectionResult:
         return sum(r.div40 for r in self.rows)
 
     @property
+    def total_repairs(self) -> float:
+        return sum(r.repairs for r in self.rows)
+
+    @property
     def grand_total(self) -> float:
-        return self.total_div43 + self.total_div40
+        return self.total_div43 + self.total_div40 + self.total_repairs
 
     @property
     def year_one_total(self) -> float:
@@ -280,10 +316,17 @@ def build_projection(inputs: ProjectionInputs) -> ProjectionResult:
     rows: list[YearRow] = []
     for year in range(start, end + 1):
         div43 = sum(
-            item.deduction_for_year(year, start) for item in inputs.capital_works
+            item.deduction_for_year(year, start)
+            for item in inputs.capital_works
+            if not item.is_repair
+        )
+        repairs = sum(
+            item.deduction_for_year(year, start)
+            for item in inputs.capital_works
+            if item.is_repair
         )
         div40 = sum(sched.get(year, 0.0) for sched in plant_schedules)
-        rows.append(YearRow(year=year, div43=div43, div40=div40))
+        rows.append(YearRow(year=year, div43=div43, div40=div40, repairs=repairs))
 
     return ProjectionResult(
         rows=rows,

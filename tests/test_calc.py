@@ -51,6 +51,43 @@ def test_capital_works_only_claimable_once_owned():
     assert reno.deduction_for_year(2010, 2024) == 0.0
 
 
+def test_repair_is_fully_deductible_in_year_incurred():
+    repair = CapitalWorksItem("Fix gutter", 2025, 4_000, kind="repair")
+    assert repair.eligible()
+    # 100% in the year it's done (while renting), nothing in other years.
+    assert repair.deduction_for_year(2025, 2024) == 4_000
+    assert repair.deduction_for_year(2026, 2024) == 0.0
+    assert repair.deduction_for_year(2024, 2024) == 0.0
+
+
+def test_initial_repair_is_treated_as_div43_capital():
+    # Restumping an old house to fix pre-existing rot = initial repair = capital.
+    restump = CapitalWorksItem("Restumping", 2024, 40_000, kind="initial_repair")
+    # Not an immediate 100% deduction; depreciated at 2.5% like capital works.
+    assert math.isclose(restump.deduction_for_year(2024, 2024), 1_000.0)  # 2.5%
+    assert restump.deduction_for_year(2025, 2024) == 1_000.0
+
+
+def test_repairs_bucketed_separately_in_projection():
+    inputs = ProjectionInputs(
+        capital_works=[
+            CapitalWorksItem("Reno", 2008, 30_000),                      # Div 43
+            CapitalWorksItem("Fix fence", 2024, 5_000, kind="repair"),   # immediate
+        ],
+        plant=[],
+        owner_start_year=2024,
+        horizon_years=5,
+    )
+    result = build_projection(inputs)
+    y1 = result.rows[0]
+    assert math.isclose(y1.div43, 750.0)      # 2.5% of 30k
+    assert math.isclose(y1.repairs, 5_000.0)  # full repair in year one
+    assert math.isclose(y1.total, 5_750.0)
+    # Repair does not recur.
+    assert result.rows[1].repairs == 0.0
+    assert math.isclose(result.total_repairs, 5_000.0)
+
+
 # ---------------------------------------------------------------------------
 # Division 40 — depreciation methods and the 2017 rule
 # ---------------------------------------------------------------------------
@@ -134,6 +171,14 @@ def test_validation_flags_claimed_deduction_on_pre1985_build():
     report = validate_capital_works(item, claimed_deductible=True)
     assert not report.ok  # has a blocking error
     assert any(i.field == "deductible" for i in report.errors)
+
+
+def test_validation_flags_repair_at_purchase_as_initial_repair():
+    # A "repair" done in the purchase year is really an initial repair (capital).
+    item = CapitalWorksItem("Restumping", 2024, 40_000, kind="repair")
+    report = validate_capital_works(item, purchase_year=2024)
+    warnings = [i for i in report.warnings if i.field == "kind"]
+    assert warnings and warnings[0].suggested_value == "initial_repair"
 
 
 def test_validation_flags_wrong_rate():

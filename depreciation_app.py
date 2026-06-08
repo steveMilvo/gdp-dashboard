@@ -171,12 +171,34 @@ else:
         f"{orig_life} years."
     )
 
-st.markdown("**Improvements / renovations** (each runs its own 40-yr clock from completion):")
+st.markdown("**Improvements / works** — choose the tax treatment of each:")
+
+# Friendly labels <-> engine `kind` values.
+KIND_LABELS = {
+    "Capital works (2.5%/yr)": "capital_works",
+    "Repair (100% this year)": "repair",
+    "Initial repair (capital)": "initial_repair",
+}
+LABEL_FOR_KIND = {v: k for k, v in KIND_LABELS.items()}
+
+st.caption(
+    "**Capital works** = structural improvement, 2.5%/yr over 40 years. "
+    "**Repair** = restores original condition, 100% deductible the year you do it. "
+    "**Initial repair** = fixing a defect that existed when you bought "
+    "(e.g. restumping a house that was already failing) — capital, *not* an "
+    "immediate deduction; modelled as Division 43 if structural."
+)
 
 improvements_seed = pd.DataFrame(
     [
-        {"description": "Kitchen renovation", "completion_year": 2008, "cost": 25000},
-        {"description": "Bathroom + extension", "completion_year": 2015, "cost": 40000},
+        {"description": "Kitchen renovation", "completion_year": 2008, "cost": 25000,
+         "treatment": "Capital works (2.5%/yr)"},
+        {"description": "New front fence", "completion_year": 2024, "cost": 6000,
+         "treatment": "Capital works (2.5%/yr)"},
+        {"description": "Restumping (pre-existing rot)", "completion_year": 2024, "cost": 30000,
+         "treatment": "Initial repair (capital)"},
+        {"description": "Replace broken window", "completion_year": 2025, "cost": 800,
+         "treatment": "Repair (100% this year)"},
     ]
 )
 improvements_df = st.data_editor(
@@ -190,6 +212,9 @@ improvements_df = st.data_editor(
             "Year completed", min_value=1900, max_value=CURRENT_YEAR, step=1
         ),
         "cost": st.column_config.NumberColumn("Cost ($)", min_value=0, step=1000),
+        "treatment": st.column_config.SelectboxColumn(
+            "Treatment", options=list(KIND_LABELS), required=True
+        ),
     },
 )
 
@@ -313,7 +338,8 @@ def _build_capital_works() -> list[CapitalWorksItem]:
         cost = row.get("cost")
         if not desc or pd.isna(year) or pd.isna(cost):
             continue
-        items.append(CapitalWorksItem(desc, int(year), float(cost)))
+        kind = KIND_LABELS.get(row.get("treatment"), "capital_works")
+        items.append(CapitalWorksItem(desc, int(year), float(cost), kind=kind))
     return items
 
 
@@ -368,6 +394,7 @@ manual_report = validate_all(
     investor_is_individual=investor_is_individual,
     property_is_second_hand=second_hand,
     acquired_after_9may2017=acquired_after_9may2017,
+    purchase_year=int(purchase_year),
 )
 with st.expander("Validation against tax rules", expanded=bool(manual_report.errors)):
     _render_validation(manual_report)
@@ -387,6 +414,7 @@ chart_df = pd.DataFrame(
         "Year": [r.year for r in result.rows],
         "Division 43": [r.div43 for r in result.rows],
         "Division 40": [r.div40 for r in result.rows],
+        "Repairs": [r.repairs for r in result.rows],
         "Total": [r.total for r in result.rows],
     }
 ).set_index("Year")
