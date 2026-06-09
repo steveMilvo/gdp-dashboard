@@ -5,8 +5,9 @@ Public API:
     assets      -- ATO effective-life reference data
     validation  -- cross-reference proposed/LLM data against the tax rules
     llm         -- optional LLM-assisted extraction (always validated)
+    scenario    -- compare a property under different tax-policy regimes
 """
 
-from . import assets, calc, costbase, gearing, llm, validation
+from . import assets, calc, costbase, gearing, llm, scenario, validation
 
-__all__ = ["assets", "calc", "costbase", "gearing", "llm", "validation"]
+__all__ = ["assets", "calc", "costbase", "gearing", "llm", "scenario", "validation"]

@@ -102,12 +102,23 @@ class CostBaseResult:
         marginal_rate: float,
         held_over_12_months: bool = True,
         is_individual: bool = True,
+        cgt_discount: float = 0.5,
+        carried_forward_loss: float = 0.0,
     ) -> float:
-        gain = self.estimated_gain(sale_price)
+        """Estimated CGT on sale.
+
+        `cgt_discount` is the proportion of the gain *removed* before tax for an
+        individual holding > 12 months (0.5 = the current 50% discount; a reform
+        that halved it would pass 0.25; pass 0.0 to model no discount at all).
+
+        `carried_forward_loss` (e.g. rental losses quarantined under the 2026
+        restriction) is applied against the gross gain *before* the discount.
+        """
+        gain = self.estimated_gain(sale_price) - carried_forward_loss
         if gain <= 0:
             return 0.0
         if is_individual and held_over_12_months:
-            gain = gain * 0.5  # 50% CGT discount
+            gain = gain * (1.0 - cgt_discount)
         return gain * marginal_rate
 
 

@@ -32,6 +32,13 @@ from depreciation import assets as asset_ref
 from depreciation import llm
 from depreciation.costbase import PurchaseDetails, compute_cost_base
 from depreciation.gearing import GearingInputs, is_grandfathered, project_gearing
+from depreciation.scenario import (
+    LIKELY_REFORM,
+    OLD_RULES,
+    RESTRICTION_2026,
+    PolicyScenario,
+    compare_scenarios,
+)
 from depreciation.calc import (
     CapitalWorksItem,
     PlantAsset,
@@ -933,4 +940,142 @@ st.caption(
     "Estimator only — not tax advice. CGT cost base calculation simplified: "
     "excludes apportionment for private use, depreciation recapture adjustments, "
     "and other factors. Confirm with your accountant before any sale decision."
+)
+
+
+# ---------------------------------------------------------------------------
+# Section 7 — Investment rating across tax-policy regimes
+# ---------------------------------------------------------------------------
+
+st.header("7 · Investment rating: old vs new vs likely reform", divider="gray")
+st.write(
+    "Rate this property as an investment under three tax regimes, using your rent, "
+    "costs, depreciation, hold period and sale price from above:"
+)
+st.markdown(
+    "- **Old / current rules** — full negative gearing (a rental loss reduces your "
+    "salary tax) **+ 50% CGT discount**. How it's worked for decades and what "
+    "grandfathered (pre-13 May 2026) purchases keep.\n"
+    "- **2026 restriction** — established residential bought after 12 May 2026: the "
+    "loss is **quarantined** (no salary offset) and carried forward against rent or "
+    "the eventual gain; the 50% CGT discount stays.\n"
+    "- **Likely future reform** — a plausible tightening (modelled on the ALP "
+    "2016/2019 policy): negative gearing limited to new builds **+ CGT discount "
+    "halved to 25%**. *Speculative — adjust the dial below.*"
+)
+
+reform_discount_pct = st.slider(
+    "Assumed CGT discount under a future reform (%)",
+    0, 50, 25, 5,
+    help="ALP's 2019 policy proposed 25%. Set to 0 to model the discount being "
+    "removed entirely, or back to 50 to model only the negative-gearing change.",
+)
+reform = PolicyScenario(
+    name="Likely future reform",
+    full_negative_gearing=False,
+    cgt_discount=reform_discount_pct / 100.0,
+    description=(
+        f"Negative gearing limited to new builds + CGT discount set to "
+        f"{reform_discount_pct}%."
+    ),
+)
+
+# Equity in the deal (rough): purchase + acquisition costs − loan drawn.
+initial_equity = max(1.0, purchase.element1_and_2 - float(loan_balance))
+
+depr_by_year_full = {r.year: r.total for r in result.rows}
+div43_by_year = {r.year: r.div43 for r in result.rows}
+
+scenario_results = compare_scenarios(
+    scenarios=(OLD_RULES, RESTRICTION_2026, reform),
+    gearing_inputs=g_inputs,
+    depreciation_by_year=depr_by_year_full,
+    div43_by_year=div43_by_year,
+    purchase=purchase,
+    capital_works_items=capital_works,
+    sale_year=int(sale_year),
+    sale_price=float(sale_price),
+    marginal_rate=marginal_rate,
+    is_individual=investor_is_individual,
+    held_over_12_months=held_over_12m,
+    initial_equity=initial_equity,
+)
+
+st.caption(
+    f"Hold ≈ {scenario_results[0].hold_years} years · "
+    f"equity in the deal ≈ ${initial_equity:,.0f} "
+    f"(purchase + costs − ${loan_balance:,.0f} loan)."
+)
+
+# Headline cards, one per regime.
+cols = st.columns(len(scenario_results))
+baseline_net = scenario_results[0].net_result
+for col, sr in zip(cols, scenario_results):
+    delta = sr.net_result - baseline_net
+    delta_txt = None if sr is scenario_results[0] else f"${delta:,.0f} vs old rules"
+    col.metric(
+        sr.scenario.name,
+        f"{sr.rating}",
+        delta=delta_txt,
+        help=sr.scenario.description,
+    )
+    col.caption(
+        f"Net result **${sr.net_result:,.0f}**  \n"
+        f"≈ {sr.annualised_return_on_equity:.1%} p.a. on equity"
+    )
+
+# Side-by-side breakdown.
+breakdown = pd.DataFrame(
+    [
+        {
+            "Regime": sr.scenario.name,
+            "Holding tax benefit": round(sr.total_holding_tax_benefit),
+            "After-tax cash flow": round(sr.total_aftertax_cashflow),
+            "Carried loss at sale": round(sr.carried_forward_at_sale),
+            "Capital gain": round(sr.gross_capital_gain),
+            "CGT on sale": round(sr.cgt_payable),
+            "Net result": round(sr.net_result),
+            "Return p.a.": f"{sr.annualised_return_on_equity:.1%}",
+            "Rating": sr.rating,
+        }
+        for sr in scenario_results
+    ]
+)
+st.subheader("Side-by-side")
+st.dataframe(breakdown, use_container_width=True, hide_index=True)
+
+st.bar_chart(
+    pd.DataFrame(
+        {
+            "Regime": [sr.scenario.name for sr in scenario_results],
+            "Net result ($)": [sr.net_result for sr in scenario_results],
+        }
+    ).set_index("Regime")
+)
+
+# Plain-English read on what changing regimes costs this investor.
+old_sr, restricted_sr, reform_sr = scenario_results
+ng_cost = old_sr.total_aftertax_cashflow - restricted_sr.total_aftertax_cashflow
+reform_gap = old_sr.net_result - reform_sr.net_result
+st.info(
+    f"Losing the **salary offset** (old → 2026 restriction) cuts your after-tax "
+    f"holding cash flow by ≈ **${ng_cost:,.0f}** over the hold — though the "
+    f"quarantined losses later reduce CGT. A full reform (negative gearing + a "
+    f"{reform_discount_pct}% CGT discount) leaves you ≈ **${reform_gap:,.0f}** worse "
+    f"off in net result than under today's grandfathered rules."
+)
+
+if is_pro:
+    st.download_button(
+        "Download regime comparison (CSV)",
+        breakdown.to_csv(index=False).encode("utf-8"),
+        file_name="regime_comparison.csv",
+        mime="text/csv",
+    )
+
+st.caption(
+    "The 'likely future reform' regime is a **speculative assumption**, not law — "
+    "no reintroduction has been legislated. Ratings are a rough heuristic on "
+    "after-tax return on equity and ignore leverage timing, loan principal, "
+    "selling costs, vacancy and many other factors. Estimator only — not tax advice."
 )
