@@ -87,7 +87,24 @@ Build the map from the real district around Mildura. Suggested bounding box
 5. Commit the processed map data **and** the script, so the map is reproducible
    and verifiably real (not invented).
 
-### 2.3 How terrain drives play
+### 2.3 Vegetation / biome layer (real regional ecology)
+
+Paint a vegetation layer over the terrain that matches the real Mallee–Murray
+country — it supplies resources and authentic art:
+
+- **River Red Gum (*Eucalyptus camaldulensis*)** — large trees lining the Murray
+  in dense stands along the river corridor. The settlers' main **building timber**
+  (see §5) and a habitat band along all water tiles.
+- **Mallee** (multi-stemmed dwarf eucalypts) — the dominant cover on the inland
+  flats; cleared for farmland.
+- **Belah / belar (*Casuarina pauper*)** — stands of hard inland timber in the
+  dry scrub.
+
+Tie vegetation to tile type: red gum follows the river/billabong; mallee and
+belah fill the terrace and inland flats. Clearing scrub yields land for farming;
+red gum yields construction timber.
+
+### 2.4 How terrain drives play
 
 - Tiles carry **elevation** and **water-distance**. Crops need irrigation;
   irrigation only reaches tiles **below** the height a pump can lift to and
@@ -121,7 +138,13 @@ a real-history trigger.
 - **Water** — the master resource. Must be **pumped** (the 28 m lift) and
   distributed by **gravity channels**. **Salinity** is a slow creeping debuff on
   over-irrigated land, countered by drainage works (unlock 1924).
-- **Wool** — early income via the river-trade economy.
+- **Timber (Red Gum)** — harvested from the riverside red gum stands; the early
+  building material (slab huts) before milled/imported materials arrive.
+- **Bush food (Kangaroo & Emu)** — the **early Food source**: settlers hunt
+  kangaroo and emu to survive until livestock is introduced, after which **Sheep
+  & Cattle** become the food/wool base.
+- **Wool** — the settlement's **primary early income**, sent up- and downriver by
+  barge (see river-trade economy, §6/§7 era flavour).
 - **Capital (£)** — Chaffey investment and bank credit; can collapse in the Crash.
 - **Settlers / Labour** — population; navvies to dig channels.
 - **Coal / Steam** — fuel for the Tangye pumping engine.
@@ -140,9 +163,10 @@ All dates/facts below come from `mildura-history.md`.
 
 | Year | Structure | Game role |
 |------|-----------|-----------|
-| pre-1830 | Latji Latji river camp | starting state; foraging |
-| 1847 | Old Mildura Homestead | pastoral HQ (wool) |
-| 1853 | Paddle-steamer landing | river trade node |
+| pre-1830 | Latji Latji river camp | starting state; foraging (kangaroo/emu) |
+| 1840s | **Red gum slab hut** | first dwelling — built from riverside red gum timber |
+| 1847 | Old Mildura Homestead | pastoral HQ (sheep/cattle → wool) |
+| 1853 | Paddle-steamer landing & wool barges | river trade node; wool exported up/downriver |
 | 1887 | Township survey grid; Deakin Avenue | unlocks settlement plots; prestige axis |
 | 1888 | *Mildura Cultivator* (newspaper); first vines | civic info; vineyard |
 | 1889 | Langtree Hall; Grand Coffee Palace; Rio Vista (begun) | first hall; hospitality; founder's mansion |

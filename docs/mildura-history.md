@@ -72,12 +72,30 @@ https://thechaffeytrail.com.au/history/
   (liquidated ~1 year later) and reverts to the **Victorian Government by 1884**.
   The run is effectively defunct before the Chaffeys arrive.
 
-### The Murray as a highway
+### The land: timber, scrub & bush food
+
+- **River Red Gum (*Eucalyptus camaldulensis*)** lines the Murray in large
+  stands — the defining tree of the river corridor and the settlers' primary
+  building timber.
+- Inland from the river is **mallee** (multi-stemmed dwarf eucalypts) and stands
+  of hard **belah / belar (*Casuarina pauper*)** — the dry scrub country the
+  district is carved out of.
+- **Early huts were red gum timber slab huts** — split-slab walls cut from the
+  abundant riverine red gum, the standard pioneer construction of the region.
+- Before sheep and cattle were established, **early settlers subsisted on bush
+  food — kangaroo and emu** — the staple meat until introduced livestock took
+  over. (The Latji Latji had drawn on the same river-and-mallee food sources for
+  millennia.)
+
+### The Murray as a highway (the wool-barge economy)
 
 - **1853** — Murray paddle-steamer trade opens (Randell's *Mary Ann*; Cadell's
   *Lady Augusta* reaches Swan Hill, 17 Sept 1853).
-- Wool was the dominant cargo, shipped after spring shearing at high water; at
-  peak ~**150 vessels** worked the river system.
+- **Wool was the dominant cargo and the settlement's main source of money**,
+  hauled by paddle-steamers towing **barges** both **upriver and downriver** to
+  rail/port markets. Bales were shipped after spring shearing at high water; at
+  peak ~**150 vessels** worked the river system. The river was the colony's only
+  real economic artery before the 1903 railway.
 - **1882** — The Murray river trade was estimated to be worth around
   **£5 million**. Echuca (rail-linked to Melbourne, 1864) was the chief inland
   port.
