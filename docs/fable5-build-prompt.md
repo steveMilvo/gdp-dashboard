@@ -39,10 +39,60 @@ Default to a **browser-based** build so it runs anywhere and is easy to share:
 - **Map data prep:** a small Node.js script using GDAL / `geotiff` to convert
   real elevation rasters into a game heightmap (see §2).
 - **Build tooling:** Vite. **State:** plain TS modules or a lightweight store.
-- **No backend required** for the MVP — everything runs client-side; save games
-  to `localStorage`.
+- **Backend / accounts:** use a **free-tier managed backend** for sign-in and
+  cloud saves — **Supabase** (recommended: Postgres + Auth + Row-Level Security
+  on a generous free tier) or Firebase (Auth + Firestore). Game logic still runs
+  **client-side**; the backend only handles authentication and save data. Offline
+  / guest play falls back to `localStorage` and can sync up on sign-in.
 
-Deliver a runnable project (`npm install && npm run dev`) with a README.
+Deliver a runnable project (`npm install && npm run dev`) with a README. Keep all
+backend keys in environment variables (`.env`, never committed); the app must run
+in a **guest mode without any backend configured** so it's always playable.
+
+---
+
+## 1.5 Accounts, sign-in & cloud saves (free to use)
+
+The game must support **user accounts and sign-in**, and be **free to use** — no
+paywalls, no subscriptions, no charge for any feature. Accounts exist only to
+save progress, sync across devices, and (optionally) compare scores.
+
+### Requirements
+
+- **Free, optional sign-in.** Anyone can play immediately as a **guest** (local
+  saves). Signing in is opt-in and unlocks **cloud saves** synced across devices.
+- **Sign-in methods:** email + password (with verification + password reset) and
+  at least one **OAuth provider** (Google recommended; add others as easy wins).
+  "Magic link" email sign-in is a good low-friction option.
+- **Per-user save slots:** each account stores multiple named save games (full
+  game state as JSON), with created/updated timestamps; last-played autosave.
+- **Guest → account migration:** when a guest signs in, offer to upload their
+  local save(s) to the cloud so nothing is lost.
+- **Account management:** sign out, delete account + all data (honour the
+  request fully), and export save data.
+
+### Data model (minimal)
+
+- `users` — provided by the auth provider (id, email, display name, created_at).
+- `saves` — `id`, `user_id` (FK), `name`, `state` (JSONB game state), `era/year`,
+  `created_at`, `updated_at`.
+- *(optional)* `scores` / `leaderboard` — `user_id`, `metric`, `value`, `era`.
+
+### Security & privacy
+
+- **Row-Level Security:** a user can read/write **only their own** saves
+  (enforce server-side, e.g. Supabase RLS policies — never trust the client).
+- Collect the **minimum** personal data (email + optional display name). Publish a
+  short privacy note. Provide real account + data deletion.
+- All secrets in env vars; never commit keys. HTTPS only.
+
+### Acceptance for this slice
+
+- A new visitor can play with **zero sign-up**.
+- A user can create an account, sign in (email + Google), and their saves
+  **persist across devices and browser sessions**.
+- A guest's local save can be **migrated** into their account on first sign-in.
+- A user can **delete their account and data**, and it is actually removed.
 
 ---
 
@@ -317,7 +367,11 @@ and the **W.B. Chaffey statue**.
 6. **M6 — Crises & conflict** (§7), timed to real years.
 7. **M7 — Stealth-learning layer:** hover facts, codex, the travelling fountain
    (§8).
-8. **M8 — Landmarks art, polish, save/load, README.**
+8. **M8 — Landmarks art, polish, local save/load, README.**
+9. **M9 — Accounts & cloud saves (§1.5):** guest mode first, then optional
+   sign-in (email + Google), per-user cloud save slots, guest→account migration,
+   and account/data deletion. Local save/load (M8) must work independently so the
+   game is always playable without an account.
 
 Deliver M1–M3 as a playable vertical slice first; the **real, correct map is the
 acceptance gate for M1** — do not proceed until the terrain demonstrably matches
@@ -338,6 +392,9 @@ the real district.
   affect play.
 - A player can learn the real story **without reading any tutorial text** —
   verified by the stealth-learning devices working in-game.
+- The game is **free to use** with **optional sign-in**: it is fully playable as
+  a guest, and signed-in users get cloud saves that persist across devices, with
+  guest→account save migration and real account/data deletion (§1.5).
 - `npm install && npm run dev` produces a runnable game with a README.
 
 ---
