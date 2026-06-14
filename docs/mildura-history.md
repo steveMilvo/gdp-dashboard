@@ -86,6 +86,10 @@ https://thechaffeytrail.com.au/history/
   food — kangaroo and emu** — the staple meat until introduced livestock took
   over. (The Latji Latji had drawn on the same river-and-mallee food sources for
   millennia.)
+- **River fishing was a key protein source** — the Murray yielded **Murray cod,
+  golden perch (callop), silver perch,** and **yabbies / Murray crayfish**. The
+  Latji Latji had fished the river for thousands of years, and early settlers
+  relied on it too, alongside hunted game.
 
 ### The Murray as a highway (the wool-barge economy)
 

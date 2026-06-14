@@ -140,9 +140,13 @@ a real-history trigger.
   over-irrigated land, countered by drainage works (unlock 1924).
 - **Timber (Red Gum)** — harvested from the riverside red gum stands; the early
   building material (slab huts) before milled/imported materials arrive.
-- **Bush food (Kangaroo & Emu)** — the **early Food source**: settlers hunt
+- **Bush food (Kangaroo & Emu)** — an **early Food source**: settlers hunt
   kangaroo and emu to survive until livestock is introduced, after which **Sheep
   & Cattle** become the food/wool base.
+- **River fishing** — the other **early protein source**: fishing the Murray
+  (Murray cod, golden perch/callop, yabbies & crayfish) yields food from water
+  tiles. Available from the start (the Latji Latji rely on it) and a steady,
+  low-tech food supply throughout the early eras.
 - **Wool** — the settlement's **primary early income**, sent up- and downriver by
   barge (see river-trade economy, §6/§7 era flavour).
 - **Capital (£)** — Chaffey investment and bank credit; can collapse in the Crash.
@@ -163,7 +167,7 @@ All dates/facts below come from `mildura-history.md`.
 
 | Year | Structure | Game role |
 |------|-----------|-----------|
-| pre-1830 | Latji Latji river camp | starting state; foraging (kangaroo/emu) |
+| pre-1830 | Latji Latji river camp | starting state; foraging, hunting (kangaroo/emu) & river fishing |
 | 1840s | **Red gum slab hut** | first dwelling — built from riverside red gum timber |
 | 1847 | Old Mildura Homestead | pastoral HQ (sheep/cattle → wool) |
 | 1853 | Paddle-steamer landing & wool barges | river trade node; wool exported up/downriver |
