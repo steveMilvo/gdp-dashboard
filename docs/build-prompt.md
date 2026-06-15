@@ -1,4 +1,4 @@
-# Build Prompt — "Mildura: Colony on the Murray" (Age of Empires–style strategy game)
+# Build Prompt — "Mildura: Colony on the Murray" (a real, fully-playable 3D RTS)
 
 > This is a self-contained build brief intended to be handed to **Fable 5** (or
 > any capable coding agent) to implement the game. It pairs with the research
@@ -10,40 +10,57 @@
 
 ## 0. Role & objective
 
-You are building **"Mildura: Colony on the Murray"**, a single-player,
-real-history strategy game in the spirit of *Age of Empires* / *Anno* /
-*Banished* — part real-time-strategy, part city-builder. The player founds and
-grows the Mildura irrigation district (Sunraysia, Victoria, Australia) across
-its real historical eras (c. 1840s–1930s), managing land, water, population,
-social groups, economy, and conflict.
+Build me a **fully playable, Age of Empires–style real-time strategy game in the
+browser**, set in the Mildura irrigation district (Sunraysia, Victoria,
+Australia) across its real historical eras (c. 1840s–1930s). It is part RTS, part
+city-builder — the player founds and grows the colony, managing land, water,
+population, social groups, economy, and conflict.
 
-The game must double as a **quiet learning tool**: history is taught through
+**Render it in a full 3D world** (Three.js or equivalent WebGL — **no pixel
+art**). It must **look like a real game**: proper lighting and shadows, readable
+unit/building silhouettes, terrain with texture variety, and smooth camera pan
+and zoom — **not blobby placeholder geometry**.
+
+The game must also double as a **quiet learning tool**: history is taught through
 mechanics and consequences, never through lectures or quizzes. A player should
 absorb *why* Mildura exists (you must pump water uphill from the Murray) simply
 by playing.
 
-**Three non-negotiable pillars:**
-1. **The map matches the real local map** (see §2 — this is the top priority).
-2. **Buildings and events are gated to their real historical dates** (see §5).
-3. **History is felt, not told** — stealth learning (see §8).
+**Non-negotiable pillars:**
+1. **A real 3D game, not a prototype look** — Three.js/WebGL, real lighting,
+   shadows, textures and camera (see §1, §1.6).
+2. **The map matches the real local topography** (see §2 — top priority; the real
+   elevation becomes the literal 3D terrain).
+3. **A classic RTS core loop and controls** — select/box-select/right-click,
+   minimap, resource bar (see §1.6).
+4. **Buildings and events gated to real historical dates** (§5); **history felt,
+   not told** — stealth learning (§8).
+5. **Check in at key decisions, then deploy live to Vercel** and verify the
+   deployed build runs (see §1.7).
 
 ---
 
-## 1. Recommended technology stack
+## 1. Technology stack
 
-Default to a **browser-based** build so it runs anywhere and is easy to share:
+A **browser-based, full-3D** build:
 
-- **Language:** TypeScript
-- **Engine:** Phaser 3 (2D, tile/isometric) — or PixiJS if more control is
-  wanted. (Swap to Unity/Godot only if explicitly requested.)
-- **Map data prep:** a small Node.js script using GDAL / `geotiff` to convert
-  real elevation rasters into a game heightmap (see §2).
+- **Language:** TypeScript.
+- **3D engine:** **Three.js** (or equivalent WebGL). **No pixel art, no 2D
+  tilemap** — real 3D meshes, materials, lighting and shadows.
+- **Rendering quality:** physically-plausible lighting with directional sun +
+  shadows, ambient/sky light, fog for depth; PBR or well-lit standard materials;
+  texture variety on terrain (water, red gum, mallee/belah scrub, the terrace);
+  distinct, readable silhouettes for every unit and building; smooth orbit/pan
+  camera with zoom and edge/keyboard scroll. Keep performance smooth (instancing
+  for repeated meshes, LOD where needed).
+- **Map data prep:** a small Node.js script using GDAL / `geotiff` to convert the
+  real elevation raster into a 3D terrain heightmap (see §2).
 - **Build tooling:** Vite. **State:** plain TS modules or a lightweight store.
-- **Backend / accounts:** use a **free-tier managed backend** for sign-in and
-  cloud saves — **Supabase** (recommended: Postgres + Auth + Row-Level Security
-  on a generous free tier) or Firebase (Auth + Firestore). Game logic still runs
-  **client-side**; the backend only handles authentication and save data. Offline
-  / guest play falls back to `localStorage` and can sync up on sign-in.
+- **Backend / accounts:** a **free-tier managed backend** for sign-in and cloud
+  saves — **Supabase** (Postgres + Auth + Row-Level Security) or Firebase. Game
+  logic runs **client-side**; the backend only handles auth and save data. Guest
+  play falls back to `localStorage` and syncs on sign-in (see §1.5).
+- **Hosting:** **deploy to Vercel** (see §1.7).
 
 Deliver a runnable project (`npm install && npm run dev`) with a README. Keep all
 backend keys in environment variables (`.env`, never committed); the app must run
@@ -96,6 +113,69 @@ save progress, sync across devices, and (optionally) compare scores.
 
 ---
 
+## 1.6 Core RTS loop, controls & "real game" visuals
+
+This must play like a classic RTS, themed to Mildura's real history.
+
+### The core loop (AoE-style, mapped to Mildura)
+- **Start** with a **town centre** (the **Chaffey HQ / homestead**) and a few
+  **villagers (settlers)** on the generated 3D map.
+- **Villagers gather resources** and **construct buildings**. Mildura's resources
+  replace AoE's wood/food/gold (see §4): **Food** (river fishing, hunting, then
+  sheep & cattle), **Timber** (red gum), **£ / Capital** (wool→barge trade, later
+  dried fruit & wine), and the keystone **Water** (pumped uphill, then gravity-
+  fed — see §2/§3). 
+- **Train more villagers (settlers) and workers**, and **advance through Ages**
+  (the real eras, §3) that unlock stronger buildings, units and tech.
+- **An antagonist applies pressure on the same map.** Mildura was not won by armies,
+  so the primary "enemy" is **environmental & economic** — drought, the record-low
+  1893 river, creeping salinity, and the 1890s financial crash (see §7). You
+  "win" by surviving the Crash with the colony intact and reaching prosperity;
+  you "lose" if the colony depopulates, goes bankrupt, or salinity ruins the land.
+  - *Optional "Rival Colony" mode* for players who want the classic
+    destroy-the-base loop: a competing AI irrigation colony (e.g. a Renmark-style
+    rival) races you for river frontage and water; win by out-developing or
+    out-lasting it. Keep it historically plausible (economic/expansion rivalry,
+    not arcade warfare).
+
+### Controls (classic RTS)
+- **Left-click** to select a unit/building; **drag** to **box-select** groups.
+- **Right-click** to **move, gather, build, or repair** (context-sensitive on the
+  target); double-click selects all of a type on screen.
+- **Minimap** (showing terrain, your base, resources, the antagonist/rival) and a
+  **resource bar** (Food, Timber, £, Water, Population) always on screen.
+- Smooth **camera pan and zoom** (mouse-edge scroll, WASD/arrows, wheel zoom,
+  optional rotate). Building-placement preview snaps to valid terrain.
+
+### "Make it look like a real game"
+- Proper **lighting and shadows**; terrain with **texture variety** (river,
+  red-gum riverline, mallee/belah scrub, the cultivated terrace, channels);
+  **readable silhouettes** for each unit and building; smooth camera. **No blobby
+  placeholder geometry** — use real modelled meshes (low-poly is fine if it's
+  clean and readable). Selection/health rings, gather/build animations, and water
+  that visibly flows through the channels.
+
+---
+
+## 1.7 Check-in workflow & deployment
+
+**Check in with me at key decision points instead of deciding silently.**
+
+- **Before building the world**, present **3 visual-style directions, labelled
+  A / B / C**, each with a **one-line tradeoff**, and **wait for my pick.**
+- Do the same for **any major gameplay scoping decision** — including **what you'd
+  cut** if the full loop won't fit in one shot. Propose A/B/C options, wait.
+- Don't silently make large architectural or art-direction choices.
+
+**Deployment:**
+- **Deploy live to Vercel** once it's playable, then **verify the deployed version
+  actually runs** (load it, start a game, confirm no console/runtime errors) —
+  don't just report success.
+- Keep secrets in Vercel env vars; the deployed build must still work in **guest
+  mode** if no backend is configured.
+
+---
+
 ## 2. THE MAP — must match the real local topography (top priority)
 
 The whole game rests on real terrain. Mildura's farmland sits **~28 m above the
@@ -130,11 +210,14 @@ Build the map from the real district around Mildura. Suggested bounding box
    grid from **Public Record Office Victoria (PROV)** / **Trove** so streets
    like Deakin Avenue land in their true positions.
 4. **Processing script:** reproject to a local metric CRS, clip to the box,
-   resample the DEM down to the game tile grid (e.g. 256×256 or 512×512 tiles),
-   normalise heights, then **burn in** the river/billabong polygons as water
-   tiles and tag the named landmark coordinates. Emit a single JSON/PNG
-   heightmap + a features manifest the game loads at runtime.
-5. Commit the processed map data **and** the script, so the map is reproducible
+   resample the DEM to a heightmap grid (e.g. 256×256 or 512×512), normalise
+   heights, then tag the river/billabong polygons and the named landmark
+   coordinates. Emit a single JSON/PNG **heightmap** + a features manifest.
+5. **Build the 3D terrain from the heightmap** — displace a terrain mesh by the
+   real elevations so the ~28 m river-to-terrace rise is literally visible in 3D;
+   render the river/billabong as flowing water surfaces below the banks. The real
+   contours become the playable 3D landscape.
+6. Commit the processed map data **and** the script, so the map is reproducible
    and verifiably real (not invented).
 
 ### 2.3 Vegetation / biome layer (real regional ecology)
@@ -345,6 +428,9 @@ and the **W.B. Chaffey statue**.
   build the full landmark set. Provide a **sandbox/free-build** mode too.
 - **Lose states:** colony depopulates (mass settler exodus), bankruptcy with no
   recovery, or terminal salinity ruining the farmland.
+- **Optional Rival Colony mode** adds a classic RTS win/lose condition:
+  out-develop or outlast a competing AI colony racing you for river frontage and
+  water (§1.6).
 - A full playthrough should run roughly one to a few hours and trace c.
   1847→1930s.
 
@@ -352,33 +438,55 @@ and the **W.B. Chaffey statue**.
 
 ## 12. Build order (milestones for the agent)
 
-1. **M1 — Real map:** data pipeline + render the true terrain (Murray, Kings
-   Billabong, Psyche Bend, the terrace) with elevation visibly driving water.
-2. **M2 — Core loop:** place Homestead → settlers → resources tick → simple UI.
+0. **M0 — Visual-style check-in (do this first):** generate the real 3D terrain
+   from the DEM, then present **3 visual-style directions (A/B/C)** with one-line
+   tradeoffs and **wait for my pick** before building out the world (§1.7).
+1. **M1 — Real 3D map:** data pipeline + render the true terrain as a **3D
+   heightmap** (Murray, Kings Billabong, Psyche Bend, the terrace) with elevation
+   visibly driving water.
+2. **M2 — Core RTS loop:** town-centre/homestead → settlers gather & build →
+   **resource bar + minimap** → **select / box-select / right-click** controls →
+   camera pan/zoom (§1.6).
 3. **M3 — Water system:** pump + channels + gravity irrigation + salinity; the
-   Psyche Bend keystone gate.
+   Psyche Bend keystone gate. **Deploy this vertical slice to Vercel and verify
+   it runs** (§1.7).
 4. **M4 — Ages & date-gated build menu** (§3, §5) with soft date gating.
 5. **M5 — Social groups & satisfaction** (§6).
-6. **M6 — Crises & conflict** (§7), timed to real years.
+6. **M6 — Crises & conflict** (§7), timed to real years; optional Rival Colony AI
+   (§1.6).
 7. **M7 — Stealth-learning layer:** hover facts, codex, the travelling fountain
    (§8).
-8. **M8 — Landmarks art, polish, local save/load, README.**
+8. **M8 — "Real game" visual polish:** lighting, shadows, terrain textures,
+   readable unit/building silhouettes, animations; landmarks art; local
+   save/load; README.
 9. **M9 — Accounts & cloud saves (§1.5):** guest mode first, then optional
    sign-in (email + Google), per-user cloud save slots, guest→account migration,
    and account/data deletion. Local save/load (M8) must work independently so the
    game is always playable without an account.
+10. **M10 — Final deploy:** redeploy to Vercel and **verify the live build runs
+    end-to-end** (loads, starts a game, no runtime errors), still playable in
+    guest mode.
 
-Deliver M1–M3 as a playable vertical slice first; the **real, correct map is the
-acceptance gate for M1** — do not proceed until the terrain demonstrably matches
-the real district.
+Deliver M1–M3 as a playable vertical slice first; the **real, correct 3D map is
+the acceptance gate for M1**. **Check in (A/B/C) at M0 and at any major scoping
+decision** — including **what you'd cut** if the full loop won't fit in one shot.
 
 ---
 
 ## 13. Acceptance criteria
 
-- The map is built from **real elevation + river data**, with the named
-  landmarks in their **true relative positions**; the processing script and
-  source data are committed and reproducible.
+- Renders as a **real 3D game** (Three.js/WebGL): lighting, shadows, terrain
+  texture variety, readable unit/building silhouettes and smooth camera pan/zoom
+  — **no pixel art, no placeholder blobs**.
+- Plays as a **classic RTS**: left-click select, drag box-select, right-click
+  move/gather/build, a **minimap** and a **resource bar**.
+- The agent **checked in with 3 A/B/C visual-style options before building the
+  world**, and at major scoping decisions (§1.7).
+- **Deployed to Vercel** and the **live build verified to run** (loads, starts a
+  game, no runtime errors) — still playable in guest mode.
+- The map is built from **real elevation + river data**, rendered as **3D
+  terrain**, with the named landmarks in their **true relative positions**; the
+  processing script and source data are committed and reproducible.
 - Irrigation only works by **pumping water up and gravity-feeding it down**,
   visibly tied to real elevation.
 - Buildings unlock at their **real historical years**; the timeline matches
