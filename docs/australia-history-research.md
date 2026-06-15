@@ -81,9 +81,6 @@
 - **27 May 1967** — Referendum (90.77% Yes — the highest ever) amended s51(xxvi)
   and repealed s127 (counting Aboriginal people in the census; Commonwealth
   lawmaking power). ⚠️ **Common myth:** it did NOT grant the vote or citizenship.
-- **3 Jun 1992** — **Mabo** decision overturns *terra nullius*; recognises native
-  title. **1993** — Native Title Act.
-- **13 Feb 2008** — **National Apology** to the Stolen Generations (Rudd).
 
 ---
 
@@ -169,7 +166,6 @@ A clean progression for "governance upgrades":
   **1984**). **1967** — constitutional **recognition** (census + Cwlth power).
   ⚠️ Keep these as **two separate nodes** — the single most-misstated point in
   Australian civics.
-- **1992/93** — **Mabo** + **Native Title Act**.
 - **1975** — the **Dismissal** (Governor-General Kerr dismisses Whitlam) — civics
   lesson on reserve powers and Supply.
 - **2017** Uluru Statement · **2023** Voice referendum (⚠️ **defeated**, ~60% No;
