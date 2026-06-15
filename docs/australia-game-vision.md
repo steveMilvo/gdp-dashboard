@@ -119,7 +119,8 @@ toilet, the notepad/wine cask, the bionic eye, Relenza, the ute, etc.)
 
 ## 7. Reuse from Mildura
 
-- Same engine/stack (TypeScript + Phaser, free-tier backend for free accounts).
+- Same engine/stack (TypeScript + Three.js/WebGL 3D, free-tier backend for free
+  accounts).
 - Same pillars: **real map**, **date-gated unlocks**, **stealth learning**.
 - Same free-to-use accounts & cloud-save system.
 - The Mildura title can live on as a **detailed regional scenario** within (or

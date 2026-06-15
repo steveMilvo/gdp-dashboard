@@ -5,13 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mildura: Colony on the Murray</title>
     <style>
-      html, body { margin: 0; height: 100%; background: #1f2933; overflow: hidden;
+      html, body { margin: 0; height: 100%; background: #9ec9e6; overflow: hidden;
         font-family: -apple-system, system-ui, Segoe UI, Roboto, sans-serif; }
-      #app { width: 100vw; height: 100vh; }
+      #app { position: absolute; inset: 0; }
+      #app canvas { display: block; }
+      #hud {
+        position: absolute; top: 0; left: 0; right: 0; padding: 10px 14px;
+        background: linear-gradient(#10181fcc, #10181f00);
+        color: #f5e9c8; font-size: 15px; line-height: 1.5; pointer-events: none;
+        text-shadow: 0 1px 2px #000a;
+      }
+      #footer {
+        position: absolute; bottom: 8px; left: 14px; color: #cfe2f2;
+        font-size: 12px; pointer-events: none; text-shadow: 0 1px 2px #000a;
+      }
+      #tooltip {
+        position: absolute; display: none; max-width: 320px; padding: 8px 10px;
+        background: #10181fee; color: #f5e9c8; font-size: 13px; border-radius: 6px;
+        border: 1px solid #ffd24a55; pointer-events: none; transform: translate(12px, 12px);
+        z-index: 10;
+      }
     </style>
   </head>
   <body>
     <div id="app"></div>
+    <div id="hud"></div>
+    <div id="footer">Drag to orbit · wheel to zoom · right-drag to pan · SPACE to pause</div>
+    <div id="tooltip"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
