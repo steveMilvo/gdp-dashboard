@@ -77,8 +77,14 @@
 ### Era 8 — Postwar & modern
 - **1945 onward** — large-scale postwar migration reshapes Australian society
   (see the Snowy Scheme workforce above).
-- **1966** — conversion to decimal currency (dollars and cents).
 - **1956** — Melbourne hosts the Olympic Games.
+- **21 May 1962** — **Commonwealth Electoral Act 1962** gives all Aboriginal &
+  Torres Strait Islander people the federal vote (enrolment optional). ⚠️ THIS,
+  not 1967, is when Indigenous Australians got the federal vote.
+- **1966** — conversion to decimal currency (dollars and cents).
+- **27 May 1967** — Referendum (90.77% Yes — the highest ever) amended s51(xxvi)
+  and repealed s127 (counting Aboriginal people in the census; Commonwealth
+  lawmaking power). ⚠️ Common myth: it did NOT grant the vote or citizenship.
 
 ---
 
@@ -127,6 +133,10 @@ A clean progression for "governance upgrades":
   https://peo.gov.au/understand-our-parliament/history-of-parliament/history-milestones/australian-parliament-history-timeline/events/commonwealth-franchise-act-1902
 - **1907** — **Harvester Judgment** establishes the "basic wage."
 - **1924** — **compulsory voting** federally (turnout ~60% → ~91%).
+- **1962** — Aboriginal & Torres Strait Islander federal **vote** (compulsory from
+  **1984**). **1967** — constitutional **recognition** (census + Cwlth power).
+  ⚠️ Keep these as **two separate nodes** — the single most-misstated point in
+  Australian civics.
 - **1975** — the **Dismissal** (Governor-General Kerr dismisses Whitlam) — civics
   lesson on reserve powers and Supply.
 
@@ -276,7 +286,8 @@ vs Australian contribution) to stay accurate.
 - **Eras** (§1) → the Age progression. **Key dates** → when buildings/events
   unlock (date-gating, as in Mildura).
 - **Governance milestones** (§3) → the **governance-upgrade tree**; each real
-  reform is a node granting civic/stability/diplomacy benefits.
+  reform is a node granting civic/stability/diplomacy benefits. Keep 1962 and
+  1967 as separate nodes.
 - **Inventions** (§4) → the **technology-upgrade tree**; each node gives a
   gameplay effect + a true one-line fact, and (where flagged) honestly notes the
   Australian *refinement* vs the original.
