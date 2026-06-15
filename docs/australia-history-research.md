@@ -236,14 +236,18 @@ vs Australian contribution) to stay accurate.
 ### Medical & health
 - **Cochlear implant ("bionic ear")** — **Prof. Graeme Clark**, University of
   Melbourne; first **multi-channel** implant surgery **1 Aug 1978** (patient Rod
-  Saunders); commercialised by **Cochlear Ltd** (Nucleus); FDA approval 1985.
-  ⚠️ Clark = first **clinically successful multi-channel** implant, **not**
-  inventor of the cochlear implant (single-channel: William House, USA, 1961).
+  Saunders); first **commercial** Nucleus 22-channel implant **Oct 1982** (patient
+  Graham Carrick); commercialised by **Cochlear Ltd** (Nucleus); FDA approval
+  1985. ⚠️ Clark = first **clinically successful multi-channel** implant, **not**
+  inventor of the cochlear implant (single-channel: William House, USA, 1961;
+  earlier Djourno/Eyriès, France, 1957).
   https://www.bionicsinstitute.org/about/professor-graeme-clark-ac/
 - **Penicillin (development & mass production)** — **Howard Florey**
   (Adelaide-born), with Chain & Heatley at Oxford; **Nobel 1945** (shared with
   Fleming). ⚠️ Florey **developed/mass-produced** it; **Fleming discovered** it
   (1928). Not an Australian invention. Florey featured on the old $50 note.
+  (Oxford biochemist **Norman Heatley** devised the purification/assay — "without
+  Heatley, no penicillin" — but was excluded from the 3-person Nobel.)
 - **Grey-scale ultrasound imaging** — **George Kossoff** & team, Commonwealth
   Acoustic Laboratories, Sydney; early-mid **1970s** (the scan converter). ⚠️
   Ultrasound itself isn't Australian (Ian Donald, Scotland) — the **grey-scale**
