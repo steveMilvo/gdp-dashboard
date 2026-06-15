@@ -254,10 +254,8 @@ engine, then stamped it with a disclaimer") appears as a one-line hover fact.
 Model population as distinct **social groups** with their own needs, loyalties,
 and frictions. Keeping them balanced is a core management loop.
 
-- **Latji Latji (Traditional Owners)** — present from the start; hold knowledge
-  of land and water. Diplomacy/knowledge mechanic; their displacement by
-  pastoralism and settlement is represented honestly (not erased, not
-  trivialised).
+- **Latji Latji (river people)** — present from the start; hold knowledge of the
+  land and water (a diplomacy/knowledge mechanic).
 - **Squatters / Pastoralists** — the old wool order (Jamiesons, McEdward);
   resent the irrigation colony carving up the run.
 - **Block Settlers / Growers** — the irrigation smallholders; the backbone of
@@ -291,9 +289,6 @@ environmental**. Model these tension/crisis systems:
   Trust); temperance vs. liquor-licence politics.
 - **Inter-group friction:** squatters vs. colonists; labour vs. capital
   (wages/strikes); settlers vs. the Chaffey company over water reliability.
-- **(Optional, light) frontier conflict** between pastoral expansion and the
-  Latji Latji — handle with historical honesty and restraint, as displacement and
-  dispossession rather than arcade combat.
 
 Each crisis is **scripted to its real year** but its severity depends on the
 player's preparedness (water reserves, capital buffer, group satisfaction).

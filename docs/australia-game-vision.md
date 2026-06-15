@@ -26,20 +26,19 @@ The technology tree is a celebration of **real Australian inventions**.
 
 ## 2. Eras (discovery → settlement → federation → modern)
 
-Handle the opening with care and accuracy — this is an educational tool and
-should reflect the curriculum's emphasis on **truth-telling** and the depth of
-First Nations history.
+The opening era draws on the deep-time cultural and archaeological record
+(see the research doc).
 
 | Era | Rough span | Theme |
 |-----|-----------|-------|
-| **Deep Time / First Nations** | 65,000+ yrs ago → 1606 | Aboriginal & Torres Strait Islander custodianship, Country, trade routes, fire management, the oldest continuous cultures on Earth |
-| **Encounter & Exploration** | 1606–1787 | Macassan trade; Dutch landfalls (Janszoon 1606, Hartog 1616), Cook's 1770 east-coast charting — framed as encounter/contested "discovery" |
-| **Colonisation & Settlement** | 1788–1850 | First Fleet (1788); frontier conflict and dispossession; convict era; pastoral expansion |
+| **Deep Time / First Nations** | 65,000+ yrs ago → 1606 | Aboriginal & Torres Strait Islander cultures, Country, trade routes, fire management, the oldest continuous cultures on Earth |
+| **Encounter & Exploration** | 1606–1787 | Macassan trade; Dutch landfalls (Janszoon 1606, Hartog 1616), Cook's 1770 east-coast charting |
+| **Colonisation & Settlement** | 1788–1850 | First Fleet (1788); convict era; pastoral expansion |
 | **Gold & Growth** | 1851–1900 | Gold rushes; Eureka (1854); immigration; self-government; railways/telegraph |
 | **Federation** | 1901 | The colonies become a nation (1 Jan 1901); Constitution; early nationhood |
 | **World Wars & Between** | 1914–1945 | Gallipoli/WWI; the Depression; WWII; national identity |
-| **Postwar & Modern** | 1945–2000 | Mass migration; Snowy Scheme; 1967 Referendum; Mabo (1992) |
-| **Contemporary** | 2000–today | Apology (2008); modern economy, science & culture |
+| **Postwar & Modern** | 1945–2000 | Mass migration; Snowy Scheme; decimal currency (1966); postwar growth |
+| **Contemporary** | 2000–today | Modern economy, science & culture |
 
 ---
 
@@ -52,8 +51,8 @@ interactive moment, a choice with real historical context, or discovering a site
 
 - **Resource boosts** — population, food, money, materials.
 - **Governance upgrades** — unlock civic systems tied to real milestones
-  (e.g. self-government → Federation → universal suffrage → native title), each
-  improving stability/diplomacy options.
+  (e.g. self-government → Federation → universal suffrage), each improving
+  stability/diplomacy options.
 - **Technology upgrades** — unlock the Australian-invention tech tree (§4).
 
 Design rules (carry over the Mildura "stealth learning" ethos):
@@ -115,9 +114,6 @@ toilet, the notepad/wine cask, the bionic eye, Relenza, the ute, etc.)
   Australian Curriculum (v9)** before claiming alignment — do not invent codes.
 - Provide a **teacher mode / curriculum map** linking in-game learning points to
   curriculum outcomes, so it's usable in classrooms.
-- Reflect curriculum priorities: **Aboriginal & Torres Strait Islander histories
-  and cultures** as a cross-curriculum priority, told with accuracy and respect
-  (truth-telling, deep time, continuous connection to Country).
 
 ---
 
@@ -136,8 +132,6 @@ toilet, the notepad/wine cask, the bionic eye, Relenza, the ute, etc.)
 - Year-level focus / single game vs. age-banded modes.
 - Continent-wide sandbox vs. curated scenario campaign.
 - How explicit the "reward for learning" is (visible XP vs. invisible boosts).
-- How frontier conflict and dispossession are represented — honestly and
-  age-appropriately.
 - Platform priority (web first, given free/easy access for schools).
 
 ---

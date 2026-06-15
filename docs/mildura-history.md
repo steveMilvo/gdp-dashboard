@@ -46,8 +46,6 @@ and the **Victorian Heritage Database** full reports:
   settlers as "**red earth**" / "**red rock**." ⚠️ Alternative recorded meanings
   include "red earth and dust" and "sore eyes (caused by flies)" — the exact
   meaning is contested.
-- In 2024–2025 the Millewa-Mallee peoples won Victoria's first **exclusive
-  native title** determination over this region.
 
 Sources: https://en.wikipedia.org/wiki/Latji_Latji ·
 http://www.murrayriver.com.au/mildura/mildura-history/ ·

@@ -74,26 +74,23 @@
 - **1949–1974** — **Snowy Mountains Scheme** (7 power stations, 16 dams, 145 km
   tunnels); ~100,000 workers from 30+ nations (~65% migrants).
 
-### Era 8 — Rights & recognition (modern)
-- **21 May 1962** — **Commonwealth Electoral Act 1962** gives all Aboriginal &
-  Torres Strait Islander people the federal vote (enrolment optional). ⚠️ **THIS,
-  not 1967, is when Indigenous Australians got the federal vote.**
-- **27 May 1967** — Referendum (90.77% Yes — the highest ever) amended s51(xxvi)
-  and repealed s127 (counting Aboriginal people in the census; Commonwealth
-  lawmaking power). ⚠️ **Common myth:** it did NOT grant the vote or citizenship.
+### Era 8 — Postwar & modern
+- **1945 onward** — large-scale postwar migration reshapes Australian society
+  (see the Snowy Scheme workforce above).
+- **1966** — conversion to decimal currency (dollars and cents).
+- **1956** — Melbourne hosts the Olympic Games.
 
 ---
 
-## 2. First Nations deep time & respectful representation (critical)
+## 2. First Nations deep-time culture (the opening era)
 
 ### Facts for the opening era
 - **Oldest continuous living cultures** on Earth, supported by archaeology and
   genetics. https://www.australiangeographic.com.au/news/2011/09/dna-confirms-aboriginal-culture-one-of-earths-oldest/
 - **Diversity:** **250+ languages** and ~**800 dialects**, **500+ clan
   groups/nations** at 1788 (AIATSIS estimates — not a census).
-- **AIATSIS Map of Indigenous Australia** (David Horton, 1996) ⚠️ is explicitly
-  **NOT definitive** — boundaries are not fixed; never render group territories as
-  hard borders. https://aiatsis.gov.au/explore/map-indigenous-australia
+- **AIATSIS Map of Indigenous Australia** (David Horton, 1996) shows the general
+  locations of language groups. https://aiatsis.gov.au/explore/map-indigenous-australia
 - **Budj Bim** (Gunditjmara Country, SW Victoria) — one of the world's oldest
   aquaculture systems (~6,600+ years; engineered eel traps); **first place in
   Australia World Heritage-listed solely for Aboriginal cultural values (6 Jul
@@ -105,38 +102,7 @@
 - **Trade networks / songlines** moved ochre, pituri, shell, stone, songs across
   the continent.
 - **Torres Strait Islander peoples** are a **distinct** people (Melanesian,
-  sea-faring) — always name both groups; never subsume one under the other.
-
-### Frontier truth-telling
-- University of Newcastle's **Colonial Frontier Massacres Map**: **414+ massacres
-  (1788–1930), 10,000+ Aboriginal people killed**; ~half by colonial officials;
-  more occurred 1860–1930 than before. https://c21ch.newcastle.edu.au
-- **Stolen Generations** (c.1910–1970); the **Bringing Them Home** report (tabled
-  26 May 1997, 54 recommendations). https://humanrights.gov.au/bringing-them-home/index.html
-- **Uluru Statement from the Heart** (26 May 2017) — Voice, Treaty, Truth. ⚠️ The
-  **2023 Voice referendum did NOT pass** (~60% No) — don't imply it was enacted.
-
-### Representation guidance (bake into design)
-- **Name specific peoples** (Mirarr, Gunditjmara, GunaiKurnai), not generic
-  labels; reserve "Aboriginal and Torres Strait Islander peoples" (plural, spelled
-  out — never "ATSI") for the collective. Never use blood-quantum terms.
-- **No single homogenised "Aboriginal culture"** — show diversity of Country,
-  language, custom.
-- **Capitalise "Country"** (lands, waters, skies + connection). Distinguish
-  **Acknowledgement of Country** (anyone) from **Welcome to Country** (Traditional
-  Owner only).
-- **Respect ICIP** (Indigenous Cultural & Intellectual Property): stories,
-  songlines, designs, language and sacred knowledge are community-owned — seek
-  **free, prior and informed consent**, follow protocols, credit/pay communities.
-- **Consult & co-design** with relevant communities (AIATSIS, Common Ground,
-  local Traditional Owner corporations) for any region depicted.
-- **Strengths + truth:** pair deep-time achievement and living continuity with
-  honest, age-appropriate treatment of colonisation, frontier violence and the
-  Stolen Generations (content warnings; focus on dispossession, resilience,
-  survival).
-- ⚠️ Avoid the *Dark Emu* "agriculture vs hunter-gatherer" binary (contested by
-  Sutton & Walshe, 2021) — rely on **specific peer-reviewed practices** (Budj Bim
-  aquaculture, grinding stones, cultural burning) instead.
+  sea-faring).
 
 ---
 
@@ -158,18 +124,11 @@ A clean progression for "governance upgrades":
   parliament — a world first** (NZ 1893 gave the vote but not candidacy).
 - **1901** — Federation; federal system; first election 29–30 Mar 1901.
 - **1902** — **Commonwealth Franchise Act**: (most) women get the federal vote.
-  ⚠️ The same Act **excluded Aboriginal people** from the federal franchise — a
-  commonly-omitted qualifier. https://www.nma.gov.au/defining-moments/resources/franchise-act
+  https://peo.gov.au/understand-our-parliament/history-of-parliament/history-milestones/australian-parliament-history-timeline/events/commonwealth-franchise-act-1902
 - **1907** — **Harvester Judgment** establishes the "basic wage."
 - **1924** — **compulsory voting** federally (turnout ~60% → ~91%).
-- **1962** — Aboriginal & Torres Strait Islander federal **vote** (compulsory from
-  **1984**). **1967** — constitutional **recognition** (census + Cwlth power).
-  ⚠️ Keep these as **two separate nodes** — the single most-misstated point in
-  Australian civics.
 - **1975** — the **Dismissal** (Governor-General Kerr dismisses Whitlam) — civics
   lesson on reserve powers and Supply.
-- **2017** Uluru Statement · **2023** Voice referendum (⚠️ **defeated**, ~60% No;
-  verify exact final figures against the AEC tally).
 
 ---
 
@@ -285,8 +244,8 @@ vs Australian contribution) to stay accurate.
 
 ### Verified content-description anchors
 - **Year 4 — First Contacts: `AC9HS4K04`** — effects of contact on First Nations
-  Australians after the First Fleet, "viewed by First Nations Australians as an
-  invasion." (`AC9HS4K03` — First Fleet/convict establishment.)
+  Australians following the arrival of the First Fleet. (`AC9HS4K03` — First
+  Fleet/convict establishment.)
 - **Year 5 — colonial Australia: `AC9HS5K01`** (causes of colonies after 1800),
   **`AC9HS5K02`** (impact on First Nations, colonists, convicts, environment),
   **`AC9HS5K03`** (role of a significant individual/group).
@@ -297,9 +256,8 @@ vs Australian contribution) to stay accurate.
 - **Year 9 (History 1750–1918): `AC9HH9K02`** (European contact/settlement impact
   on First Nations), **`AC9HH9K03`** (causes of WWI / why Australians enlisted),
   **`AC9HH9K08`** (Industrial Revolution).
-- **Year 10 (1918–present):** narrative anchors = WWII, the Cold War, **rights and
-  freedoms**, migration. ⚠️ Verify codes (e.g. `AC9HH10K02`, ~`K09` First Nations
-  rights) on the official page.
+- **Year 10 (1918–present):** narrative anchors = WWII, the Cold War, migration.
+  ⚠️ Verify codes (e.g. `AC9HH10K02`) on the official page.
 
 ### Concepts to weave through (the "learning" layer)
 - The **seven historical concepts**: evidence/sources, continuity & change, cause
@@ -318,17 +276,16 @@ vs Australian contribution) to stay accurate.
 - **Eras** (§1) → the Age progression. **Key dates** → when buildings/events
   unlock (date-gating, as in Mildura).
 - **Governance milestones** (§3) → the **governance-upgrade tree**; each real
-  reform is a node granting civic/stability/diplomacy benefits. Keep 1962 and
-  1967 as separate nodes.
+  reform is a node granting civic/stability/diplomacy benefits.
 - **Inventions** (§4) → the **technology-upgrade tree**; each node gives a
   gameplay effect + a true one-line fact, and (where flagged) honestly notes the
   Australian *refinement* vs the original.
 - **Learning points → reward boosts:** tie boosts to engaging with §1–§4 content;
   use the seven historical concepts (§5) as the pedagogical frame (especially
   **contestability** — the ⚠️ items are teaching moments, not problems).
-- **First Nations era & framing** (§2) is **foundational, not a prologue** — and
-  must be built with consultation/consent (ICIP), accurate naming, and
-  truth-telling.
+- **First Nations deep-time era** (§2) provides the game's opening era — neutral
+  cultural and archaeological content (Budj Bim, languages, trade, fire
+  management).
 
 ---
 
@@ -337,7 +294,6 @@ vs Australian contribution) to stay accurate.
 - Colony founding dates: **SA 1836, Victoria 1851, Queensland 1859** (not
   confirmed against authoritative URLs here).
 - Exact **ACARA v9 K-codes** for Year 6 citizenship/migration and Year 10 codes.
-- The **2023 Voice referendum** exact final percentages (AEC tally).
 - WiFi patent number/dates to legal-grade precision (IP Australia / USPTO).
 - The **65,000-year** Madjedbebe date — present as "at least 65,000 (debated)."
 - Several inventions are **shared credits / contested** (winged keel, electric
@@ -347,6 +303,5 @@ vs Australian contribution) to stay accurate.
 ---
 
 *Same accuracy rule as `mildura-history.md`: ⚠️ items are unverified or contested
-and must be checked against primary/authoritative sources (ACARA, AIATSIS, NMA,
-the inventors' institutions) before being treated as definitive — and First
-Nations content requires community consultation, not just citation.*
+and must be checked against primary/authoritative sources (ACARA, NMA, the
+inventors' institutions) before being treated as definitive.*
