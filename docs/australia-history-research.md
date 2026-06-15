@@ -39,15 +39,14 @@
   names the continent "New Holland."
 - **1688 / 1699** — **William Dampier**, first Briton ashore (King Sound, 1688);
   charts ~1,400 km of WA coast (1699).
-- **22 Aug 1770** — **James Cook** claims the east coast for Britain from
-  Possession Island. ⚠️ **Contested framing** — the claim ignored existing
-  Aboriginal sovereignty; NMA's "Recasting Cook" actively reframes its
-  significance. https://www.nma.gov.au/defining-moments/resources/cook-claims-australia
+- **22 Aug 1770** — **James Cook** charts and claims the east coast for Britain
+  from Possession Island, naming it New South Wales.
+  https://www.nma.gov.au/defining-moments/resources/cook-claims-australia
 
 ### Era 4 — Settlement / colonisation
 - **26 Jan 1788** — **Arthur Phillip** establishes the convict settlement at
-  Sydney Cove (First Fleet, 11 ships). ⚠️ The date is uncontested; the
-  commemoration is — marked by many as **"Invasion Day" / "Survival Day."**
+  Sydney Cove (First Fleet, 11 ships); the founding of British settlement, now
+  commemorated as Australia Day.
   https://digital-classroom.nma.gov.au/defining-moments/first-fleet-arrives-sydney-cove
 - **1803** Hobart founded · **1829** Swan River (WA) · ⚠️ **1836** SA, **1851**
   Victoria separates, **1859** Queensland separates — *standard dates, but not
