@@ -6,32 +6,139 @@
     <title>Mildura: Colony on the Murray</title>
     <style>
       html, body { margin: 0; height: 100%; background: #9ec9e6; overflow: hidden;
-        font-family: -apple-system, system-ui, Segoe UI, Roboto, sans-serif; }
+        font-family: Georgia, "Times New Roman", serif; }
       #app { position: absolute; inset: 0; }
       #app canvas { display: block; }
-      #hud {
-        position: absolute; top: 0; left: 0; right: 0; padding: 10px 14px;
-        background: linear-gradient(#10181fcc, #10181f00);
-        color: #f5e9c8; font-size: 15px; line-height: 1.5; pointer-events: none;
-        text-shadow: 0 1px 2px #000a;
+      #ui { position: absolute; inset: 0; pointer-events: none; }
+      #ui .panel, #ui button, #ui canvas { pointer-events: auto; }
+
+      /* ---- shared panel chrome: ironwood frame, riveted corners ---- */
+      .panel {
+        position: absolute; border-radius: 6px;
+        border: 3px solid #191009;
+        box-shadow: 0 0 0 2px #3e2f1c, 0 0 0 3px #191009, 0 6px 18px #0009;
+        background-clip: padding-box;
       }
-      #footer {
-        position: absolute; bottom: 8px; left: 14px; color: #cfe2f2;
-        font-size: 12px; pointer-events: none; text-shadow: 0 1px 2px #000a;
+      .panel::before, .panel::after,
+      .panel .body::before, .panel .body::after { content: none; }
+      /* rivets */
+      .panel {
+        background-image:
+          radial-gradient(circle 3px at 9px 9px, #c9b26a 0 2.6px, #191009 2.7px 4px, transparent 4.1px),
+          radial-gradient(circle 3px at calc(100% - 9px) 9px, #c9b26a 0 2.6px, #191009 2.7px 4px, transparent 4.1px),
+          radial-gradient(circle 3px at 9px calc(100% - 9px), #c9b26a 0 2.6px, #191009 2.7px 4px, transparent 4.1px),
+          radial-gradient(circle 3px at calc(100% - 9px) calc(100% - 9px), #c9b26a 0 2.6px, #191009 2.7px 4px, transparent 4.1px);
+        background-repeat: no-repeat;
       }
+      .parchment {
+        background-color: #e2d0a0;
+        background-blend-mode: normal;
+        color: #2b2013;
+      }
+      .parchment, .parchment .body {
+        background-image:
+          radial-gradient(circle 3px at 9px 9px, #c9b26a 0 2.6px, #191009 2.7px 4px, transparent 4.1px),
+          radial-gradient(circle 3px at calc(100% - 9px) 9px, #c9b26a 0 2.6px, #191009 2.7px 4px, transparent 4.1px),
+          radial-gradient(circle 3px at 9px calc(100% - 9px), #c9b26a 0 2.6px, #191009 2.7px 4px, transparent 4.1px),
+          radial-gradient(circle 3px at calc(100% - 9px) calc(100% - 9px), #c9b26a 0 2.6px, #191009 2.7px 4px, transparent 4.1px),
+          linear-gradient(165deg, #ecdcae 0%, #e2d0a0 45%, #d3bd85 100%);
+      }
+      .dark {
+        background-color: #241a10;
+        color: #e8dcc0;
+      }
+      .dark, .dark.panel {
+        background-image:
+          radial-gradient(circle 3px at 9px 9px, #c9b26a 0 2.6px, #0d0805 2.7px 4px, transparent 4.1px),
+          radial-gradient(circle 3px at calc(100% - 9px) 9px, #c9b26a 0 2.6px, #0d0805 2.7px 4px, transparent 4.1px),
+          radial-gradient(circle 3px at 9px calc(100% - 9px), #c9b26a 0 2.6px, #0d0805 2.7px 4px, transparent 4.1px),
+          radial-gradient(circle 3px at calc(100% - 9px) calc(100% - 9px), #c9b26a 0 2.6px, #0d0805 2.7px 4px, transparent 4.1px),
+          linear-gradient(170deg, #32251506 0%, #241a10 40%, #17100a 100%);
+      }
+
+      h1, h2 {
+        margin: 0; padding: 8px 14px 6px;
+        font-variant: small-caps; letter-spacing: 1.5px; font-weight: 700;
+        color: #b8912f;
+        text-shadow: 0 1px 0 #00000066, 0 0 12px #b8912f33;
+      }
+      h1 { font-size: 19px; border-bottom: 1px solid #a08a4f55; }
+      h2 { font-size: 15px; }
+      .parchment h1, .parchment h2 { color: #8a6a1c; text-shadow: 0 1px 0 #fff5; }
+      .body { padding: 8px 14px 12px; font-size: 13.5px; line-height: 1.45; }
+      .body p { margin: 0 0 10px; }
+      .body b { color: #46351c; }
+
+      /* ---- top-left: mission panel ---- */
+      .top-left { top: 14px; left: 14px; width: 330px; }
+
+      /* ---- top-right: minimap + objectives ---- */
+      .top-right { position: absolute; top: 14px; right: 14px; width: 244px;
+        display: flex; flex-direction: column; gap: 10px; }
+      .top-right .panel { position: relative; }
+      .minimap-frame { padding: 9px; }
+      .minimap-frame canvas { display: block; border: 1px solid #0d0805;
+        outline: 1px solid #55432a; width: 220px; height: 180px; cursor: pointer; }
+      .objectives .body { font-size: 13px; }
+
+      /* ---- bottom-left: status panel ---- */
+      .bottom-left { bottom: 14px; left: 14px; width: 330px; }
+      .bar-title { border-bottom: 1px solid #a08a4f33; }
+      .status-row { display: flex; gap: 12px; padding: 10px 14px 4px; align-items: flex-start; }
+      .portrait { width: 64px; height: 64px; border: 2px solid #0d0805;
+        outline: 1px solid #77613a; border-radius: 3px; overflow: hidden; flex: none; }
+      .portrait canvas { display: block; }
+      .bars { flex: 1; padding-top: 3px; }
+      .bar-line { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+      .heart, .bolt { width: 14px; height: 14px; flex: none; border-radius: 3px; }
+      .heart { background: radial-gradient(circle at 35% 35%, #ff7a6b, #c0281c 70%); clip-path: polygon(50% 100%, 0 38%, 12% 8%, 38% 8%, 50% 26%, 62% 8%, 88% 8%, 100% 38%); }
+      .bolt { background: linear-gradient(#ffe27a, #d8a012); clip-path: polygon(58% 0, 18% 58%, 44% 58%, 36% 100%, 82% 40%, 54% 40%); }
+      .bar { flex: 1; height: 13px; background: #0d0a06; border: 1px solid #55432a;
+        border-radius: 3px; overflow: hidden; }
+      .fill { height: 100%; }
+      .fill.green { background: linear-gradient(#7ee24a, #3f9c1c); }
+      .fill.yellow { background: linear-gradient(#ffd75e, #cf9a1d); }
+      .sel-name { font-size: 12.5px; color: #cbb987; font-style: italic; }
+      .counters { display: flex; gap: 18px; padding: 6px 16px 12px; }
+      .counter { display: flex; align-items: center; gap: 7px; font-size: 17px; }
+      .counter b { color: #f0e6cb; }
+
+      /* ---- bottom-right: inventory ---- */
+      .bottom-right { bottom: 14px; right: 14px; width: 300px; }
+      .slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; padding: 10px 14px 4px; }
+      .slot { position: relative; aspect-ratio: 1; border-radius: 5px;
+        background: linear-gradient(160deg, #362817, #1c130b);
+        border: 1px solid #0d0805; outline: 1px solid #55432a;
+        display: flex; align-items: center; justify-content: center; }
+      .slot .badge { position: absolute; right: 3px; bottom: 2px; font-size: 11.5px;
+        font-weight: bold; color: #f0e6cb; text-shadow: 0 1px 2px #000; }
+      .actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; padding: 10px 14px 13px; }
+      .actions button {
+        font-family: Georgia, serif; font-size: 10.5px; letter-spacing: 0.5px;
+        color: #efe2bd; cursor: pointer; padding: 7px 2px 6px;
+        background: linear-gradient(#4a3820, #2a1d0f 60%, #1c130b);
+        border: 1px solid #0d0805; outline: 1px solid #6b5636; border-radius: 5px;
+        text-shadow: 0 1px 1px #000;
+      }
+      .actions button:hover { outline-color: #c9b26a; color: #ffd; }
+      .actions button.flash { background: linear-gradient(#c9b26a, #8a6a1c); color: #241a10; }
+      .actions .key { display: block; font-size: 10px; color: #b8912f; margin-bottom: 2px; }
+
+      /* ---- tooltip ---- */
       #tooltip {
-        position: absolute; display: none; max-width: 320px; padding: 8px 10px;
-        background: #10181fee; color: #f5e9c8; font-size: 13px; border-radius: 6px;
-        border: 1px solid #ffd24a55; pointer-events: none; transform: translate(12px, 12px);
-        z-index: 10;
+        position: absolute; display: none; max-width: 320px; padding: 9px 12px;
+        background: linear-gradient(165deg, #ecdcae, #d3bd85);
+        color: #2b2013; font-size: 13px; line-height: 1.4; border-radius: 5px;
+        border: 2px solid #191009; outline: 1px solid #77613a;
+        box-shadow: 0 4px 14px #000a; pointer-events: none;
+        transform: translate(14px, 14px); z-index: 10;
       }
+      #tooltip b { color: #8a6a1c; font-variant: small-caps; letter-spacing: 0.5px; }
     </style>
   </head>
   <body>
     <div id="app"></div>
-    <div id="hud"></div>
-    <div id="footer">Drag to orbit · wheel to zoom · right-drag to pan · SPACE to pause</div>
-    <div id="tooltip"></div>
+    <div id="ui"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

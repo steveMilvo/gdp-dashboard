@@ -154,6 +154,10 @@ This must play like a classic RTS, themed to Mildura's real history.
   placeholder geometry** — use real modelled meshes (low-poly is fine if it's
   clean and readable). Selection/health rings, gather/build animations, and water
   that visibly flows through the channels.
+- The full bar for art and animation quality is defined in **§1.8 — treat
+  *Age of Empires II: Definitive Edition* as the explicit benchmark.** A build
+  that renders flat-shaded terrain with static markers does **not** meet this
+  brief.
 
 ---
 
@@ -173,6 +177,106 @@ This must play like a classic RTS, themed to Mildura's real history.
   don't just report success.
 - Keep secrets in Vercel env vars; the deployed build must still work in **guest
   mode** if no backend is configured.
+
+---
+
+## 1.8 Art & animation benchmark — Age of Empires quality (hard requirement)
+
+**The visual benchmark is *Age of Empires II: Definitive Edition*, pinned to a
+specific approved mock-up** (the "Forest Gum Expedition — River Region" concept
+frame). Not AoE's exact art (Mildura is 1880s Australia, not medieval Europe)
+but its **standard**: a living, painterly, readable world where everything that
+should move, moves. Hold every scene to the question *"could this pass for a
+real commercial RTS screenshot?"* If not, it isn't done.
+
+### The approved mock-up (canonical art/UI target)
+The mock-up frame defines the look. Reproduce its character precisely:
+- **World:** a dense, painterly **river red gum forest** on both banks of a
+  blue, visibly flowing river — gnarled pale-pink/grey trunks, weeping
+  bright-green canopies with strong size variety; grass tufts and reeds along
+  the banks; grey boulders in and beside the channel with **white foam** where
+  water breaks around them; warm midday sun, saturated greens, soft long
+  shadows; characters at small scale inside the big world.
+- **Selection:** **green double-ring** markers under selected/interactable
+  units, softly pulsing.
+- **UI chrome — four corner panels in a consistent skin** (dark ironwood/iron
+  frames with riveted corners; aged **parchment** inlays; **gold copperplate**
+  headings):
+  - **Top-left:** parchment mission/region panel — game title/region heading in
+    gold, then bold-labelled lines (CONTROLS / GAME STATUS etc.).
+  - **Top-right:** square **minimap in an ornate dark frame** (terrain, river,
+    tree clusters, unit dots), with a parchment **OBJECTIVES** panel beneath it
+    listing 2–3 live progress goals ("Survey 5 distinct Red Gums (2/5)" style).
+  - **Bottom-left:** **status panel** — framed portrait, green health bar +
+    yellow stamina bar, and iconed resource counters (wood, water, food) with
+    values.
+  - **Bottom-right:** **inventory panel** — a slot grid with item icons and
+    count badges, plus a row of **hotkeyed action buttons** ([1] SURVEY,
+    [2] CHOP, [3] GATHER, [4] EQUIP-style) as embossed brass-and-iron buttons
+    with small tool icons.
+- Adapt panel *contents* to the RTS (resource bar semantics, selected-unit
+  card, era/year), but keep this exact **visual language** — parchment, ironwood,
+  brass, gold copperplate — for every panel, tooltip, and toast in the game.
+
+### World & terrain
+- **Painterly, banded-noise terrain** — no flat vertex-colour fields. Blend
+  each biome (river red gum corridor, floodplain, mallee, belah, cultivated
+  terrace) with texture/colour variation, scattered detail props (fallen logs,
+  granite, saltbush tufts) so no two screenfuls look identical.
+- **Dense instanced vegetation**: red gums lining every water edge, mallee scrub
+  across the flats — with natural size/rotation variation, subtle wind sway, and
+  shadows. Trees are choppable resources, not decoration.
+- **Animated water**: the Murray visibly moves (flow ripple, bank foam lines,
+  specular glint). Channels show flowing water when the pumps run; Kings
+  Billabong sits still and mirror-like.
+- **Day cycle tint** (optional but prized): slow warm/cool shift of sun colour;
+  long shadows at "morning/evening".
+
+### Units — every unit fully animated
+Every unit needs a **distinct silhouette** and an **animation set**:
+- **idle** (weight shift, look around), **walk** (limb cycle, not gliding),
+  **work** (axe chop with wood chips, shear sheep, dig channel, carry load —
+  carried goods visible on the unit), and **die/leave**.
+- Selection = AoE-style **gold ring underfoot** + unit card in the HUD; groups
+  show one ring each. Right-click issues **move/gather/build** with a click
+  marker flourish on the ground.
+- Livestock (sheep, horses, camels for the Coolgardie references) wander,
+  graze and react — the paddocks must look alive.
+
+### Buildings — real architecture, staged construction
+- Every building is a **modelled miniature of its real counterpart**: the
+  Chaffey homestead with veranda and chimney smoke, the timber wharf on piles,
+  Rio Vista's Queen-Anne gables, the Psyche Bend pump house with its stack and
+  **turning beam engine**, iron-lace shopfronts on Deakin Avenue, hessian-and-
+  pine blockie huts. Buildings read at a glance — no two share a silhouette.
+- **Construction animates in stages** (AoE-style): pegged-out site → frame →
+  clad → complete, with settlers hammering.
+- **Working buildings show it**: chimney smoke, pump exhaust puffs, water
+  spilling into channels, wool bales stacking on the wharf, vine rows greening
+  through the seasons.
+
+### UI chrome — full RTS HUD, not floating text
+Match the classic AoE HUD layout and finish (adapted to an 1880s colonial
+Victoria skin — dark hardwood panels, brass/gold trim, parchment paper,
+copperplate-style headings):
+- **Top resource bar**: iconed counters (Food, Timber, Wool/£, Water,
+  Population) in a carved wood-and-brass strip; era + year displayed centre-top
+  like AoE's age indicator.
+- **Bottom-left command panel**: portrait of the selected unit/building,
+  action-button grid (build, gather, advance era) with brass-button styling,
+  tooltips on hover.
+- **Bottom-right minimap**: live top-down map in an ornate bezel — terrain
+  colours, unit/building dots, camera frustum indicator; click-to-jump.
+- Event toasts (flood warning, Crash news) styled as **period newspaper
+  clippings / telegrams**, never plain browser text.
+
+### Acceptance for this section
+A 30-second screen recording of normal play must show: animated water, swaying
+trees, at least three distinct fully-animated unit types working, one building
+under staged construction, smoke/particle effects, the full HUD (resource bar +
+command panel + live minimap) — and pass the *"commercial RTS screenshot"* test
+throughout. **Static cones, untextured planes, or DOM-text-only UI are
+automatic failures.**
 
 ---
 

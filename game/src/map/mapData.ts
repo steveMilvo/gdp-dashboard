@@ -66,7 +66,8 @@ export function generateMap(seed: number = MAP_SEED): GameMap {
       const xf = x / (W - 1);
       const riverRow = riverCentreFrac(xf) * (H - 1);
       const distToRiver = Math.abs(y - riverRow);
-      const riverWidth = 1.6 + 1.2 * (0.5 + 0.5 * Math.sin(xf * 20));
+      // Broad, readable channel (the mock-up's hero feature): ~3–5 tiles wide.
+      const riverWidth = 3.2 + 1.8 * (0.5 + 0.5 * Math.sin(xf * 20));
 
       const dBilla = Math.hypot(x - billaX, y - billaY);
       const isBillabongRing = Math.abs(dBilla - billaR) < 1.3;
