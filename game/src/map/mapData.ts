@@ -84,9 +84,11 @@ export function generateMap(seed: number = MAP_SEED): GameMap {
         water = true;
         elevation = 0.02;
       } else {
-        // Land: rises from the river (north) to the southern terrace.
+        // Land: rises from the river (north) to the southern terrace. Dry land
+        // never dips below a small positive floor, so only the carved river /
+        // billabong beds sit under the water surface.
         const rel = clamp((y - riverRow) / (H - 1), 0, 1);
-        elevation = clamp(rel * 1.15 + (noise(x, y) - 0.5) * 0.12, 0, 1);
+        elevation = clamp(0.05 + rel * 1.1 + (noise(x, y) - 0.5) * 0.12, 0.04, 1);
 
         const nearWater = distToRiver < riverWidth + 2.2 || Math.abs(dBilla - billaR) < 2.6;
         if (nearWater) {

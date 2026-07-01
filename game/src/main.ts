@@ -10,7 +10,8 @@ import { startGuestSession, loadLocal, saveLocal, isCloudConfigured } from "./au
 const MAP_W = 240; // world units east–west
 const MAP_D = MAP_W * (GRID_H / GRID_W); // north–south, keeps real aspect
 const HEIGHT_SCALE = 38; // vertical exaggeration so the ~28 m lift reads in 3D
-const WATER_LEVEL = 0.14 * HEIGHT_SCALE;
+const WATER_LEVEL = 0.02 * HEIGHT_SCALE; // above the carved river bed, below the floodplain
+const BED_DROP = 0.06; // river/billabong beds carved below datum so banks read in 3D
 
 // tile (x,y) -> world position helper (matches the displaced PlaneGeometry)
 function tileToWorld(x: number, y: number) {
@@ -74,7 +75,8 @@ for (let iy = 0; iy < GRID_H; iy++) {
   for (let ix = 0; ix < GRID_W; ix++) {
     const idx = iy * GRID_W + ix;
     const t = map.at(ix, iy);
-    pos.setY(idx, t.elevation * HEIGHT_SCALE);
+    const elev = t.water ? t.elevation - BED_DROP : t.elevation;
+    pos.setY(idx, elev * HEIGHT_SCALE);
     col.setHex(tileColour(t));
     colors[idx * 3] = col.r;
     colors[idx * 3 + 1] = col.g;
