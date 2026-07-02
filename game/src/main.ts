@@ -15,6 +15,7 @@ import { installWaterworks } from "./game/waterworks";
 import { installCodex } from "./ui/codex";
 import { installFountain } from "./render/fountain";
 import { installCrashEffects } from "./game/crash";
+import { installLabour } from "./game/labour";
 
 // --- World scale ------------------------------------------------------------
 const MAP_W = 240;
@@ -92,6 +93,7 @@ units.select(units.settlers[0]);
 // --- HUD ------------------------------------------------------------------------
 const cssCol = new THREE.Color();
 const hud = buildHud(map, (t: Tile) => `#${paintColour(t, cssCol).getHexString()}`);
+const labour = installLabour({ scene, terrain, map, sim, hud, units, homePos: settlement.homePos });
 hud.setSelected(units.selected);
 
 // --- M7-lite: almanac codex, travelling fountain, crash-era economy ------------
@@ -164,11 +166,12 @@ function doAction(action: string) {
     controls.target.set(p.x, p.y, p.z);
   } else if (action === "chop") {
     const t = nearestTileOfKind(p.x, p.z, ["redgum"]);
-    if (t) units.order(sel, t.x, t.z, clockT);
+    if (t) labour.assign(sel, "chop", t.x, t.z, clockT);
   } else if (action === "gather") {
     const t = nearestTileOfKind(p.x, p.z, ["floodplain"]);
-    if (t) units.order(sel, t.x, t.z, clockT);
+    if (t) labour.assign(sel, "gather", t.x, t.z, clockT);
   } else if (action === "muster") {
+    labour.clearTask(sel);
     units.order(sel, settlement.homePos.x + 8, settlement.homePos.z + 6, clockT);
   }
 }
@@ -200,7 +203,8 @@ renderer.domElement.addEventListener("pointerup", (e) => {
     hud.setSelected(hit);
   } else if (downAt.button === 2 && units.selected) {
     const ground = raycaster.intersectObject(terrain.mesh, false)[0];
-    if (ground) units.order(units.selected, ground.point.x, ground.point.z, clockT);
+    // Context order: chop on red gum, gather on floodplain, otherwise move.
+    if (ground) labour.orderAt(units.selected, ground.point.x, ground.point.z, clockT);
   }
   downAt = null;
 });
@@ -273,6 +277,7 @@ function animate() {
   veg.update(clockT);
   settlement.update(clockT);
   units.update(dt, clockT);
+  labour.update(dt, clockT); // must follow units.update — overrides work-pose limbs
   waterworks.update(dt, clockT);
   fountain.update(dt, clockT);
   codex.update();

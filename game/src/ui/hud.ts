@@ -5,6 +5,7 @@
 import { GRID_W, GRID_H } from "../config";
 import type { GameMap, Tile } from "../map/mapData";
 import type { Settler } from "../render/units";
+import { getTaskLabel } from "../game/labour";
 
 type IconKind = "timber" | "water" | "food" | "wool" | "pop" | "pound";
 
@@ -641,7 +642,7 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
     onMinimapClick: null,
     onAction: null,
     setSelected(s) {
-      selName.textContent = s ? `${s.name} — Settler` : "No settler selected";
+      selName.textContent = s ? `${s.name} — ${getTaskLabel(s)}` : "No settler selected";
     },
     setPersona(key) {
       const spec = PERSONAS[key];

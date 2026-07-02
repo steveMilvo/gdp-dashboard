@@ -44,6 +44,10 @@ export class Simulation {
 
   paused = false;
   speed = 1; // years advanced per tick
+  // Set by the M2 labour module (game/labour.ts): once player-directed
+  // chop/gather loops exist, the post-1847 passive economy steps back so
+  // worked trips are what feed and build the colony. Not persisted.
+  labourRebalance = false;
   resources: Resources = {
     food: 40,
     water: 0,
@@ -70,8 +74,13 @@ export class Simulation {
       r.wool += 3;
       r.capital += 2; // wool sent up/down river by barge
     }
-    // Red gum timber harvested along the river.
-    r.timber += 1;
+    // Red gum timber harvested along the river. With the labour module active,
+    // felling becomes player-directed from the squatter run: passive timber
+    // stops and passive food is trimmed ~30% (pre-1847 river country untouched —
+    // the Latji Latji camp stays self-sufficient).
+    const rebalanced = this.labourRebalance && this.year >= 1847;
+    if (!rebalanced) r.timber += 1;
+    else food = Math.round(food * 0.7);
 
     r.food += food - r.population; // population eats
     r.food = Math.max(0, r.food);
