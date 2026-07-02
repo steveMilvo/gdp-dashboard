@@ -11,6 +11,7 @@ import { UnitManager } from "./render/units";
 import { buildHud } from "./ui/hud";
 import { MILESTONES, personaForYear } from "./game/milestones";
 import { initNarrator, narrate } from "./game/narrator";
+import { installBuildMenu } from "./game/buildMenu";
 
 // --- World scale ------------------------------------------------------------
 const MAP_W = 240;
@@ -88,6 +89,9 @@ units.select(units.settlers[0]);
 const cssCol = new THREE.Color();
 const hud = buildHud(map, (t: Tile) => `#${paintColour(t, cssCol).getHexString()}`);
 hud.setSelected(units.selected);
+
+// [5] BUILD — date-gated build menu with staged construction (M4).
+const buildMenu = installBuildMenu({ scene, terrain, map, sim, hud, camera, dom: renderer.domElement });
 
 // --- Personas, milestones & narrator ------------------------------------------
 initNarrator();
@@ -262,6 +266,7 @@ function animate() {
   veg.update(clockT);
   settlement.update(clockT);
   units.update(dt, clockT);
+  buildMenu.update(dt, clockT);
 
   const r = sim.resources;
   hud.update({
