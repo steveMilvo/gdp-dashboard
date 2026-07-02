@@ -53,6 +53,7 @@ Square 1:1 preferred, ~600×600+. See ART-PROMPTS.md here for full prompts.
 | `chaffey_bros.jpg` | George & W.B. Chaffey over the colony map |
 | `street_1948.jpg` | Langtree Avenue street scene, late 1940s |
 | `big_lizzie.jpg` | Big Lizzie — Bottrill's mallee-clearing traction engine (Red Cliffs) |
+| `rio_vista.jpg` | Rio Vista villa (portrait codex plate; landscape version → milestones/1891.jpg) |
 
 Notes:
 - The 1887 milestone banner can alternatively use `chaffey_bros.jpg` cropped
