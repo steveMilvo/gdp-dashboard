@@ -114,6 +114,32 @@ export const MILESTONES: Milestone[] = [
       "lives — the Fruit Republic is born.",
     build: "Drying Racks & Packing Shed",
   },
+  {
+    year: 1921,
+    accent: "AU",
+    title: "SOLDIERS TAKE UP THE RED CLIFFS",
+    body:
+      "Returned men of the Great War settle irrigated fruit blocks at Red " +
+      "Cliffs — one of the largest soldier settlements in the country.",
+    speech:
+      "Nineteen twenty-one. The boys are back from the war, and they're " +
+      "taking up blocks at Red Cliffs — clearing mallee, planting vines. " +
+      "Diggers turned blockies, every one of them.",
+    build: "Red Cliffs Settlement",
+  },
+  {
+    year: 1934,
+    accent: "AU",
+    title: "MILDURA PROCLAIMED A CITY",
+    body:
+      "The irrigation colony becomes a city — and the grand Art Deco Base " +
+      "Hospital opens the very next day.",
+    speech:
+      "Nineteen thirty-four. From red dust and river water to a proclaimed " +
+      "city in under fifty years. And a brand-new hospital opening its doors " +
+      "the very next day. Wouldn't the Chaffeys be proud.",
+    build: "Art Deco Base Hospital",
+  },
 ];
 
 export function personaForYear(year: number): PersonaKey {

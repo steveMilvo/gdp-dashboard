@@ -293,6 +293,11 @@ https://thechaffeytrail.com.au/the-sites/langtree-hall/
   (first vintage 1891); W.B. Chaffey founds the Merbein winery/distillery
   (1913–14) and leads the Australian Dried Fruits Association. By the 1930s
   Mildura produced over half of Australia's dried fruit (Sunraysia ≈95% today).
+- **Red Cliffs soldier settlement** — after WWI, returned servicemen took up
+  irrigated fruit blocks at **Red Cliffs** (scheme developed c. **1919–1921**),
+  one of Australia's largest soldier-settlement schemes; the railway (1903) had
+  already passed through the site. ⚠️ Widely documented; exact opening
+  ceremony date not verified here.
 - **Salinity** — the long-term curse: a gravitational drainage outfall was built
   by the State Rivers and Water Supply Commission in **1924**, intensified in the
   1930s.
@@ -421,7 +426,7 @@ https://www.mildura.vic.gov.au/Latest-News/Rio-Vista-Fountain-returned-to-former
 | 1913–14 | Merbein winery/distillery |
 | 1914 | Desailly Rotunda |
 | 1920 | Mildura Club clubhouse; W.B. Chaffey first Mayor |
-| 1921 | Memorial Clock Tower; Sacred Heart first Mass |
+| 1921 | Memorial Clock Tower; Sacred Heart first Mass; Red Cliffs soldier settlement under way ⚠️ |
 | 1923 | New Post Office; Cenotaph (⚠️ or 1922) |
 | 1924 | Drainage outfall (salinity control) |
 | 1926 | W.B. Chaffey dies |
