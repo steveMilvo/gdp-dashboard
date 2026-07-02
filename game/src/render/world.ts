@@ -7,6 +7,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { GRID_W, GRID_H } from "../config";
 import type { GameMap, Tile } from "../map/mapData";
 import { mulberry32 } from "../util/rng";
+import { barkTexture, leafTexture, groundTexture, waterTexture } from "./textures";
 
 export interface Terrain {
   mesh: THREE.Mesh;
@@ -105,7 +106,9 @@ export function buildTerrain(
   }
   geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
   geo.computeVertexNormals();
-  const mesh = new THREE.Mesh(geo, toonMat({ vertexColors: true }));
+  const groundTex = groundTexture();
+  groundTex.repeat.set(26, 20);
+  const mesh = new THREE.Mesh(geo, toonMat({ vertexColors: true, map: groundTex }));
   mesh.receiveShadow = true;
   scene.add(mesh);
 
@@ -135,10 +138,10 @@ export function buildWater(scene: THREE.Scene, terrain: Terrain, map: GameMap) {
   const SEG_X = 120, SEG_Y = 96;
   const geo = new THREE.PlaneGeometry(terrain.MAP_W, terrain.MAP_D, SEG_X, SEG_Y);
   geo.rotateX(-Math.PI / 2);
-  const mesh = new THREE.Mesh(
-    geo,
-    toonMat({ color: 0x74b0d4, transparent: true, opacity: 0.92 })
-  );
+  const waterTex = waterTexture();
+  waterTex.repeat.set(30, 22);
+  const waterMat = toonMat({ color: 0x77b2d6, map: waterTex, transparent: true, opacity: 0.93 });
+  const mesh = new THREE.Mesh(geo, waterMat);
   mesh.position.y = terrain.WATER_LEVEL;
   scene.add(mesh);
 
@@ -210,6 +213,7 @@ export function buildWater(scene: THREE.Scene, terrain: Terrain, map: GameMap) {
       }
       pos.needsUpdate = true;
       geo.computeVertexNormals();
+      waterTex.offset.x = -((t * 0.045) % 1); // current visibly flowing downstream
       for (const s of streaks) {
         const ph = (t * 0.55 + s.ph) % 3;
         s.m.position.x = s.ox + ph * 4 - 6;
@@ -355,8 +359,8 @@ export function buildVegetation(scene: THREE.Scene, map: GameMap, terrain: Terra
           const s = 0.8 + hash2(tx + k, ty - k) * 0.9;
           const ry = hash2(tx - k, ty + k) * Math.PI * 2;
           const ai = Math.floor(hash2(tx * 7 + k, ty * 5) * 3) % 3;
-          // pink-brown gum bark
-          c.setHSL(0.045 + h * 0.02, 0.28, 0.46 + (h - 0.5) * 0.12);
+          // bark colour rides on the painted texture: light tint, slight hue shift
+          c.setHSL(0.05 + h * 0.03, 0.12, 0.82 + (h - 0.5) * 0.2);
           branchPlacements[ai].push({ p, s, ry, tint: c.clone() });
           // foliage clumps at every branch tip
           rotY.makeRotationY(ry);
@@ -364,10 +368,11 @@ export function buildVegetation(scene: THREE.Scene, map: GameMap, terrain: Terra
           for (let b = 0; b < anchors.length; b++) {
             anchorWorld.copy(anchors[b]).applyMatrix4(rotY).multiplyScalar(s).add(p);
             anchorWorld.y -= 0.15 * s; // weeping droop
+            // leaf detail comes from the painted texture; tint varies per clump
             c.setHSL(
-              0.27 + hash2(tx * 2 + b, ty * 3 + k) * 0.05,
-              0.52 + h * 0.12,
-              0.17 + hash2(tx + b * 5, ty) * 0.12
+              0.2 + hash2(tx * 2 + b, ty * 3 + k) * 0.12,
+              0.22,
+              0.72 + hash2(tx + b * 5, ty) * 0.3
             );
             canopies.push({
               p: anchorWorld.clone(),
@@ -379,11 +384,11 @@ export function buildVegetation(scene: THREE.Scene, map: GameMap, terrain: Terra
         }
       } else if (t.kind === "mallee" && h < 0.3) {
         const p = jitterPos(tx, ty, 3);
-        c.setHSL(0.23 + h * 0.06, 0.46, 0.21 + h * 0.09);
+        c.setHSL(0.2 + h * 0.08, 0.28, 0.55 + h * 0.25);
         shrubs.push({ p, s: 0.6 + h * 0.9, ry: h * 6, tint: c.clone() });
       } else if (t.kind === "belah" && h < 0.45) {
         const p = jitterPos(tx, ty, 5);
-        c.setHSL(0.28, 0.32, 0.18 + h * 0.07);
+        c.setHSL(0.3, 0.25, 0.48 + h * 0.2);
         shrubs.push({ p, s: 1.0 + h * 1.1, ry: h * 6, tint: c.clone() });
       } else if (t.kind === "floodplain" && h > 0.93) {
         const p = jitterPos(tx, ty, 7);
@@ -397,7 +402,7 @@ export function buildVegetation(scene: THREE.Scene, map: GameMap, terrain: Terra
         for (let g = 0; g < tufts; g++) {
           const p = jitterPos(tx, ty, 40 + g * 9, 2.9);
           if (p.y < terrain.WATER_LEVEL + 0.05) continue;
-          c.setHSL(0.245 + hash2(tx + g, ty) * 0.04, 0.48, 0.2 + hash2(tx, ty + g) * 0.09);
+          c.setHSL(0.23 + hash2(tx + g, ty) * 0.05, 0.32, 0.5 + hash2(tx, ty + g) * 0.28);
           grass.push({ p, s: 0.38 + hash2(tx * (g + 1), ty) * 0.42, ry: hash2(tx, ty * (g + 1)) * 6, tint: c.clone() });
         }
       }
@@ -424,8 +429,11 @@ export function buildVegetation(scene: THREE.Scene, map: GameMap, terrain: Terra
     }
   }
 
-  const barkMat = toonMat();
-  const leafMat = toonMat();
+  const bark = barkTexture();
+  bark.repeat.set(1.6, 1);
+  const leaf = leafTexture();
+  const barkMat = toonMat({ map: bark });
+  const leafMat = toonMat({ map: leaf });
   const clump = clumpGeometry();
   const shrubGeo = new THREE.IcosahedronGeometry(1.0, 1).toNonIndexed();
   shrubGeo.scale(1, 0.7, 1);
@@ -437,7 +445,7 @@ export function buildVegetation(scene: THREE.Scene, map: GameMap, terrain: Terra
   gB.rotateY(Math.PI / 2);
   const grassGeo = mergeGeometries([gA, gB])!;
   grassGeo.translate(0, 0.3, 0);
-  const grassMat = toonMat({ side: THREE.DoubleSide });
+  const grassMat = toonMat({ map: leaf, side: THREE.DoubleSide });
   const rockGeo = new THREE.DodecahedronGeometry(0.7, 0).toNonIndexed();
   rockGeo.computeVertexNormals();
   const logGeo = new THREE.CylinderGeometry(0.22, 0.28, 2.4, 6);
