@@ -89,7 +89,9 @@ export class Simulation {
     // the Latji Latji camp stays self-sufficient).
     const rebalanced = this.labourRebalance && this.year >= 1847;
     if (!rebalanced) r.timber += 1;
-    else food = Math.round(food * 0.7);
+    // Gentler trim (was 0.7): the idle colony shouldn't starve outright, but a
+    // working player still clearly out-earns the passive baseline.
+    else food = Math.round(food * 0.9);
 
     r.food += food - r.population; // population eats
     r.food = Math.max(0, r.food);

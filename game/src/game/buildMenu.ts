@@ -244,7 +244,11 @@ export function installBuildMenu(opts: BuildMenuOpts): { update(dt: number, t: n
       if (h < lo) lo = h;
       if (h > hi) hi = h;
     }
-    if (hi - lo > 1.6) return false; // gentle local slope only
+    // Gentle local slope only. The placeholder terrain's noise gives ~±2 world
+    // units of relief between nearby tiles, so 1.6 rejected most honest sites;
+    // 3.4 keeps riverbanks/cliffs invalid while normal paddock reads as level
+    // (buildings sit on their lowest corner visually — acceptable at toon scale).
+    if (hi - lo > 3.4) return false;
     for (const p of placed) {
       const o = p.entry.footprint;
       if (
