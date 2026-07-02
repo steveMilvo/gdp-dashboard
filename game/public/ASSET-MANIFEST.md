@@ -40,8 +40,7 @@ Square 1:1 preferred, ~600×600+. See ART-PROMPTS.md here for full prompts.
 | `settlers_club.jpg` | Settlers Club cottage (1895) |
 | `workingmans_club.jpg` | Working Man's Club |
 | `langtree_hall.jpg` | Langtree Hall (1889) |
-| `carnegie_library.jpg` | Carnegie Free Library (1908, no clock tower) |
-| `clock_tower.jpg` | Memorial Clock Tower (1921) |
+| `carnegie_building.jpg` | The Carnegie building — one structure, two phases: Free Library 1908, Memorial Clock Tower replaces its original tower 1921 (in-game: the library upgrades in 1921) |
 | `sacred_heart.jpg` | Sacred Heart Church (1921 massing) |
 | `chaffey_statue.jpg` | W.B. Chaffey statue |
 | `cenotaph.jpg` | Cenotaph |
