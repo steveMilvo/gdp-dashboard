@@ -113,6 +113,7 @@ const firedMilestones = new Set(MILESTONES.filter((m) => m.year <= sim.year).map
 
 // Dev/testing hook (harmless in production): force personas & banners.
 (window as unknown as Record<string, unknown>).__mildura = {
+  sim, // e.g. __mildura.sim.speed = 4 to fast-forward eras in QA
   setPersona: (k: Parameters<typeof hud.setPersona>[0]) => hud.setPersona(k),
   showMilestone: (i: number) => {
     hud.showMilestone(MILESTONES[i]);
