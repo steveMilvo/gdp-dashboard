@@ -175,6 +175,12 @@
       .milestone h1 { text-align: center; font-size: 21px; line-height: 1.15;
         border-bottom: none; padding: 6px 16px 2px; }
       .milestone .body { text-align: center; font-size: 13.5px; padding-top: 2px; }
+      .milestone #milestone-art {
+        display: block; width: calc(100% - 28px); height: 128px; margin: 6px auto 0;
+        object-fit: cover; border: 2px solid #6b5410; border-radius: 3px;
+        filter: sepia(0.15) saturate(0.95);
+      }
+      .milestone #milestone-art.hidden { display: none; }
       .milestone .build-chip {
         display: inline-block; margin-top: 4px; padding: 5px 14px;
         font-variant: small-caps; letter-spacing: 1px; font-size: 13px;

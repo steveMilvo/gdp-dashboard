@@ -512,6 +512,7 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
       <div id="milestone" class="panel parchment milestone">
         <div class="masthead">The Mildura Cultivator — Extra</div>
         <h1 id="milestone-title"></h1>
+        <img id="milestone-art" class="hidden" alt="" />
         <div class="body">
           <p id="milestone-body"></p>
           <div id="milestone-build" class="build-chip hidden"></div>
@@ -614,6 +615,12 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
     } else {
       cardEl.classList.add("hidden");
     }
+    // Painted vignette slot: shows /milestones/<year>.jpg when the art exists.
+    const art = document.getElementById("milestone-art") as HTMLImageElement;
+    art.classList.add("hidden");
+    art.onload = () => art.classList.remove("hidden");
+    art.onerror = () => art.classList.add("hidden");
+    art.src = `milestones/${m.year}.jpg`;
     milestoneEl.classList.toggle("alarm", m.tone === "alarm");
     wrapEl.classList.remove("hidden");
     wrapEl.classList.add("show");
