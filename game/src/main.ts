@@ -11,6 +11,7 @@ import { UnitManager } from "./render/units";
 import { buildHud } from "./ui/hud";
 import { MILESTONES, personaForYear } from "./game/milestones";
 import { initNarrator, narrate } from "./game/narrator";
+import { installWaterworks } from "./game/waterworks";
 
 // --- World scale ------------------------------------------------------------
 const MAP_W = 240;
@@ -70,6 +71,7 @@ const water = buildWater(scene, terrain, map);
 const veg = buildVegetation(scene, map, terrain);
 const settlement = buildSettlement(scene, map, terrain);
 const units = new UnitManager(scene, terrain, settlement.homePos.x + 10, settlement.homePos.z + 8);
+const waterworks = installWaterworks({ scene, terrain, map, sim });
 
 // Camera opens on the homestead, mock-up-style ¾ view looking over the river.
 // Open on the river at the wharf bend — the mock-up's hero shot: high ¾ view
@@ -238,6 +240,7 @@ function panCamera(dt: number) {
 // --- Simulation clock + autosave ---------------------------------------------
 setInterval(() => {
   sim.tick();
+  waterworks.applyTick();
   checkMilestones();
   saveLocal(sim.snapshot());
 }, 1500);
@@ -262,6 +265,7 @@ function animate() {
   veg.update(clockT);
   settlement.update(clockT);
   units.update(dt, clockT);
+  waterworks.update(dt, clockT);
 
   const r = sim.resources;
   hud.update({
