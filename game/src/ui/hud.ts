@@ -109,48 +109,307 @@ function drawIcon(kind: IconKind, size = 22): HTMLCanvasElement {
   return c;
 }
 
-function drawPortrait(): HTMLCanvasElement {
+// --- Era personas: detailed painted portraits (96px, shown at 64) -------------
+import type { PersonaKey } from "../game/milestones";
+
+interface PersonaSpec {
+  name: string;
+  role: string;
+}
+export const PERSONAS: Record<PersonaKey, PersonaSpec> = {
+  latji: { name: "Latji Latji Custodian", role: "First People of the River" },
+  sturt: { name: "Capt. Charles Sturt", role: "Explorer, 1830" },
+  squatter: { name: "Hugh Jamieson", role: "Squatter, Mildura Run" },
+  chaffey: { name: 'W.B. Chaffey — "The Boss"', role: "Irrigationist" },
+};
+
+function portraitBase(
+  sky0: string,
+  sky1: string
+): [HTMLCanvasElement, CanvasRenderingContext2D] {
   const c = document.createElement("canvas");
-  c.width = c.height = 64;
+  c.width = c.height = 96;
+  c.style.width = c.style.height = "64px";
   const x = c.getContext("2d")!;
-  // parchment sky
-  const bg = x.createLinearGradient(0, 0, 0, 64);
-  bg.addColorStop(0, "#c7ddec");
-  bg.addColorStop(1, "#e0d3a8");
+  const bg = x.createLinearGradient(0, 0, 0, 96);
+  bg.addColorStop(0, sky0);
+  bg.addColorStop(1, sky1);
   x.fillStyle = bg;
-  x.fillRect(0, 0, 64, 64);
-  // shoulders
-  x.fillStyle = "#51617a";
+  x.fillRect(0, 0, 96, 96);
+  return [c, x];
+}
+
+function face(
+  x: CanvasRenderingContext2D,
+  skin: string,
+  shade: string,
+  eye = "#2b1d12"
+): void {
+  // neck + head
+  x.fillStyle = shade;
+  x.fillRect(41, 52, 14, 12);
+  x.fillStyle = skin;
   x.beginPath();
-  x.moveTo(8, 64);
-  x.bezierCurveTo(12, 44, 52, 44, 56, 64);
+  x.ellipse(48, 42, 17, 20, 0, 0, 7);
   x.fill();
-  // head
-  x.fillStyle = "#d9a679";
+  // side shading
+  x.fillStyle = shade;
+  x.globalAlpha = 0.35;
   x.beginPath();
-  x.arc(32, 30, 12, 0, 7);
+  x.ellipse(55, 44, 9, 17, 0.15, -1.2, 1.4);
   x.fill();
-  // hat
+  x.globalAlpha = 1;
+  // eyes
+  x.fillStyle = "#f2ede2";
+  x.beginPath();
+  x.ellipse(41.5, 40, 3.4, 2.4, 0, 0, 7);
+  x.ellipse(54.5, 40, 3.4, 2.4, 0, 0, 7);
+  x.fill();
+  x.fillStyle = eye;
+  x.beginPath();
+  x.arc(42, 40.4, 1.6, 0, 7);
+  x.arc(55, 40.4, 1.6, 0, 7);
+  x.fill();
+  // nose + mouth
+  x.strokeStyle = shade;
+  x.lineWidth = 1.6;
+  x.beginPath();
+  x.moveTo(48, 42);
+  x.lineTo(46.5, 48);
+  x.lineTo(49, 48.6);
+  x.stroke();
+  x.beginPath();
+  x.moveTo(43.5, 54);
+  x.quadraticCurveTo(48, 56.2, 52.5, 54);
+  x.stroke();
+}
+
+function brows(x: CanvasRenderingContext2D, color: string, w = 2.4): void {
+  x.strokeStyle = color;
+  x.lineWidth = w;
+  x.beginPath();
+  x.moveTo(37.5, 36);
+  x.quadraticCurveTo(41.5, 34.2, 45, 36);
+  x.moveTo(51, 36);
+  x.quadraticCurveTo(54.5, 34.2, 58.5, 36);
+  x.stroke();
+}
+
+function drawLatji(): HTMLCanvasElement {
+  const [c, x] = portraitBase("#f4c684", "#b86f3e"); // river dawn
+  // possum-skin cloak over the shoulders
+  x.fillStyle = "#7a5a3c";
+  x.beginPath();
+  x.moveTo(10, 96);
+  x.bezierCurveTo(16, 66, 80, 66, 86, 96);
+  x.fill();
+  x.strokeStyle = "#5d4429";
+  x.lineWidth = 2;
+  for (let i = 0; i < 4; i++) {
+    x.beginPath();
+    x.moveTo(24 + i * 13, 96);
+    x.quadraticCurveTo(28 + i * 13, 80, 34 + i * 12, 72);
+    x.stroke();
+  }
+  face(x, "#5d4028", "#402a18");
+  // grey-flecked curly hair + full beard
+  x.fillStyle = "#3d332b";
+  for (let i = 0; i < 26; i++) {
+    const a = (i / 26) * Math.PI - Math.PI;
+    x.beginPath();
+    x.arc(48 + Math.cos(a) * 16, 30 + Math.sin(a) * 12, 4.6, 0, 7);
+    x.fill();
+  }
+  x.fillStyle = "#6e655c";
+  for (let i = 0; i < 9; i++) {
+    x.beginPath();
+    x.arc(34 + i * 3.4, 24 - (i % 3) * 3, 2.2, 0, 7);
+    x.fill();
+  }
+  // beard
+  x.fillStyle = "#57504a";
+  x.beginPath();
+  x.moveTo(33, 46);
+  x.quadraticCurveTo(35, 66, 48, 68);
+  x.quadraticCurveTo(61, 66, 63, 46);
+  x.quadraticCurveTo(56, 55, 48, 55);
+  x.quadraticCurveTo(40, 55, 33, 46);
+  x.fill();
+  brows(x, "#57504a", 2.8);
+  // red-ochre headband
+  x.fillStyle = "#a3402a";
+  x.fillRect(31, 27, 34, 5);
+  x.fillStyle = "#c2542f";
+  x.fillRect(31, 27, 34, 2);
+  return c;
+}
+
+function drawSturt(): HTMLCanvasElement {
+  const [c, x] = portraitBase("#9cc4e0", "#4d84a8"); // river blue
+  // navy coat with epaulettes and brass buttons
+  x.fillStyle = "#24344d";
+  x.beginPath();
+  x.moveTo(10, 96);
+  x.bezierCurveTo(16, 64, 80, 64, 86, 96);
+  x.fill();
+  x.fillStyle = "#c9a227";
+  x.fillRect(14, 70, 14, 5);
+  x.fillRect(68, 70, 14, 5);
+  // white cravat
+  x.fillStyle = "#efe9da";
+  x.beginPath();
+  x.moveTo(42, 66);
+  x.lineTo(54, 66);
+  x.lineTo(50, 82);
+  x.lineTo(46, 82);
+  x.fill();
+  x.fillStyle = "#d8b23a";
+  for (const py of [78, 86]) {
+    x.beginPath();
+    x.arc(36, py, 1.8, 0, 7);
+    x.arc(60, py, 1.8, 0, 7);
+    x.fill();
+  }
+  face(x, "#e0b088", "#a97a52");
+  // brown side-whiskers
+  x.fillStyle = "#5d4530";
+  x.beginPath();
+  x.ellipse(33.5, 46, 3.4, 8, 0.15, 0, 7);
+  x.ellipse(62.5, 46, 3.4, 8, -0.15, 0, 7);
+  x.fill();
+  brows(x, "#5d4530");
+  // black peaked cap with gold band
+  x.fillStyle = "#1c2026";
+  x.beginPath();
+  x.ellipse(48, 26, 19, 9, 0, Math.PI, 0);
+  x.fill();
+  x.fillRect(29, 22, 38, 7);
+  x.fillStyle = "#c9a227";
+  x.fillRect(29, 27, 38, 2.6);
+  x.fillStyle = "#0f1216";
+  x.beginPath();
+  x.ellipse(48, 30.5, 15, 3.4, 0, 0, Math.PI);
+  x.fill();
+  return c;
+}
+
+function drawSquatter(): HTMLCanvasElement {
+  const [c, x] = portraitBase("#e8d590", "#b3924e"); // paddock gold
+  // olive work shirt + red neckerchief
+  x.fillStyle = "#667048";
+  x.beginPath();
+  x.moveTo(10, 96);
+  x.bezierCurveTo(16, 64, 80, 64, 86, 96);
+  x.fill();
+  x.strokeStyle = "#4d5636";
+  x.lineWidth = 1.6;
+  x.beginPath();
+  x.moveTo(48, 70);
+  x.lineTo(48, 96);
+  x.stroke();
+  x.fillStyle = "#9c3a2a";
+  x.beginPath();
+  x.moveTo(40, 64);
+  x.lineTo(56, 64);
+  x.lineTo(48, 76);
+  x.fill();
+  face(x, "#d9a679", "#a5754a");
+  // big brown beard + moustache
+  x.fillStyle = "#5d4226";
+  x.beginPath();
+  x.moveTo(32, 44);
+  x.quadraticCurveTo(34, 68, 48, 70);
+  x.quadraticCurveTo(62, 68, 64, 44);
+  x.quadraticCurveTo(56, 53, 48, 53);
+  x.quadraticCurveTo(40, 53, 32, 44);
+  x.fill();
+  x.beginPath();
+  x.ellipse(48, 52, 8.5, 3, 0, 0, 7);
+  x.fill();
+  brows(x, "#5d4226", 3);
+  // wide slouch hat
   x.fillStyle = "#8a713f";
   x.beginPath();
-  x.ellipse(32, 21, 17, 5, 0, 0, 7);
+  x.ellipse(48, 27, 25, 7.5, 0, 0, 7);
   x.fill();
-  x.fillRect(23, 10, 18, 11);
-  x.strokeStyle = "#5d4a26";
-  x.strokeRect(23, 10, 18, 11);
-  // face
-  x.fillStyle = "#4a3524";
-  x.fillRect(27, 28, 2.6, 2.6);
-  x.fillRect(35, 28, 2.6, 2.6);
-  x.strokeStyle = "#a56a45";
+  x.fillStyle = "#9c8149";
   x.beginPath();
-  x.arc(32, 35, 4, 0.35, Math.PI - 0.35);
-  x.stroke();
+  x.ellipse(48, 19, 13, 9, 0, Math.PI, 0);
+  x.fill();
+  x.fillRect(35, 17, 26, 9);
+  x.fillStyle = "#6b5630";
+  x.fillRect(35, 23, 26, 3);
   return c;
+}
+
+function drawChaffey(): HTMLCanvasElement {
+  const [c, x] = portraitBase("#bfe0d2", "#6f9c6a"); // vine green
+  // charcoal suit, white wing collar, gold watch chain
+  x.fillStyle = "#3a3a42";
+  x.beginPath();
+  x.moveTo(10, 96);
+  x.bezierCurveTo(16, 64, 80, 64, 86, 96);
+  x.fill();
+  x.fillStyle = "#efe9da";
+  x.beginPath();
+  x.moveTo(43, 64);
+  x.lineTo(53, 64);
+  x.lineTo(51, 76);
+  x.lineTo(45, 76);
+  x.fill();
+  x.fillStyle = "#23252c";
+  x.beginPath();
+  x.moveTo(44, 70);
+  x.lineTo(52, 70);
+  x.lineTo(49, 84);
+  x.lineTo(47, 84);
+  x.fill();
+  x.strokeStyle = "#d8b23a";
+  x.lineWidth = 1.6;
+  x.beginPath();
+  x.moveTo(30, 84);
+  x.quadraticCurveTo(48, 92, 66, 84);
+  x.stroke();
+  face(x, "#e0b088", "#a97a52");
+  // neat dark hair under a black bowler + handlebar moustache
+  x.fillStyle = "#2b2320";
+  x.beginPath();
+  x.ellipse(48, 27, 21, 6.5, 0, 0, 7);
+  x.fill();
+  x.beginPath();
+  x.ellipse(48, 18, 12.5, 9.5, 0, Math.PI, 0);
+  x.fill();
+  x.fillRect(35.5, 16, 25, 10);
+  x.fillStyle = "#17130f";
+  x.fillRect(35.5, 24, 25, 2.4);
+  x.fillStyle = "#4a3524";
+  x.beginPath();
+  x.ellipse(41, 51.5, 6, 2.6, 0.28, 0, 7);
+  x.ellipse(55, 51.5, 6, 2.6, -0.28, 0, 7);
+  x.fill();
+  brows(x, "#4a3524");
+  return c;
+}
+
+const PORTRAIT_PAINTERS: Record<PersonaKey, () => HTMLCanvasElement> = {
+  latji: drawLatji,
+  sturt: drawSturt,
+  squatter: drawSquatter,
+  chaffey: drawChaffey,
+};
+
+export interface MilestoneToast {
+  year: number;
+  title: string;
+  body: string;
+  build?: string;
+  tone?: "news" | "alarm";
 }
 
 export interface HudRefs {
   setSelected(s: Settler | null): void;
+  setPersona(key: PersonaKey): void;
+  showMilestone(m: MilestoneToast): void;
   update(vals: {
     year: number;
     era: string;
@@ -198,16 +457,26 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
     </div>
 
     <div class="panel dark bottom-left">
-      <h2 class="bar-title">Settler Status</h2>
+      <h2 class="bar-title" id="hud-persona-name">Settler Status</h2>
       <div class="status-row">
         <div class="portrait" id="hud-portrait"></div>
         <div class="bars">
+          <div id="hud-persona-role" class="persona-role"></div>
           <div class="bar-line"><span class="heart"></span><div class="bar"><div id="bar-health" class="fill green" style="width:88%"></div></div></div>
           <div class="bar-line"><span class="bolt"></span><div class="bar"><div id="bar-energy" class="fill yellow" style="width:64%"></div></div></div>
           <div id="hud-selname" class="sel-name">No settler selected</div>
         </div>
       </div>
       <div class="counters" id="hud-counters"></div>
+    </div>
+
+    <div id="milestone" class="panel parchment milestone hidden">
+      <div class="masthead">The Mildura Cultivator — Extra</div>
+      <h1 id="milestone-title"></h1>
+      <div class="body">
+        <p id="milestone-body"></p>
+        <div id="milestone-build" class="build-chip hidden"></div>
+      </div>
     </div>
 
     <div class="panel dark bottom-right">
@@ -224,7 +493,7 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
     <div id="tooltip"></div>
   `;
 
-  document.getElementById("hud-portrait")!.appendChild(drawPortrait());
+  // portrait is set via setPersona() once the sim year is known
 
   // resource counters (status panel): timber, water, food — like the mock-up row
   const counters = document.getElementById("hud-counters")!;
@@ -276,11 +545,57 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
   const objectives = document.getElementById("hud-objectives")!;
   const selName = document.getElementById("hud-selname")!;
 
+  // Milestone toast queue: one clipping at a time, ~9s each.
+  const milestoneEl = document.getElementById("milestone")!;
+  const queue: MilestoneToast[] = [];
+  let showing = false;
+  function pump() {
+    if (showing) return;
+    const m = queue.shift();
+    if (!m) return;
+    showing = true;
+    document.getElementById("milestone-title")!.textContent = m.title;
+    document.getElementById("milestone-body")!.textContent = m.body;
+    const chip = document.getElementById("milestone-build")!;
+    if (m.build) {
+      chip.textContent = `★ Special build unlocked: ${m.build}`;
+      chip.classList.remove("hidden");
+    } else {
+      chip.classList.add("hidden");
+    }
+    milestoneEl.classList.toggle("alarm", m.tone === "alarm");
+    milestoneEl.classList.remove("hidden");
+    milestoneEl.classList.add("show");
+    const obj = root.querySelector(".objectives");
+    obj?.classList.add("glow");
+    setTimeout(() => {
+      milestoneEl.classList.remove("show");
+      obj?.classList.remove("glow");
+      setTimeout(() => {
+        milestoneEl.classList.add("hidden");
+        showing = false;
+        pump();
+      }, 450);
+    }, 9000);
+  }
+
   const refs: HudRefs = {
     onMinimapClick: null,
     onAction: null,
     setSelected(s) {
       selName.textContent = s ? `${s.name} — Settler` : "No settler selected";
+    },
+    setPersona(key) {
+      const spec = PERSONAS[key];
+      const holder = document.getElementById("hud-portrait")!;
+      holder.innerHTML = "";
+      holder.appendChild(PORTRAIT_PAINTERS[key]());
+      document.getElementById("hud-persona-name")!.textContent = spec.name;
+      document.getElementById("hud-persona-role")!.textContent = spec.role;
+    },
+    showMilestone(m) {
+      queue.push(m);
+      pump();
     },
     update(v) {
       document.getElementById("hud-era")!.textContent = v.era;

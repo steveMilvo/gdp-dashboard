@@ -18,7 +18,8 @@ export interface Era {
 
 // Aligned to docs/mildura-history.md.
 export const ERAS: Era[] = [
-  { name: "River Country", startYear: 1840 },
+  { name: "River Country", startYear: 1820 },
+  { name: "Sturt's Passage", startYear: 1830 },
   { name: "The Squatter Run", startYear: 1847 },
   { name: "The Indenture", startYear: 1887 },
   { name: "Water Uphill", startYear: 1889 },
@@ -39,7 +40,8 @@ export interface SaveState {
 }
 
 export class Simulation {
-  year = 1846;
+  year = 1829; // opens on Latji Latji river country, the year before Sturt
+
   paused = false;
   speed = 1; // years advanced per tick
   resources: Resources = {
@@ -58,8 +60,10 @@ export class Simulation {
     const r = this.resources;
     const era = eraForYear(this.year);
 
-    // Early protein: river fishing + hunting kangaroo/emu.
-    let food = 4 + Math.round(r.population * 0.3);
+    // Early protein: river fishing + hunting kangaroo/emu. Before the squatter
+    // economy, river country comfortably feeds its people (fish traps, mussels,
+    // firestick-managed game) — the camp must not starve pre-1847.
+    let food = 4 + Math.round(r.population * (this.year < 1847 ? 0.85 : 0.3));
     // Livestock & the wool-barge economy arrive with the squatter run.
     if (this.year >= 1847) {
       food += 6;

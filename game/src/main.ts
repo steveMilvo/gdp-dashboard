@@ -9,6 +9,8 @@ import { buildTerrain, buildWater, buildVegetation, paintColour } from "./render
 import { buildSettlement } from "./render/buildings";
 import { UnitManager } from "./render/units";
 import { buildHud } from "./ui/hud";
+import { MILESTONES, personaForYear } from "./game/milestones";
+import { initNarrator, narrate } from "./game/narrator";
 
 // --- World scale ------------------------------------------------------------
 const MAP_W = 240;
@@ -86,6 +88,31 @@ units.select(units.settlers[0]);
 const cssCol = new THREE.Color();
 const hud = buildHud(map, (t: Tile) => `#${paintColour(t, cssCol).getHexString()}`);
 hud.setSelected(units.selected);
+
+// --- Personas, milestones & narrator ------------------------------------------
+initNarrator();
+hud.setPersona(personaForYear(sim.year));
+// Milestones already passed (e.g. restored save) never re-fire.
+const firedMilestones = new Set(MILESTONES.filter((m) => m.year <= sim.year).map((m) => m.year));
+
+// Dev/testing hook (harmless in production): force personas & banners.
+(window as unknown as Record<string, unknown>).__mildura = {
+  setPersona: (k: Parameters<typeof hud.setPersona>[0]) => hud.setPersona(k),
+  showMilestone: (i: number) => {
+    hud.showMilestone(MILESTONES[i]);
+    narrate(MILESTONES[i].speech);
+  },
+};
+
+function checkMilestones() {
+  for (const m of MILESTONES) {
+    if (m.year > sim.year || firedMilestones.has(m.year)) continue;
+    firedMilestones.add(m.year);
+    hud.showMilestone(m);
+    narrate(m.speech);
+    if (m.persona) hud.setPersona(m.persona);
+  }
+}
 
 hud.onMinimapClick = (fx, fy) => {
   const w = terrain.tileToWorld(fx * (GRID_W - 1), fy * (GRID_H - 1));
@@ -211,6 +238,7 @@ function panCamera(dt: number) {
 // --- Simulation clock + autosave ---------------------------------------------
 setInterval(() => {
   sim.tick();
+  checkMilestones();
   saveLocal(sim.snapshot());
 }, 1500);
 

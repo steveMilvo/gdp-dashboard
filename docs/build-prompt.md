@@ -269,6 +269,19 @@ copperplate-style headings):
   colours, unit/building dots, camera frustum indicator; click-to-jump.
 - Event toasts (flood warning, Crash news) styled as **period newspaper
   clippings / telegrams**, never plain browser text.
+- **Era personas & the narrator.** The status-panel portrait is the era's
+  guide, and it changes as history advances: a **Latji Latji custodian** on
+  open (River Country), **Capt. Charles Sturt** from 1830, the **squatters**
+  (Jamieson) from 1847, and **W.B. Chaffey** from 1887 — each a distinct
+  painted portrait. **Milestones** (Sturt's passage, the squatter run, the
+  1887 Indenture, water uphill at Psyche Bend 1889, Rio Vista 1891, the 1893
+  Crash, the Fruit Republic 1895) arrive as "MILDURA CULTIVATOR — EXTRA"
+  newspaper clippings with a pulsing gold **"SPECIAL BUILD UNLOCKED"** chip
+  promoting the signature building they open up, and the objectives panel
+  glows to pull the eye. A **narrator reads each milestone aloud in an
+  Australian-English voice** (Web Speech API, en-AU voice preferred; measured,
+  period storyteller phrasing) — with the clipping always carrying the same
+  words as captions, so nothing is lost with sound off.
 
 ### Acceptance for this section
 A 30-second screen recording of normal play must show: animated water, swaying
