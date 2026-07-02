@@ -233,7 +233,10 @@ https://portal.engineersaustralia.org.au/ (Engineering Heritage nomination)
   W.B. Chaffey a leading figure. Purpose-built clubhouse (cnr Deakin Ave & Ninth
   St) completed Dec 1919, opened 1920.
 - **The Settlers Club** (licence **1895**) — first drinks served on "two boards
-  supported by a row of barrels." 110–114 Eighth Street.
+  supported by a row of barrels." First premises reportedly a **three-roomed
+  cottage in Orange Avenue** (per Mildura Council local history); later
+  110–114 Eighth Street. A c.1906 postcard of the club survives at the State
+  Library of Victoria.
 - **Mildura Working Man's Club** (est. **1894**, 100–110 Deakin Ave) — later home
   to the **world's longest bar**: a T-shaped bar (**1938**), rebuilt **1970** at
   **91 m (299 ft)** with **32 beer taps**, Guinness-recorded, dismantled **1995**
@@ -244,7 +247,9 @@ https://thechaffeytrail.com.au/the-sites/rio-vista/ ·
 https://theconversation.com/how-australias-biggest-wine-growing-region-came-to-pioneer-alcohol-control-154074 ·
 https://www.milduraclub.com.au/club-history ·
 https://en.wikipedia.org/wiki/Longest_bar_in_Australia ·
-https://framesofhistory.com/the-history-of-the-settlers-club/
+https://framesofhistory.com/the-history-of-the-settlers-club/ ·
+https://viewer.slv.vic.gov.au/?entity=IE1446394 (Settlers Club c.1906 postcard) ·
+https://www.milduraworkers.com.au/photo-gallery
 
 ---
 
