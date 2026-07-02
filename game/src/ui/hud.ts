@@ -446,6 +446,10 @@ export interface HudRefs {
   setSelected(s: Settler | null, count?: number): void;
   setPersona(key: PersonaKey): void;
   showMilestone(m: MilestoneToast): void;
+  /** Era gates override the objectives panel; null restores the flavour lines. */
+  setObjectives(html: string | null): void;
+  /** True while a newspaper banner is showing or queued (clock pauses on it). */
+  toastActive(): boolean;
   update(vals: {
     year: number;
     era: string;
@@ -586,6 +590,7 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
 
   const tooltip = document.getElementById("tooltip")!;
   const objectives = document.getElementById("hud-objectives")!;
+  let objectivesOverride: string | null = null;
   const selName = document.getElementById("hud-selname")!;
 
   // Milestone toast queue: one clipping (plus persona card) at a time, ~9s each.
@@ -676,11 +681,23 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
       slotVals["water"]!.textContent = String(v.water);
       slotVals["pound"]!.textContent = String(v.capital);
       slotVals["pop"]!.textContent = String(v.population);
-      const bales = Math.floor(v.wool / 25);
-      objectives.innerHTML =
-        `-Survey the river frontage (flags visited).<br>` +
-        `-Stock the run (${Math.min(22 + Math.floor(v.population / 3), 40)}/40 sheep).<br>` +
-        `-Load wool for the barge (${Math.min(bales, 10)}/10 bales).`;
+      // Era gates (game/eras.ts) own this panel when a gate is approaching/held;
+      // otherwise fall back to the flavour objectives.
+      if (objectivesOverride !== null) {
+        if (objectives.innerHTML !== objectivesOverride) objectives.innerHTML = objectivesOverride;
+      } else {
+        const bales = Math.floor(v.wool / 25);
+        objectives.innerHTML =
+          `-Survey the river frontage (flags visited).<br>` +
+          `-Stock the run (${Math.min(22 + Math.floor(v.population / 3), 40)}/40 sheep).<br>` +
+          `-Load wool for the barge (${Math.min(bales, 10)}/10 bales).`;
+      }
+    },
+    setObjectives(html) {
+      objectivesOverride = html;
+    },
+    toastActive() {
+      return showing || queue.length > 0;
     },
     drawMinimap(unitDots, camTile) {
       mctx.imageSmoothingEnabled = false;

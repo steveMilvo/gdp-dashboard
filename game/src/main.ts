@@ -21,6 +21,7 @@ import { installBuildMenu } from "./game/buildMenu";
 import { installSelection } from "./game/selection";
 import { installSocial } from "./game/social";
 import { installProfile } from "./auth/profile";
+import { installEras } from "./game/eras";
 
 // --- World scale ------------------------------------------------------------
 const MAP_W = 240;
@@ -108,6 +109,10 @@ selection.selectOnly(units.settlers[0]);
 // --- M7-lite: almanac codex, travelling fountain, crash-era economy ------------
 const codex = installCodex({ sim });
 const profile = installProfile({ sim, session }); // M9: [P] account chip + optional cloud saves
+
+// Era gates: history holds at each milestone until its requirements are met,
+// and the clock pauses while newspaper banners narrate (the age-up structure).
+const eras = installEras({ sim, hud });
 const fountain = installFountain({ scene, terrain, map, sim, flagTargets: settlement.flagTargets });
 installCrashEffects({ sim });
 // M6: the full crisis suite — 1870s drought, 1893 low river, 1895 liquidation,
@@ -239,12 +244,13 @@ function panCamera(dt: number) {
 
 // --- Simulation clock + autosave ---------------------------------------------
 setInterval(() => {
+  eras.applyClock(); // may freeze the year (gate unmet / banner narrating)
   sim.tick();
   waterworks.applyTick();
   crises.applyTick(); // must follow waterworks.applyTick — it claws back its tick in 1893-94
   checkMilestones();
   saveLocal(sim.snapshot());
-}, 1500);
+}, 2200); // ~2.2s per year between gates — the gates themselves set the real pace
 
 // --- Loop ----------------------------------------------------------------------
 window.addEventListener("resize", () => {
