@@ -5,26 +5,36 @@ Victoria, Australia), rendered in **3D**. This folder is the playable build; the
 design lives in [`../docs/build-prompt.md`](../docs/build-prompt.md) and the
 sourced history in [`../docs/mildura-history.md`](../docs/mildura-history.md).
 
-## Status: M1 vertical slice (3D)
+## Status: playable slice through M7
 
-Implemented so far:
+Implemented:
 
-- **Real-layout 3D terrain** — the Murray meandering across the north, Kings
-  Billabong, and the land rising ~28 m to the southern terrace, displaced from a
-  heightmap and lit with a directional sun + shadows. The relief is literally 3D.
-- **3D water surface** for the Murray and Kings Billabong.
-- **Landmarks** as 3D markers in their correct relative positions (Township,
-  Wharf, Psyche Bend, Kings Billabong, Nichols Point, Ninety Foot, Merbein, Red
-  Cliffs), each revealing one true "stealth-learning" fact on hover.
-- **Orbit camera** (drag to orbit, wheel zoom, right-drag pan).
-- **Year clock + early economy** — river fishing & hunting for food, red gum
-  timber, and wool-barge income once the squatter run begins.
-- **Free guest mode** — plays with zero sign-up; autosaves to `localStorage`.
+- **Real-layout cel-shaded 3D world** — the Murray, Kings Billabong, the
+  terrace rise, dense painted red-gum forest, animated water with flow
+  streaks, rock foam, painterly canvas textures throughout.
+- **Working economy (M2)** — settlers chop red gum and gather food with full
+  work animations (axe swings, wood chips, carry trips to the homestead);
+  right-click is context-sensitive (red gum = chop, floodplain = gather).
+- **The water system (M3)** — the Psyche Bend pump rises in 1889, gravity-fed
+  channels cut toward the township, irrigated blocks green up with vine rows,
+  and salinity bleaches the lowest blocks from 1904.
+- **Date-gated construction (M4)** — [5] BUILD opens the Public Works palette:
+  ten real buildings (Woolshed 1847 → Sacred Heart 1921) with costs, ghost
+  placement, staged peg/frame/complete construction, and the Carnegie
+  building upgrading with the Memorial Clock Tower in 1921. Placements save.
+- **Era personas & milestones** — the status-panel guide evolves (Latji Latji
+  Elder → Sturt → Jamieson → Chaffey); nine narrated newspaper milestones
+  with per-era accents (GB/US/AU) and gold-framed portrait reveal cards.
+- **Stealth learning (M7)** — the [C] Settler's Almanac (20 sourced entries,
+  drop-in art slots), the travelling fountain living its three real lives
+  (Rio Vista 1891 → still after 1897 → Deakin Avenue 1936), and the 1893-95
+  Crash freezing the economy until the dried-fruit recovery.
+- **Free guest mode** — zero sign-up, autosaves to localStorage.
 
-Engine: **Three.js / WebGL** (no pixel art). Not yet built (see the build
-prompt's milestones): RTS unit control, the pump/channel water system (M3),
-date-gated building placement (M4), social groups (M5), crises (M6), the codex &
-travelling-fountain device (M7), and cloud accounts/sign-in (M9).
+Engine: **Three.js / WebGL, cel-shaded** (no pixel art). Still to come per the
+build prompt: box-select & multi-unit control, the full crisis suite, social
+groups, accounts/cloud saves (M9), and deployment (M10).
+
 
 ## Run it
 
