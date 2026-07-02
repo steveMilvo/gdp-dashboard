@@ -19,7 +19,7 @@ export interface Settler {
   body: THREE.Mesh;
 }
 
-function makeRing(r: number): THREE.Mesh {
+export function makeRing(r: number): THREE.Mesh {
   const m = new THREE.Mesh(
     new THREE.RingGeometry(r * 0.82, r, 32),
     new THREE.MeshBasicMaterial({

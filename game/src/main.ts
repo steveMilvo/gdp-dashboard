@@ -15,8 +15,12 @@ import { installWaterworks } from "./game/waterworks";
 import { installCodex } from "./ui/codex";
 import { installFountain } from "./render/fountain";
 import { installCrashEffects } from "./game/crash";
+import { installCrises } from "./game/crises";
 import { installLabour } from "./game/labour";
 import { installBuildMenu } from "./game/buildMenu";
+import { installSelection } from "./game/selection";
+import { installSocial } from "./game/social";
+import { installProfile } from "./auth/profile";
 
 // --- World scale ------------------------------------------------------------
 const MAP_W = 240;
@@ -88,19 +92,30 @@ const waterworks = installWaterworks({ scene, terrain, map, sim });
   camera.position.set(w.x + 2, 64, w.z + 30);
 }
 
-// Open with a settler selected so the green ring + status card read immediately.
-units.select(units.settlers[0]);
-
 // --- HUD ------------------------------------------------------------------------
 const cssCol = new THREE.Color();
 const hud = buildHud(map, (t: Tile) => `#${paintColour(t, cssCol).getHexString()}`);
 const labour = installLabour({ scene, terrain, map, sim, hud, units, homePos: settlement.homePos });
-hud.setSelected(units.selected);
+
+// RTS multi-unit control: box-select, group orders, per-unit rings (M2).
+const selection = installSelection({
+  camera, controls, dom: renderer.domElement, scene, terrain, map, units, labour, hud,
+  homePos: settlement.homePos,
+});
+// Open with a settler selected so the green ring + status card read immediately.
+selection.selectOnly(units.settlers[0]);
 
 // --- M7-lite: almanac codex, travelling fountain, crash-era economy ------------
 const codex = installCodex({ sim });
+const profile = installProfile({ sim, session }); // M9: [P] account chip + optional cloud saves
 const fountain = installFountain({ scene, terrain, map, sim, flagTargets: settlement.flagTargets });
 installCrashEffects({ sim });
+// M6: the full crisis suite — 1870s drought, 1893 low river, 1895 liquidation,
+// 1896 Royal Commission, 1920s salinity, 1924 drainage outfall.
+const crises = installCrises({ sim, hud, waterworks, narrate });
+
+// [G] PEOPLE — social groups & satisfaction (M5); wraps sim.tick on top of crash.
+const social = installSocial({ sim, getSalinityCount: () => waterworks.getSalinityCount() });
 
 // [5] BUILD — date-gated build menu with staged construction (M4).
 const buildMenu = installBuildMenu({ scene, terrain, map, sim, hud, camera, dom: renderer.domElement });
@@ -140,45 +155,11 @@ hud.onMinimapClick = (fx, fy) => {
   camera.position.z += dz;
 };
 
-function nearestTileOfKind(x: number, z: number, kinds: Tile["kind"][]): { x: number; z: number } | null {
-  let best: { x: number; z: number } | null = null;
-  let bestD = Infinity;
-  for (let ty = 0; ty < GRID_H; ty++) {
-    for (let tx = 0; tx < GRID_W; tx++) {
-      const t = map.at(tx, ty);
-      if (!kinds.includes(t.kind)) continue;
-      const w = terrain.tileToWorld(tx, ty);
-      const d = (w.x - x) ** 2 + (w.z - z) ** 2;
-      if (d < bestD) {
-        bestD = d;
-        best = w;
-      }
-    }
-  }
-  return best;
-}
-
 let clockT = 0;
+// Actions apply to the whole current selection (nearest-tile lookup + per-unit
+// fan-out live in game/selection.ts).
 function doAction(action: string) {
-  hud.flashAction(action);
-  const sel = units.selected ?? units.settlers[0];
-  if (!units.selected) {
-    units.select(sel);
-    hud.setSelected(sel);
-  }
-  const p = sel.group.position;
-  if (action === "survey") {
-    controls.target.set(p.x, p.y, p.z);
-  } else if (action === "chop") {
-    const t = nearestTileOfKind(p.x, p.z, ["redgum"]);
-    if (t) labour.assign(sel, "chop", t.x, t.z, clockT);
-  } else if (action === "gather") {
-    const t = nearestTileOfKind(p.x, p.z, ["floodplain"]);
-    if (t) labour.assign(sel, "gather", t.x, t.z, clockT);
-  } else if (action === "muster") {
-    labour.clearTask(sel);
-    units.order(sel, settlement.homePos.x + 8, settlement.homePos.z + 6, clockT);
-  }
+  selection.doAction(action, clockT);
 }
 hud.onAction = doAction;
 
@@ -203,13 +184,12 @@ renderer.domElement.addEventListener("pointerup", (e) => {
   }
   setRay(e);
   if (downAt.button === 0) {
-    const hit = units.pick(raycaster);
-    units.select(hit);
-    hud.setSelected(hit);
-  } else if (downAt.button === 2 && units.selected) {
+    // Plain click: single-select (box-select drags are handled in selection.ts).
+    selection.selectOnly(units.pick(raycaster));
+  } else if (downAt.button === 2 && selection.count() > 0) {
     const ground = raycaster.intersectObject(terrain.mesh, false)[0];
-    // Context order: chop on red gum, gather on floodplain, otherwise move.
-    if (ground) labour.orderAt(units.selected, ground.point.x, ground.point.z, clockT);
+    // Context order for every selected settler: chop / gather / move.
+    if (ground) selection.orderAll(ground.point.x, ground.point.z, clockT);
   }
   downAt = null;
 });
@@ -258,6 +238,7 @@ function panCamera(dt: number) {
 setInterval(() => {
   sim.tick();
   waterworks.applyTick();
+  crises.applyTick(); // must follow waterworks.applyTick — it claws back its tick in 1893-94
   checkMilestones();
   saveLocal(sim.snapshot());
 }, 1500);
@@ -279,14 +260,19 @@ function animate() {
   panCamera(dt);
   controls.update();
   water.update(clockT);
+  crises.update(dt, clockT);
+  water.mesh.position.y = WATER_LEVEL + crises.getWaterLevelOffset(); // 1893 record low visibly drops the river
   veg.update(clockT);
   settlement.update(clockT);
   units.update(dt, clockT);
   labour.update(dt, clockT); // must follow units.update — overrides work-pose limbs
+  selection.update(dt, clockT); // after labour — re-asserts the group status line
   waterworks.update(dt, clockT);
   fountain.update(dt, clockT);
   codex.update();
   buildMenu.update(dt, clockT);
+  social.update();
+  profile.update(); // M9: debounced cloud autosave push (no-op as guest)
 
   const r = sim.resources;
   hud.update({

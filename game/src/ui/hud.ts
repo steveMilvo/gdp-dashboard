@@ -442,7 +442,8 @@ export interface MilestoneToast {
 }
 
 export interface HudRefs {
-  setSelected(s: Settler | null): void;
+  /** count > 1 shows the group line ("4 settlers selected") instead of s. */
+  setSelected(s: Settler | null, count?: number): void;
   setPersona(key: PersonaKey): void;
   showMilestone(m: MilestoneToast): void;
   update(vals: {
@@ -474,8 +475,8 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
     <div class="panel parchment top-left">
       <h1>Mildura — Colony on the Murray</h1>
       <div class="body">
-        <p><b>CONTROLS:</b> Click to Select a Settler,<br>
-        Right-Click to Move &middot; Drag to Look,<br>
+        <p><b>CONTROLS:</b> Click / Drag: Select Settlers,<br>
+        Right-Click to Move &middot; Middle-Drag: Look,<br>
         W,A,S,D to Pan &middot; Wheel to Zoom</p>
         <p><b>GAME STATUS:</b> <span id="hud-era">—</span><br>
         <b>YEAR:</b> <span id="hud-year">—</span> <span id="hud-paused"></span><br>
@@ -641,8 +642,14 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
   const refs: HudRefs = {
     onMinimapClick: null,
     onAction: null,
-    setSelected(s) {
-      selName.textContent = s ? `${s.name} — ${getTaskLabel(s)}` : "No settler selected";
+    setSelected(s, count = 1) {
+      const txt =
+        count > 1
+          ? `${count} settlers selected`
+          : s
+            ? `${s.name} — ${getTaskLabel(s)}`
+            : "No settler selected";
+      if (selName.textContent !== txt) selName.textContent = txt; // repeat-call cheap
     },
     setPersona(key) {
       const spec = PERSONAS[key];
