@@ -34,9 +34,18 @@ export function eraForYear(year: number): Era {
   return current;
 }
 
+// M4 build menu: a building placed on the map (tile coords + the year it went up).
+export interface PlacedBuildingSave {
+  key: string; // catalog key (game/buildCatalog.ts)
+  tx: number;
+  ty: number;
+  builtYear: number;
+}
+
 export interface SaveState {
   year: number;
   resources: Resources;
+  placed?: PlacedBuildingSave[]; // M4 — optional so older saves still load
 }
 
 export class Simulation {
@@ -94,13 +103,17 @@ export class Simulation {
     if (era.name === "Water Uphill" || this.year >= 1890) r.water = Math.min(100, r.water + 1);
   }
 
+  // M4: placed buildings ride the save; the build menu owns the meshes.
+  placed: PlacedBuildingSave[] = [];
+
   load(s: SaveState): void {
     this.year = s.year;
     this.resources = { ...s.resources };
+    this.placed = (s.placed ?? []).map((p) => ({ ...p })); // tolerate pre-M4 saves
   }
 
   snapshot(): SaveState {
-    return { year: this.year, resources: { ...this.resources } };
+    return { year: this.year, resources: { ...this.resources }, placed: this.placed.map((p) => ({ ...p })) };
   }
 }
 

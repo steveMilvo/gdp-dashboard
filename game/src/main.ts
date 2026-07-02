@@ -16,6 +16,7 @@ import { installCodex } from "./ui/codex";
 import { installFountain } from "./render/fountain";
 import { installCrashEffects } from "./game/crash";
 import { installLabour } from "./game/labour";
+import { installBuildMenu } from "./game/buildMenu";
 
 // --- World scale ------------------------------------------------------------
 const MAP_W = 240;
@@ -100,6 +101,9 @@ hud.setSelected(units.selected);
 const codex = installCodex({ sim });
 const fountain = installFountain({ scene, terrain, map, sim, flagTargets: settlement.flagTargets });
 installCrashEffects({ sim });
+
+// [5] BUILD — date-gated build menu with staged construction (M4).
+const buildMenu = installBuildMenu({ scene, terrain, map, sim, hud, camera, dom: renderer.domElement });
 
 // --- Personas, milestones & narrator ------------------------------------------
 initNarrator();
@@ -281,6 +285,7 @@ function animate() {
   waterworks.update(dt, clockT);
   fountain.update(dt, clockT);
   codex.update();
+  buildMenu.update(dt, clockT);
 
   const r = sim.resources;
   hud.update({
