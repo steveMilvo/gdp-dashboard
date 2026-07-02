@@ -115,12 +115,17 @@ import type { PersonaKey } from "../game/milestones";
 interface PersonaSpec {
   name: string;
   role: string;
+  plate: string; // gold-frame nameplate text, mock-up style
 }
 export const PERSONAS: Record<PersonaKey, PersonaSpec> = {
-  latji: { name: "Latji Latji Custodian", role: "First People of the River" },
-  sturt: { name: "Capt. Charles Sturt", role: "Explorer, 1830" },
-  squatter: { name: "Hugh Jamieson", role: "Squatter, Mildura Run" },
-  chaffey: { name: 'W.B. Chaffey — "The Boss"', role: "Irrigationist" },
+  latji: {
+    name: "Latji Latji Elder",
+    role: "First People of the River",
+    plate: "Pre-Colonial Elder (~1788)",
+  },
+  sturt: { name: "Capt. Charles Sturt", role: "Explorer, 1830", plate: "Capt. Charles Sturt (1830)" },
+  squatter: { name: "Hugh Jamieson", role: "Squatter, Mildura Run", plate: "Hugh Jamieson (1847)" },
+  chaffey: { name: 'W.B. Chaffey — "The Boss"', role: "Irrigationist", plate: "W.B. Chaffey (1887)" },
 };
 
 function portraitBase(
@@ -398,12 +403,41 @@ const PORTRAIT_PAINTERS: Record<PersonaKey, () => HTMLCanvasElement> = {
   chaffey: drawChaffey,
 };
 
+// Portrait element with an asset upgrade path: if real painted art exists at
+// /portraits/<key>.jpg (game/public/portraits/), it replaces the procedural
+// canvas automatically. Drop the files in — no code change needed.
+const portraitArt: Partial<Record<PersonaKey, HTMLImageElement | null>> = {};
+function portraitEl(key: PersonaKey): HTMLElement {
+  const holder = document.createElement("div");
+  holder.className = "portrait-art";
+  const cached = portraitArt[key];
+  if (cached) {
+    holder.appendChild(cached.cloneNode() as HTMLImageElement);
+    return holder;
+  }
+  holder.appendChild(PORTRAIT_PAINTERS[key]());
+  if (cached === undefined) {
+    const img = new Image();
+    img.onload = () => {
+      portraitArt[key] = img;
+      holder.innerHTML = "";
+      holder.appendChild(img.cloneNode() as HTMLImageElement);
+    };
+    img.onerror = () => {
+      portraitArt[key] = null; // remember the miss; keep the canvas
+    };
+    img.src = `portraits/${key}.jpg`;
+  }
+  return holder;
+}
+
 export interface MilestoneToast {
   year: number;
   title: string;
   body: string;
   build?: string;
   tone?: "news" | "alarm";
+  persona?: PersonaKey; // reveals the era's framed portrait card beside the clipping
 }
 
 export interface HudRefs {
@@ -470,12 +504,18 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
       <div class="counters" id="hud-counters"></div>
     </div>
 
-    <div id="milestone" class="panel parchment milestone hidden">
-      <div class="masthead">The Mildura Cultivator — Extra</div>
-      <h1 id="milestone-title"></h1>
-      <div class="body">
-        <p id="milestone-body"></p>
-        <div id="milestone-build" class="build-chip hidden"></div>
+    <div id="milestone-wrap" class="hidden">
+      <div id="persona-card">
+        <div class="pc-img" id="pc-img"></div>
+        <div class="pc-plate" id="pc-plate"></div>
+      </div>
+      <div id="milestone" class="panel parchment milestone">
+        <div class="masthead">The Mildura Cultivator — Extra</div>
+        <h1 id="milestone-title"></h1>
+        <div class="body">
+          <p id="milestone-body"></p>
+          <div id="milestone-build" class="build-chip hidden"></div>
+        </div>
       </div>
     </div>
 
@@ -545,8 +585,10 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
   const objectives = document.getElementById("hud-objectives")!;
   const selName = document.getElementById("hud-selname")!;
 
-  // Milestone toast queue: one clipping at a time, ~9s each.
+  // Milestone toast queue: one clipping (plus persona card) at a time, ~9s each.
+  const wrapEl = document.getElementById("milestone-wrap")!;
   const milestoneEl = document.getElementById("milestone")!;
+  const cardEl = document.getElementById("persona-card")!;
   const queue: MilestoneToast[] = [];
   let showing = false;
   function pump() {
@@ -563,16 +605,25 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
     } else {
       chip.classList.add("hidden");
     }
+    if (m.persona) {
+      const holder = document.getElementById("pc-img")!;
+      holder.innerHTML = "";
+      holder.appendChild(portraitEl(m.persona));
+      document.getElementById("pc-plate")!.textContent = PERSONAS[m.persona].plate;
+      cardEl.classList.remove("hidden");
+    } else {
+      cardEl.classList.add("hidden");
+    }
     milestoneEl.classList.toggle("alarm", m.tone === "alarm");
-    milestoneEl.classList.remove("hidden");
-    milestoneEl.classList.add("show");
+    wrapEl.classList.remove("hidden");
+    wrapEl.classList.add("show");
     const obj = root.querySelector(".objectives");
     obj?.classList.add("glow");
     setTimeout(() => {
-      milestoneEl.classList.remove("show");
+      wrapEl.classList.remove("show");
       obj?.classList.remove("glow");
       setTimeout(() => {
-        milestoneEl.classList.add("hidden");
+        wrapEl.classList.add("hidden");
         showing = false;
         pump();
       }, 450);
@@ -589,7 +640,7 @@ export function buildHud(map: GameMap, minimapColour: (t: Tile) => string): HudR
       const spec = PERSONAS[key];
       const holder = document.getElementById("hud-portrait")!;
       holder.innerHTML = "";
-      holder.appendChild(PORTRAIT_PAINTERS[key]());
+      holder.appendChild(portraitEl(key));
       document.getElementById("hud-persona-name")!.textContent = spec.name;
       document.getElementById("hud-persona-role")!.textContent = spec.role;
     },

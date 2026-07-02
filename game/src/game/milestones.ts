@@ -4,12 +4,14 @@
 // Dates per docs/mildura-history.md.
 
 export type PersonaKey = "latji" | "sturt" | "squatter" | "chaffey";
+export type Accent = "AU" | "GB" | "US";
 
 export interface Milestone {
   year: number;
   title: string; // headline on the clipping
   body: string; // printed text
   speech: string; // what the narrator says (period phrasing)
+  accent?: Accent; // narrator voice: GB for Sturt/Jamieson, US for the Chaffeys
   build?: string; // "SPECIAL BUILD UNLOCKED" chip
   persona?: PersonaKey; // switches the status-panel persona
   tone?: "news" | "alarm";
@@ -18,6 +20,7 @@ export interface Milestone {
 export const MILESTONES: Milestone[] = [
   {
     year: 1830,
+    accent: "GB",
     title: "A Whaleboat on the Wide River",
     body:
       "Capt. Charles Sturt rows down the great river and names it the Murray. " +
@@ -32,6 +35,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     year: 1847,
+    accent: "GB",
     title: "The Squatters Take Up 'Mildura'",
     body:
       "The Jamieson brothers claim the Mildura run — sheep on the saltbush, " +
@@ -45,6 +49,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     year: 1887,
+    accent: "US",
     title: "THE INDENTURE IS SIGNED!",
     body:
       "George & W.B. Chaffey sign with the Colony of Victoria: 250,000 acres " +
@@ -59,6 +64,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     year: 1889,
+    accent: "US",
     title: "WATER RUNS UPHILL AT PSYCHE BEND",
     body:
       "The great triple-expansion pumps lift the Murray to the high terrace. " +
@@ -71,6 +77,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     year: 1891,
+    accent: "US",
     title: "Rio Vista Rises on the Riverbank",
     body:
       "W.B. Chaffey builds his grand Queen-Anne villa overlooking the river — " +
@@ -83,6 +90,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     year: 1893,
+    accent: "AU",
     title: "THE BANKS HAVE FAILED",
     body:
       "The land boom bursts and the colony's banks close their doors. Money " +
@@ -95,6 +103,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     year: 1895,
+    accent: "AU",
     title: "The Fruit Republic",
     body:
       "Dried fruit saves the settlement: raisins, sultanas and currants go to " +

@@ -100,7 +100,7 @@ const firedMilestones = new Set(MILESTONES.filter((m) => m.year <= sim.year).map
   setPersona: (k: Parameters<typeof hud.setPersona>[0]) => hud.setPersona(k),
   showMilestone: (i: number) => {
     hud.showMilestone(MILESTONES[i]);
-    narrate(MILESTONES[i].speech);
+    narrate(MILESTONES[i].speech, MILESTONES[i].accent);
   },
 };
 
@@ -109,7 +109,7 @@ function checkMilestones() {
     if (m.year > sim.year || firedMilestones.has(m.year)) continue;
     firedMilestones.add(m.year);
     hud.showMilestone(m);
-    narrate(m.speech);
+    narrate(m.speech, m.accent);
     if (m.persona) hud.setPersona(m.persona);
   }
 }

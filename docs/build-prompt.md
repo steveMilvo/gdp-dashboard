@@ -278,10 +278,16 @@ copperplate-style headings):
   Crash, the Fruit Republic 1895) arrive as "MILDURA CULTIVATOR — EXTRA"
   newspaper clippings with a pulsing gold **"SPECIAL BUILD UNLOCKED"** chip
   promoting the signature building they open up, and the objectives panel
-  glows to pull the eye. A **narrator reads each milestone aloud in an
-  Australian-English voice** (Web Speech API, en-AU voice preferred; measured,
-  period storyteller phrasing) — with the clipping always carrying the same
-  words as captions, so nothing is lost with sound off.
+  glows to pull the eye, and an era change also reveals a **gold-framed
+  portrait card with a nameplate** ("Capt. Charles Sturt (1830)" style) beside
+  the clipping. A **narrator reads each milestone aloud** (Web Speech API,
+  measured period storyteller phrasing) **in the accent of its era**: British
+  (en-GB) for Sturt and the Jamieson squatters, **American (en-US) for the
+  Chaffey milestones** (they came via Ontario and California), and Australian
+  (en-AU) as the colony's own voice from the Crash onward — with the clipping
+  always carrying the same words as captions, so nothing is lost with sound
+  off. Portrait art loads from drop-in slots (`portraits/<persona>.jpg`) with
+  procedural painted fallbacks (see `game/public/portraits/README.md`).
 
 ### Acceptance for this section
 A 30-second screen recording of normal play must show: animated water, swaying
