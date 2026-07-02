@@ -11,6 +11,9 @@ import { UnitManager } from "./render/units";
 import { buildHud } from "./ui/hud";
 import { MILESTONES, personaForYear } from "./game/milestones";
 import { initNarrator, narrate } from "./game/narrator";
+import { installCodex } from "./ui/codex";
+import { installFountain } from "./render/fountain";
+import { installCrashEffects } from "./game/crash";
 
 // --- World scale ------------------------------------------------------------
 const MAP_W = 240;
@@ -88,6 +91,11 @@ units.select(units.settlers[0]);
 const cssCol = new THREE.Color();
 const hud = buildHud(map, (t: Tile) => `#${paintColour(t, cssCol).getHexString()}`);
 hud.setSelected(units.selected);
+
+// --- M7-lite: almanac codex, travelling fountain, crash-era economy ------------
+const codex = installCodex({ sim });
+const fountain = installFountain({ scene, terrain, map, sim, flagTargets: settlement.flagTargets });
+installCrashEffects({ sim });
 
 // --- Personas, milestones & narrator ------------------------------------------
 initNarrator();
@@ -262,6 +270,8 @@ function animate() {
   veg.update(clockT);
   settlement.update(clockT);
   units.update(dt, clockT);
+  fountain.update(dt, clockT);
+  codex.update();
 
   const r = sim.resources;
   hud.update({
