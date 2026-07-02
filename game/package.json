@@ -20,5 +20,8 @@
   "dependencies": {
     "serve": "^14.2.6",
     "three": "^0.161.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
