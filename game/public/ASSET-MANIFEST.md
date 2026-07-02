@@ -54,6 +54,7 @@ Square 1:1 preferred, ~600×600+. See ART-PROMPTS.md here for full prompts.
 | `street_1948.jpg` | Langtree Avenue street scene, late 1940s |
 | `big_lizzie.jpg` | Big Lizzie — Bottrill's mallee-clearing traction engine (Red Cliffs) |
 | `rio_vista.jpg` | Rio Vista villa (portrait codex plate; landscape version → milestones/1891.jpg) |
+| `langtree_hall_interior.jpg` | Langtree Hall interior (stage & pioneer curios; also suits an 1896 Royal Commission scene) |
 
 Notes:
 - The 1887 milestone banner can alternatively use `chaffey_bros.jpg` cropped
