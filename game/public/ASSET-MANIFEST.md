@@ -52,6 +52,7 @@ Square 1:1 preferred, ~600×600+. See ART-PROMPTS.md here for full prompts.
 | `channels_digging.jpg` | Blockie digging an irrigation channel |
 | `chaffey_bros.jpg` | George & W.B. Chaffey over the colony map |
 | `street_1948.jpg` | Langtree Avenue street scene, late 1940s |
+| `big_lizzie.jpg` | Big Lizzie — Bottrill's mallee-clearing traction engine (Red Cliffs) |
 
 Notes:
 - The 1887 milestone banner can alternatively use `chaffey_bros.jpg` cropped

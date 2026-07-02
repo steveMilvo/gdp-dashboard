@@ -298,6 +298,12 @@ https://thechaffeytrail.com.au/the-sites/langtree-hall/
   one of Australia's largest soldier-settlement schemes; the railway (1903) had
   already passed through the site. ⚠️ Widely documented; exact opening
   ceremony date not verified here.
+- **"Big Lizzie"** — the giant oil-engined traction engine built by **Frank
+  Bottrill** (c. 1915–17, Melbourne) with his patent "Dreadnought" wheels for
+  outback haulage; walking-pace slow, she ended up at Red Cliffs where she
+  **cleared the mallee for the soldier-settlement blocks** in the early 1920s.
+  Preserved at Red Cliffs today. ⚠️ Outline widely documented; specific dates
+  and specs not verified here.
 - **Salinity** — the long-term curse: a gravitational drainage outfall was built
   by the State Rivers and Water Supply Commission in **1924**, intensified in the
   1930s.
