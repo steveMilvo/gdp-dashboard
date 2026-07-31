@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "product-factory"
+version = "0.1.0"
+description = "Agentic pipeline: niche hypothesis to a validated, packaged, listed and marketed digital product"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.60",
+    "sqlalchemy>=2.0",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "httpx>=0.27",
+    "reportlab>=4.0",
+    "pypdf>=4.0",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.1"]
+aws = ["boto3>=1.34"]
+dev = ["pytest>=8.0", "ruff>=0.4"]
+
+[project.scripts]
+product-factory = "product_factory.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["product_factory*"]
+
+[tool.ruff]
+line-length = 90
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+# E501: line length is handled by the formatter, not the linter.
+# UP042: the enums are `(str, Enum)` rather than `StrEnum` deliberately — the
+# values are persisted as strings and compared against raw DB rows, and the
+# explicit `.value` access that pattern forces is the point.
+ignore = ["E501", "UP042"]
